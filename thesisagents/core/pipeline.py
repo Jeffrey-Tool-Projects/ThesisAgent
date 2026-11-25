@@ -245,6 +245,10 @@ def _diagnose(
     )
 
 
+#: The longest wait a source's ``Retry-After`` gets before the next attempt.
+_MAX_RETRY_AFTER_SECONDS = 30.0
+
+
 async def _safe_search(fetcher, query: Query, source: str) -> _SourceOutcome:
     """Run one source's search with retry-on-RateLimitError + backoff.
 
@@ -299,6 +303,10 @@ async def _safe_search(fetcher, query: Query, source: str) -> _SourceOutcome:
                     ),
                 )
             wait = RATE_LIMIT_RETRY_BASE_SECONDS * (2 ** (attempt - 1))
+            if err.retry_after is not None:
+                # What the source asked for, within reason: a whole search must
+                # not hang on one source.
+                wait = min(max(wait, err.retry_after), _MAX_RETRY_AFTER_SECONDS)
             _LOG.info(
                 "Source %s rate-limited; sleeping %.1fs before retry %d/%d",
                 source, wait, attempt + 1, RATE_LIMIT_RETRY_ATTEMPTS,

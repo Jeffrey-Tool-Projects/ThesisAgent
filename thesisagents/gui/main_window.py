@@ -21,6 +21,8 @@ widths above are for text of the default size and grow with it.
 
 from __future__ import annotations
 
+import contextlib
+
 from PySide6.QtCore import QByteArray, QSettings, QTimer
 from PySide6.QtGui import QCloseEvent, QGuiApplication, QKeySequence, QResizeEvent, QShortcut
 from PySide6.QtWidgets import (
@@ -375,7 +377,24 @@ class MainWindow(QMainWindow):
         )
         replacement.show()
         self.close()
+        self._detach()
         return replacement
+
+    def _detach(self) -> None:
+        """Stop hearing the application, which the replacement now does.
+
+        The hidden window stayed connected until exit: it flashed the taskbar
+        for a captcha the new window already showed, and applied the theme a
+        second time when the system switched to dark. It is not deleted here,
+        because whoever made it may still hold it.
+        """
+        for signal, slot in (
+            (activity().notice, self._on_notice),
+            (activity().unexpected_error, self._on_unexpected_error),
+            (QGuiApplication.styleHints().colorSchemeChanged, self._on_system_scheme),
+        ):
+            with contextlib.suppress(RuntimeError, TypeError):
+                signal.disconnect(slot)
 
     def adopt_work(self, old: MainWindow) -> None:
         """Take over ``old``'s results, collections and current page."""

@@ -153,6 +153,8 @@ async def test_api_search_uses_api_endpoint_and_key(monkeypatch):
     assert transport.received_url.params.get("querytext") == "LLM security"
     assert transport.received_url.params.get("start_year") == "2025"
     assert transport.received_url.params.get("end_year") == "2026"
+    # Sorted by article number a page held the newest matches, not the best.
+    assert "sort_field" not in transport.received_url.params
     # Fixture has 2 articles
     assert len(papers) == 2
     first = papers[0]

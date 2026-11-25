@@ -106,3 +106,19 @@ async def test_api_key_sent_when_env_set(monkeypatch):
         Query(keywords="x", sources=("semantic_scholar",), max_results=1)
     )
     assert captured.get("x-api-key") == "secret-test-key"
+
+
+async def test_a_429_says_how_long_to_wait(monkeypatch):
+    class _Waits(MockTransport):
+        async def handle_async_request(self, request):
+            response = await super().handle_async_request(request)
+            response.headers["Retry-After"] = "12"
+            return response
+
+    install_mock(monkeypatch, "thesisagents.sources.semantic_scholar.fetcher", _Waits(429, ""))
+    with pytest.raises(RateLimitError) as caught:
+        await SemanticScholarFetcher().search(
+            Query(keywords="x", sources=("semantic_scholar",), max_results=1)
+        )
+    assert caught.value.retry_after == 12.0
+    assert "THESISAGENTS_S2_API_KEY" in str(caught.value)

@@ -65,3 +65,16 @@ def test_maximised_state_survives_a_restart(qtbot):
     second = MainWindow(ui_language="en")
     qtbot.addWidget(second)
     assert second.isMaximized()
+
+
+def test_the_window_left_by_a_language_switch_stops_listening(qtbot):
+    from thesisagents.gui.activity import activity
+    from thesisagents.utils.notices import CAPTCHA_WAITING, Notice
+
+    old = MainWindow(ui_language="en")
+    qtbot.addWidget(old)
+    new = old.rebuild_in_language("de")
+    qtbot.addWidget(new)
+    activity().notice.emit(Notice(CAPTCHA_WAITING, "ieee"))
+    assert new.notice_banner().isVisibleTo(new)
+    assert not old.notice_banner().isVisibleTo(old)

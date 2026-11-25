@@ -20,7 +20,30 @@ class FetchError(ThesisAgentsError):
 
 
 class RateLimitError(FetchError):
-    """Source rejected the request because we hit a rate limit."""
+    """Source rejected the request because we hit a rate limit.
+
+    ``retry_after`` is how many seconds the source asked to wait (its
+    ``Retry-After`` header), ``None`` when it did not say.
+    """
+
+    def __init__(self, source: str, message: str, retry_after: float | None = None) -> None:
+        super().__init__(source, message)
+        self.retry_after = retry_after
+
+
+def retry_after_seconds(value: str | None) -> float | None:
+    """The seconds of a ``Retry-After`` header, ``None`` when it gives none.
+
+    A date instead of seconds counts as none: sources send seconds.
+
+    >>> retry_after_seconds("12"), retry_after_seconds("soon"), retry_after_seconds(None)
+    (12.0, None, None)
+    """
+    try:
+        seconds = float(value or "")
+    except ValueError:
+        return None
+    return seconds if seconds >= 0 else None
 
 
 class ParseError(FetchError):
