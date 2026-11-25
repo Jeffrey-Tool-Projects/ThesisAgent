@@ -11,6 +11,7 @@ from typing import TYPE_CHECKING
 
 from thesisagents.gui.pages.settings import (
     apply_saved_env,
+    saved_font_size,
     saved_style,
     saved_theme,
     saved_ui_language,
@@ -80,6 +81,11 @@ def main(argv: list[str] | None = None) -> int:
     from PySide6.QtCore import QLocale
     from PySide6.QtWidgets import QApplication
 
+    from thesisagents.gui.font_size import (
+        SMALLEST_DEFAULT_PT,
+        remember_default_size,
+        set_font_size,
+    )
     from thesisagents.gui.i18n import normalise_language
     from thesisagents.gui.main_window import MainWindow
     from thesisagents.gui.theme import apply_theme
@@ -104,12 +110,16 @@ def main(argv: list[str] | None = None) -> int:
     # font overrides. Point-sized fonts let Qt's HiDPI scaling do the
     # right thing automatically.
     base_font = app.font()
-    if base_font.pointSize() < 10:
-        base_font.setPointSize(10)
+    if base_font.pointSize() < SMALLEST_DEFAULT_PT:
+        base_font.setPointSize(SMALLEST_DEFAULT_PT)
         app.setFont(base_font)
     # Tell Qt about every CJK / RTL fallback so we don't get tofu boxes
     # for hi / ko / zh-* when the host font lacks a glyph.
     app.setFont(_with_unicode_fallback(base_font))
+    # The size above is the default. One picked under Settings → Font size
+    # or with Ctrl++ / Ctrl+- replaces it.
+    remember_default_size(app)
+    set_font_size(app, saved_font_size())
     # Classic / Material 3 style and light / dark / follow-the-OS theme,
     # saved under Settings → Style and Theme. Applied
     # before the window exists so it never flashes in the wrong colours.

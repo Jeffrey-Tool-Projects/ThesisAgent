@@ -47,6 +47,7 @@ from PySide6.QtCore import Qt
 from PySide6.QtGui import QColor, QGuiApplication, QPalette
 from PySide6.QtWidgets import QApplication
 
+from thesisagents.gui.font_size import font_scale
 from thesisagents.gui.icons import write_glyph
 
 THEME_SYSTEM: Final[str] = "system"
@@ -458,7 +459,9 @@ QSpinBox::down-arrow {{
 """
 
 
-def build_stylesheet(tokens: Palette, assets: dict[str, str] | None = None) -> str:
+def build_stylesheet(
+    tokens: Palette, assets: dict[str, str] | None = None, *, text_scale: float = 1.0
+) -> str:
     """The application-wide Qt stylesheet for ``tokens``.
 
     Widgets opt into the special looks with object names and dynamic
@@ -472,7 +475,9 @@ def build_stylesheet(tokens: Palette, assets: dict[str, str] | None = None) -> s
     * ``#PageTitle`` / ``#PageSubtitle`` / ``#CardTitle`` / ``#Muted``: type.
 
     Colours come from ``tokens``, radii, padding and weights from
-    ``tokens.shape``. ``assets`` (from :func:`write_theme_assets`) adds the
+    ``tokens.shape``. ``text_scale`` enlarges the page titles with the
+    interface font (every other text takes the application font, so it
+    needs no rule). ``assets`` (from :func:`write_theme_assets`) adds the
     check-box and arrow rules. Without it those controls keep the Fusion
     style's own drawing, which is what tests that only inspect the text use.
     """
@@ -480,6 +485,10 @@ def build_stylesheet(tokens: Palette, assets: dict[str, str] | None = None) -> s
     s = p.shape
     card_border = f"1px solid {p.border}" if s.card_border else "none"
     glyphs = _glyph_rules(p, assets) if assets else ""
+    title_pt = round(s.title_size_pt * text_scale)
+    # A stylesheet min-height replaces the minimum Qt works out from the font,
+    # so a fixed one lets a short window squash large text.
+    control_px = max(20, round(18 * text_scale))
     return glyphs + f"""
 QWidget {{
     color: {p.text};
@@ -527,7 +536,7 @@ QToolTip {{
     background: {p.window};
 }}
 QLabel#PageTitle {{
-    font-size: {s.title_size_pt}pt;
+    font-size: {title_pt}pt;
     font-weight: {s.title_weight};
 }}
 QLabel#PageSubtitle, QLabel#Muted {{
@@ -551,7 +560,7 @@ QLineEdit, QComboBox, QSpinBox {{
     border: 1px solid {p.input_border};
     border-radius: {s.input_radius}px;
     padding: {s.input_padding};
-    min-height: 20px;
+    min-height: {control_px}px;
     selection-background-color: {p.accent};
     selection-color: {p.on_accent};
 }}
@@ -574,7 +583,7 @@ QPushButton {{
     border: 1px solid {p.button_border};
     border-radius: {s.button_radius}px;
     padding: {s.button_padding};
-    min-height: 20px;
+    min-height: {control_px}px;
 }}
 QPushButton:hover {{
     background: {p.button_hover};
@@ -702,6 +711,10 @@ QScrollBar::add-page, QScrollBar::sub-page {{
 """
 
 
+#: Set on the application once its Qt style is Fusion (see ``apply_theme``).
+_STYLED_PROPERTY: Final[str] = "thesisagents_styled"
+
+
 def apply_theme(app: QApplication, choice: str, style: str = STYLE_CLASSIC) -> Palette:
     """Paint ``app`` with theme ``choice`` in ``style``; return the palette used.
 
@@ -714,15 +727,21 @@ def apply_theme(app: QApplication, choice: str, style: str = STYLE_CLASSIC) -> P
     platform fonts, and those beat the application font: lists, tables, menus
     and the status bar drop back to the bare system family, losing the
     per-script fallback families (a Hindi label then makes Qt probe eight
-    fonts that cannot shape it) and the minimum point size set at start-up.
-    Setting the application font again clears them, so it comes last.
-    Example: without it ``QApplication.font("QAbstractItemView").families()``
-    is a single family after every theme switch.
+    fonts that cannot shape it) and the interface font size. Setting the
+    application font again clears them, so it comes last. That only helps
+    widgets built later: the ones already on screen keep the class font they
+    were given, so the style is set once and never again. Example: with a
+    second ``setStyle`` a theme switch put the tables of an open window back
+    to 9 pt.
     """
     tokens = resolve_theme(choice, system_prefers_dark(), style)
-    app.setStyle("Fusion")
+    if not app.property(_STYLED_PROPERTY):
+        app.setStyle("Fusion")
+        app.setProperty(_STYLED_PROPERTY, True)
     app.setPalette(build_palette(tokens))
-    app.setStyleSheet(build_stylesheet(tokens, write_theme_assets(tokens)))
+    app.setStyleSheet(
+        build_stylesheet(tokens, write_theme_assets(tokens), text_scale=font_scale())
+    )
     app.setFont(app.font())
     app.setProperty("thesisagents_theme", tokens.name)
     return tokens

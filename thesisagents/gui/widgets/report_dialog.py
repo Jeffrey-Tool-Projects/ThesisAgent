@@ -28,6 +28,8 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from thesisagents.gui.font_size import current_font_size
+
 
 class ReportDialog(QDialog):
     """Read-only monospace text with Copy and Close buttons."""
@@ -47,7 +49,9 @@ class ReportDialog(QDialog):
         layout = QVBoxLayout(self)
         self._text = QPlainTextEdit(self)
         self._text.setReadOnly(True)
-        self._text.setFont(QFontDatabase.systemFont(QFontDatabase.SystemFont.FixedFont))
+        fixed = QFontDatabase.systemFont(QFontDatabase.SystemFont.FixedFont)
+        fixed.setPointSize(current_font_size())
+        self._text.setFont(fixed)
         self._text.setPlainText(text)
         layout.addWidget(self._text)
         buttons = QDialogButtonBox(self)

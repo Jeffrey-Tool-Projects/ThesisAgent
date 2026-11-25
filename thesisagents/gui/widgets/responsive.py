@@ -41,6 +41,8 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from thesisagents.gui.font_size import layout_scale, table_row_height
+
 
 class Breakpoint(Enum):
     """The window size class a page lays itself out for."""
@@ -57,17 +59,23 @@ COMPACT_MAX_WIDTH: Final[int] = 760
 EXPANDED_MIN_WIDTH: Final[int] = 1180
 
 
-def breakpoint_for_width(width: int) -> Breakpoint:
+def breakpoint_for_width(width: int, scale: float = 1.0) -> Breakpoint:
     """The size class for a window ``width`` pixels wide.
+
+    ``scale`` is how much larger than the default the interface text is. The
+    size classes were drawn for the default, so a 1400 px window with text
+    twice as big has the room of a 700 px one and is laid out as such.
 
     >>> breakpoint_for_width(640).value, breakpoint_for_width(1000).value
     ('compact', 'medium')
     >>> breakpoint_for_width(1280).value
     'expanded'
+    >>> breakpoint_for_width(1400, scale=2.0).value
+    'compact'
     """
-    if width < COMPACT_MAX_WIDTH:
+    if width < COMPACT_MAX_WIDTH * scale:
         return Breakpoint.COMPACT
-    if width < EXPANDED_MIN_WIDTH:
+    if width < EXPANDED_MIN_WIDTH * scale:
         return Breakpoint.MEDIUM
     return Breakpoint.EXPANDED
 
@@ -102,7 +110,7 @@ FORM_WRAP_WIDTH: Final[int] = 460
 
 
 class _FormWrapFilter(QObject):
-    """Switches one form's row-wrap policy as its container is resized."""
+    """Switches one form's row-wrap policy as its container or its text resizes."""
 
     def __init__(self, container: QWidget, form: QFormLayout, threshold: int) -> None:
         super().__init__(container)
@@ -110,14 +118,15 @@ class _FormWrapFilter(QObject):
         self._threshold = threshold
 
     def eventFilter(self, watched: QObject, event: QEvent) -> bool:  # noqa: N802 - Qt override
-        if event.type() == QEvent.Type.Resize and isinstance(watched, QWidget):
+        relevant = event.type() in (QEvent.Type.Resize, QEvent.Type.FontChange)
+        if relevant and isinstance(watched, QWidget):
             self.apply(watched.width())
         return False
 
     def apply(self, width: int) -> None:
         policy = (
             QFormLayout.RowWrapPolicy.WrapAllRows
-            if width < self._threshold
+            if width < self._threshold * layout_scale()
             else QFormLayout.RowWrapPolicy.DontWrapRows
         )
         if self._form.rowWrapPolicy() != policy:
@@ -229,6 +238,15 @@ class ReflowGrid(QWidget):
         self._place(event.size().width())
         super().resizeEvent(event)
 
+    def event(self, event: QEvent) -> bool:
+        # Posted when an item's size hint changes, which happens when the
+        # interface font does. Nothing else would move the items then, and
+        # the larger labels would be cut off in the old cells.
+        if event.type() == QEvent.Type.LayoutRequest:
+            self._place(self.width())
+            self.updateGeometry()
+        return super().event(event)
+
     def hasHeightForWidth(self) -> bool:  # noqa: N802 - Qt override
         return True
 
@@ -249,9 +267,15 @@ class ReflowGrid(QWidget):
 
 #: Width of the controls pane when it sits beside the results.
 SIDE_PANE_WIDTH: Final[int] = 420
+#: How far the user can drag that column's edge.
+_SIDE_PANE_MIN: Final[int] = 320
+_SIDE_PANE_MAX: Final[int] = 640
 #: The results pane never gets shorter than this when stacked, so the
 #: table always shows a few rows.
 _RESULTS_MIN_HEIGHT: Final[int] = 220
+#: The controls pane keeps at least this much of itself in view with
+#: enlarged text, when its page has to scroll anyway.
+_CONTROLS_MIN_HEIGHT: Final[int] = 100
 
 
 class AdaptiveSplit(QSplitter):
@@ -278,6 +302,7 @@ class AdaptiveSplit(QSplitter):
         self.setChildrenCollapsible(False)
         self.setHandleWidth(8)
         self._breakpoint: Breakpoint | None = None
+        self._scale = 1.0
 
         side = QWidget(self)
         side_layout = QVBoxLayout(side)
@@ -293,6 +318,7 @@ class AdaptiveSplit(QSplitter):
             side_layout.addWidget(footer)
         self._scroll = scroll
         self._side = side
+        self._results = results
 
         results.setMinimumHeight(_RESULTS_MIN_HEIGHT)
         self.addWidget(side)
@@ -308,16 +334,20 @@ class AdaptiveSplit(QSplitter):
         return self._breakpoint
 
     def apply_breakpoint(self, breakpoint: Breakpoint) -> None:
-        """Arrange the panes for ``breakpoint``. Idempotent."""
-        if breakpoint == self._breakpoint:
+        """Arrange the panes for ``breakpoint`` and the font size. Idempotent."""
+        scale = layout_scale()
+        if (breakpoint, scale) == (self._breakpoint, self._scale):
             return
         self._breakpoint = breakpoint
+        self._scale = scale
+        self._fit_minimums(scale)
         if breakpoint is Breakpoint.EXPANDED:
             self.setOrientation(Qt.Orientation.Horizontal)
-            self._side.setMinimumWidth(320)
-            self._side.setMaximumWidth(640)
-            total = max(self.width(), SIDE_PANE_WIDTH * 2)
-            self.setSizes([SIDE_PANE_WIDTH, total - SIDE_PANE_WIDTH])
+            self._side.setMinimumWidth(round(_SIDE_PANE_MIN * scale))
+            self._side.setMaximumWidth(round(_SIDE_PANE_MAX * scale))
+            side = round(SIDE_PANE_WIDTH * scale)
+            total = max(self.width(), side * 2)
+            self.setSizes([side, total - side])
         else:
             self.setOrientation(Qt.Orientation.Vertical)
             self._side.setMinimumWidth(0)
@@ -327,3 +357,25 @@ class AdaptiveSplit(QSplitter):
             wanted = self._scroll.widget().sizeHint().height() + 70
             top = min(wanted, int(total * 0.55))
             self.setSizes([top, total - top])
+
+    def _fit_minimums(self, scale: float) -> None:
+        """Keep both panes tall enough for enlarged text.
+
+        An explicit minimum height replaces the one Qt works out from the
+        pane's content, so a fixed 220 px let the filter row, the buttons and
+        the table overlap at 24 pt. The page scrolls when the two do not fit.
+        """
+        results = _RESULTS_MIN_HEIGHT
+        controls = 0
+        if scale > 1.0:
+            needed = self._results.minimumSizeHint().height() + table_row_height()
+            results = max(results, needed)
+            controls = round(_CONTROLS_MIN_HEIGHT * scale)
+        self._results.setMinimumHeight(results)
+        self._scroll.setMinimumHeight(controls)
+        # A check box cannot wrap its label, so enlarged ones outgrow the pane.
+        self._scroll.setHorizontalScrollBarPolicy(
+            Qt.ScrollBarPolicy.ScrollBarAsNeeded
+            if scale > 1.0
+            else Qt.ScrollBarPolicy.ScrollBarAlwaysOff
+        )

@@ -18,6 +18,7 @@ from pathlib import Path
 from typing import Final
 
 from PySide6.QtCore import QSettings, Qt, Signal
+from PySide6.QtGui import QWheelEvent
 from PySide6.QtWidgets import (
     QBoxLayout,
     QCheckBox,
@@ -28,10 +29,18 @@ from PySide6.QtWidgets import (
     QLabel,
     QLineEdit,
     QPushButton,
+    QSpinBox,
     QVBoxLayout,
     QWidget,
 )
 
+from thesisagents.gui.font_size import (
+    MAX_FONT_PT,
+    MIN_FONT_PT,
+    clamp_font_size,
+    default_font_size,
+    layout_scale,
+)
 from thesisagents.gui.i18n import (
     LANGUAGE_DISPLAY_NAMES,
     SUPPORTED_LANGUAGES,
@@ -87,6 +96,9 @@ _THEME_KEY: Final[str] = "ui/theme"
 #: One of ``theme.STYLE_CHOICES`` (classic navy or Material 3), applied on
 #: save like the theme.
 _STYLE_KEY: Final[str] = "ui/style"
+#: Interface font size in points. Absent means the default size, so a
+#: user who never picked one keeps following the system's.
+_FONT_SIZE_KEY: Final[str] = "ui/font_size"
 #: Whether the user has institutional / VPN access to paywalled publishers.
 #: The PDF stage (``gui/pdf_stage.py``) leaves IEEE PDFs out while it is off.
 _VPN_KEY: Final[str] = "access/vpn"
@@ -159,6 +171,19 @@ def saved_style() -> str:
     return value if value in STYLE_CHOICES else STYLE_CLASSIC
 
 
+def saved_font_size() -> int:
+    """The interface font size in points, the default when none is saved.
+
+    A value outside the supported range (a hand-edited setting) is moved
+    into it, and one that is not a number counts as unset.
+    """
+    value = settings_store().value(_FONT_SIZE_KEY)
+    try:
+        return clamp_font_size(int(value))
+    except (TypeError, ValueError):
+        return default_font_size()
+
+
 def saved_vpn_access() -> bool:
     """Whether Settings declares institutional / VPN access (off by default).
 
@@ -169,12 +194,38 @@ def saved_vpn_access() -> bool:
     return bool(settings_store().value(_VPN_KEY, False, type=bool))
 
 
+class _FontSizeBox(QSpinBox):
+    """A spin box the mouse wheel only turns once it has the focus.
+
+    The page scrolls, and scrolling past an ordinary spin box changes it.
+    For this one that would resize the whole window by accident.
+    """
+
+    def __init__(self, parent: QWidget | None = None) -> None:
+        super().__init__(parent)
+        self.setRange(MIN_FONT_PT, MAX_FONT_PT)
+        self.setSuffix(" pt")
+        self.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
+        # Typing "16" must not apply the "1" on the way.
+        self.setKeyboardTracking(False)
+
+    def wheelEvent(self, event: QWheelEvent) -> None:  # noqa: N802 - Qt override
+        if self.hasFocus():
+            super().wheelEvent(event)
+        else:
+            event.ignore()
+
+
 class SettingsPage(QWidget):
-    """Form for API keys + cookies-file + UI language + theme."""
+    """Form for API keys + cookies-file + UI language + theme + font size."""
 
     #: The theme saved by the user, emitted on every save (after the theme
     #: and the style are stored) so the window repaints at once.
     theme_changed = Signal(str)
+    #: The interface font size in points, stored before it is emitted. Unlike
+    #: the rest of the page it needs no Save, since a size is found by
+    #: looking at it.
+    font_size_changed = Signal(int)
     #: A different interface language was saved. The main window rebuilds
     #: itself in it, carrying the current work over.
     language_changed = Signal(str)
@@ -225,6 +276,7 @@ class SettingsPage(QWidget):
         for choice in STYLE_CHOICES:
             self._style_combo.addItem(t(f"settings.style_{choice}", language), choice)
         ui_form.addRow(t("settings.style_label", language), self._style_combo)
+        self._add_font_size_rows(ui_form)
         adapt_form_rows(ui_card, ui_form)
         left.addWidget(ui_card)
 
@@ -269,6 +321,26 @@ class SettingsPage(QWidget):
         outer.addLayout(save_row)
         outer.addStretch(1)
 
+    def _add_font_size_rows(self, form: QFormLayout) -> None:
+        """The font size box, its Reset button and the keyboard hint."""
+        language = self._ui_language
+        row = QWidget(self)
+        layout = QHBoxLayout(row)
+        layout.setContentsMargins(0, 0, 0, 0)
+        self._font_size_box = _FontSizeBox(self)
+        self._font_size_box.setAccessibleName(t("settings.font_size_label", language))
+        self._font_size_box.setValue(saved_font_size())
+        self._font_size_box.valueChanged.connect(self.set_font_size)
+        reset = QPushButton(t("settings.font_size_reset", language), self)
+        reset.clicked.connect(self.reset_font_size)
+        layout.addWidget(self._font_size_box, stretch=1)
+        layout.addWidget(reset)
+        form.addRow(t("settings.font_size_label", language), row)
+        hint = QLabel(t("settings.font_size_hint", language), self)
+        hint.setObjectName("Muted")
+        hint.setWordWrap(True)
+        form.addRow(hint)
+
     def _path_row(self, form: QFormLayout, label_key: str, on_browse) -> QLineEdit:
         """A read-only path field with a Browse button, added to ``form``."""
         row = QWidget(self)
@@ -284,16 +356,49 @@ class SettingsPage(QWidget):
         return field
 
     def apply_breakpoint(self, breakpoint: Breakpoint) -> None:
-        """Two columns side by side, or stacked on a compact window."""
+        """Two columns side by side, or stacked on a compact window.
+
+        Enlarged text stacks them on a medium window too: the long labels of
+        the two cards then need more than its width.
+        """
+        stacked = breakpoint is Breakpoint.COMPACT or (
+            breakpoint is Breakpoint.MEDIUM and layout_scale() > 1.0
+        )
         direction = (
             QBoxLayout.Direction.TopToBottom
-            if breakpoint is Breakpoint.COMPACT
+            if stacked
             else QBoxLayout.Direction.LeftToRight
         )
         self._columns.setDirection(direction)
 
     def columns_direction(self) -> QBoxLayout.Direction:
         return self._columns.direction()
+
+    def set_font_size(self, points: int) -> None:
+        """Store ``points`` as the interface font size and announce it.
+
+        The box calls this while the user turns it, and the window for its
+        ``Ctrl++`` / ``Ctrl+-`` shortcuts, so the two never disagree.
+        """
+        points = clamp_font_size(points)
+        settings_store().setValue(_FONT_SIZE_KEY, points)
+        self._show_font_size(points)
+        self.font_size_changed.emit(points)
+
+    def reset_font_size(self) -> None:
+        """Forget the picked size, so the default applies again."""
+        settings_store().remove(_FONT_SIZE_KEY)
+        points = default_font_size()
+        self._show_font_size(points)
+        self.font_size_changed.emit(points)
+
+    def _show_font_size(self, points: int) -> None:
+        self._font_size_box.blockSignals(True)
+        self._font_size_box.setValue(points)
+        self._font_size_box.blockSignals(False)
+
+    def font_size_box(self) -> QSpinBox:
+        return self._font_size_box
 
     def theme_combo(self) -> QComboBox:
         return self._theme_combo

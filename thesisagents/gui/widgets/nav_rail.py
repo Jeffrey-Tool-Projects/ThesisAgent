@@ -34,11 +34,15 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from thesisagents.gui.font_size import layout_scale
 from thesisagents.gui.icons import ICON_SIZE, nav_icon
 from thesisagents.gui.theme import Palette, current_palette
 
+#: Width with labels. Larger text widens the rail (``refresh_width``).
 EXPANDED_WIDTH: Final[int] = 208
 COMPACT_WIDTH: Final[int] = 64
+#: The checked entry is bold, so it needs more than its size hint says.
+_LABEL_SLACK: Final[int] = 12
 
 
 class NavRail(QFrame):
@@ -148,6 +152,7 @@ class NavRail(QFrame):
         if 0 <= index < len(self._buttons):
             self._badges[index] = text
             self._refresh_button(index)
+            self._apply_width()
 
     def button_text(self, index: int) -> str:
         """What entry ``index`` shows now (empty while compact)."""
@@ -162,6 +167,10 @@ class NavRail(QFrame):
         self._toggle.setIcon(nav_icon("menu", tokens.nav_muted, tokens.nav_text))
         for index, button in enumerate(self._buttons):
             button.setIcon(nav_icon(self._icons[index], tokens.nav_muted, tokens.nav_text))
+
+    def refresh_width(self) -> None:
+        """Fit the rail to its labels again (after a font size change)."""
+        self._apply_width()
 
     # --- internals ------------------------------------------------------
 
@@ -182,4 +191,16 @@ class NavRail(QFrame):
 
     def _apply_width(self) -> None:
         self._brand.setVisible(not self._compact)
-        self.setFixedWidth(COMPACT_WIDTH if self._compact else EXPANDED_WIDTH)
+        self.setFixedWidth(COMPACT_WIDTH if self._compact else self._expanded_width())
+
+    def _expanded_width(self) -> int:
+        """:data:`EXPANDED_WIDTH`, or what the widest label needs at this font size."""
+        if layout_scale() <= 1.0:
+            return EXPANDED_WIDTH
+        for button in self._buttons:
+            button.ensurePolished()
+        self._brand.ensurePolished()
+        margins = self.layout().contentsMargins()
+        brand_row = self._toggle.sizeHint().width() + self._brand.sizeHint().width()
+        widest = max([brand_row, *(button.sizeHint().width() for button in self._buttons)])
+        return max(EXPANDED_WIDTH, widest + margins.left() + margins.right() + _LABEL_SLACK)

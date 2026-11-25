@@ -50,6 +50,8 @@ subtitle saying what it does.
   opening it.
 - `Ctrl+1` … `Ctrl+5` switch to Search, Library, Enrich, Deck and
   Settings.
+- `Ctrl++` (or `Ctrl+=`) makes the text larger, `Ctrl+-` smaller, and
+  `Ctrl+0` puts it back to the default, see **Font size** under Settings.
 - While a search, an enrichment run or an export is working, the status
   bar at the bottom shows `Working…` and a moving progress bar. The page
   that started the work keeps its own detailed status line.
@@ -280,6 +282,21 @@ Both styles are drawn by the app's own stylesheet
 (`thesisagents/gui/theme.py`), so neither needs an extra package. Every
 palette is tested for WCAG AA contrast (4.5:1) on body, secondary,
 sidebar and button text.
+
+**Font size** sets the text of the whole app, from 8 to 24 pt (QSettings
+key `ui/font_size`). It is applied as you change it and needs no
+**Save**, since the right size is found by looking at it. **Reset**
+forgets the choice, so the default applies again: the system's size, at
+least 10 pt. The mouse wheel changes the box only after you click into
+it, so scrolling the page past it does not resize the window. What
+follows the size, beyond the text itself (`thesisagents/gui/font_size.py`):
+
+- Page titles, table rows, buttons, fields and the sidebar grow with it.
+- The window widths at which the layout changes grow with it. A 1280 px
+  window at 16 pt is laid out like an 800 px one at 10 pt.
+- A page that no longer fits scrolls instead of squeezing its widgets.
+
+The exported decks are not affected.
 
 On a wide window the cards sit in two columns (interface and browser
 access on the left, API keys on the right). On a compact window they

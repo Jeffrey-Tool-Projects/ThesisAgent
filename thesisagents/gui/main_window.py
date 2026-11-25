@@ -14,12 +14,14 @@ The window adapts to its width (see ``widgets/responsive.py``):
 
 The pages are told when the size class changes (``apply_breakpoint``), so
 each one decides how to re-arrange itself. ``Ctrl+1`` ... ``Ctrl+5`` switch
-pages from the keyboard (Search, Library, Enrich, Deck, Settings).
+pages from the keyboard (Search, Library, Enrich, Deck, Settings), and
+``Ctrl++`` / ``Ctrl+-`` / ``Ctrl+0`` change the interface font size. The
+widths above are for text of the default size and grow with it.
 """
 
 from __future__ import annotations
 
-from PySide6.QtCore import QByteArray, QSettings, Qt
+from PySide6.QtCore import QByteArray, QSettings, QTimer
 from PySide6.QtGui import QCloseEvent, QGuiApplication, QKeySequence, QResizeEvent, QShortcut
 from PySide6.QtWidgets import (
     QApplication,
@@ -31,11 +33,18 @@ from PySide6.QtWidgets import (
     QScrollArea,
     QStackedWidget,
     QStatusBar,
+    QTableView,
     QVBoxLayout,
     QWidget,
 )
 
 from thesisagents.core.models import PaperCollection
+from thesisagents.gui.font_size import (
+    current_font_size,
+    layout_scale,
+    set_font_size,
+    table_row_height,
+)
 from thesisagents.gui.i18n import t
 from thesisagents.gui.pages.deck import DeckPage
 from thesisagents.gui.pages.enrich import EnrichPage
@@ -43,6 +52,7 @@ from thesisagents.gui.pages.library import LibraryPage
 from thesisagents.gui.pages.search import SearchPage
 from thesisagents.gui.pages.settings import (
     SettingsPage,
+    saved_font_size,
     saved_style,
     saved_theme,
     settings_store,
@@ -58,6 +68,9 @@ _MIN_WIDTH = 640
 _MIN_HEIGHT = 480
 _DEFAULT_WIDTH = 1280
 _DEFAULT_HEIGHT = 800
+# Restyling the window takes about half a second, so a burst of font size
+# steps (a held key, the spin box arrows) is applied once, after this pause.
+_FONT_SIZE_DELAY_MS = 150
 # QSettings key holding the window's size, position and maximised state.
 _GEOMETRY_KEY = "window/geometry"
 #: Windows built by a language switch. The window that replaces another has
@@ -89,6 +102,7 @@ class MainWindow(QMainWindow):
         super().__init__(parent)
         self._ui_language = ui_language
         self._breakpoint: Breakpoint | None = None
+        self._layout_scale = 1.0
         self._busy_pages: set[str] = set()
         self.setWindowTitle(t("app.title", ui_language))
         self.setMinimumSize(_MIN_WIDTH, _MIN_HEIGHT)
@@ -108,10 +122,10 @@ class MainWindow(QMainWindow):
         self._stack = QStackedWidget(self)
         self._headers: list[QWidget] = []
         bodies: tuple[QWidget, ...] = (
-            self._search_page,
-            self._library_page,
-            self._enrich_page,
-            self._deck_page,
+            self._scrollable(self._search_page),
+            self._scrollable(self._library_page),
+            self._scrollable(self._enrich_page),
+            self._scrollable(self._deck_page),
             self._scrollable(self._settings_page),
         )
         for index, (icon, label_key, subtitle_key) in enumerate(_PAGE_META):
@@ -138,8 +152,9 @@ class MainWindow(QMainWindow):
         for index in range(len(_PAGE_META)):
             shortcut = QShortcut(QKeySequence(f"Ctrl+{index + 1}"), self)
             shortcut.activated.connect(lambda i=index: self._nav.set_current(i))
+        self._build_font_size_controls()
         QGuiApplication.styleHints().colorSchemeChanged.connect(self._on_system_scheme)
-        self._apply_breakpoint(breakpoint_for_width(self.width()))
+        self._fit_font_size()
         self._restore_forms()
 
     # --- construction ---------------------------------------------------
@@ -170,16 +185,17 @@ class MainWindow(QMainWindow):
         return frame
 
     def _scrollable(self, page: QWidget) -> QScrollArea:
-        """Wrap a page that has no results pane, so it scrolls when short.
+        """Wrap a page, so it scrolls when the window is too small for it.
 
-        ``widgetResizable=True`` makes the page stretch with the scroll
-        area's width instead of sitting at its size hint.
+        ``widgetResizable=True`` makes the page stretch with the scroll area
+        instead of sitting at its size hint. At the default font size every
+        page but Settings fits the smallest window, so nothing scrolls. With
+        enlarged text the alternative is widgets squeezed onto each other.
         """
         scroll = QScrollArea(self)
         scroll.setWidget(page)
         scroll.setWidgetResizable(True)
         scroll.setFrameShape(QFrame.Shape.NoFrame)
-        scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
         return scroll
 
     def _build_status_bar(self) -> None:
@@ -192,6 +208,22 @@ class MainWindow(QMainWindow):
         self._busy_bar.setVisible(False)
         bar.addPermanentWidget(self._busy_bar)
         self.setStatusBar(bar)
+
+    def _build_font_size_controls(self) -> None:
+        """The zoom shortcuts, and the timer that applies a burst of steps once."""
+        self._font_timer = QTimer(self)
+        self._font_timer.setSingleShot(True)
+        self._font_timer.setInterval(_FONT_SIZE_DELAY_MS)
+        self._font_timer.timeout.connect(self._apply_font_size)
+        page = self._settings_page
+        for keys, action in (
+            # Ctrl+= is Ctrl++ without the Shift that layouts put the + under.
+            (("Ctrl++", "Ctrl+="), lambda: page.set_font_size(page.font_size_box().value() + 1)),
+            (("Ctrl+-",), lambda: page.set_font_size(page.font_size_box().value() - 1)),
+            (("Ctrl+0",), page.reset_font_size),
+        ):
+            for key in keys:
+                QShortcut(QKeySequence(key), self).activated.connect(action)
 
     def _wire_pages(self) -> None:
         # Data flow between steps: Search → Enrich (raw collection) and
@@ -218,6 +250,7 @@ class MainWindow(QMainWindow):
         ):
             page.busy_changed.connect(lambda busy, k=key: self._on_busy_changed(k, busy))
         self._settings_page.theme_changed.connect(self._on_theme_changed)
+        self._settings_page.font_size_changed.connect(self._on_font_size_changed)
         self._settings_page.language_changed.connect(self._on_language_changed)
         self._settings_page.access_changed.connect(self._search_page.apply_access)
 
@@ -225,14 +258,18 @@ class MainWindow(QMainWindow):
 
     def resizeEvent(self, event: QResizeEvent) -> None:  # noqa: N802 - Qt override
         super().resizeEvent(event)
-        self._apply_breakpoint(breakpoint_for_width(event.size().width()))
+        self._apply_breakpoint(breakpoint_for_width(event.size().width(), layout_scale()))
 
     def _apply_breakpoint(self, breakpoint: Breakpoint) -> None:
-        """Re-arrange the sidebar and every page for ``breakpoint``."""
-        if breakpoint == self._breakpoint:
+        """Re-arrange the sidebar and every page for ``breakpoint`` and the font size."""
+        scale = layout_scale()
+        if (breakpoint, scale) == (self._breakpoint, self._layout_scale):
             return
+        if breakpoint != self._breakpoint:
+            # Only then: a font size change alone keeps a rail the user folded.
+            self._nav.set_compact(breakpoint is Breakpoint.COMPACT)
         self._breakpoint = breakpoint
-        self._nav.set_compact(breakpoint is Breakpoint.COMPACT)
+        self._layout_scale = scale
         margin = 12 if breakpoint is Breakpoint.COMPACT else 24
         for frame in self._headers:
             frame.layout().setContentsMargins(margin, 14, margin, 10)
@@ -288,6 +325,8 @@ class MainWindow(QMainWindow):
         with its ticks, the open library, the Enrich and Deck collections and
         the current page.
         """
+        # A size picked a moment ago may still be waiting for the timer.
+        self._apply_font_size()
         store = settings_store()
         store.setValue(_GEOMETRY_KEY, self.saveGeometry())
         self.save_forms(store)
@@ -324,6 +363,28 @@ class MainWindow(QMainWindow):
         if isinstance(app, QApplication):
             apply_theme(app, choice, saved_style())
         self._nav.refresh_icons()
+
+    def _on_font_size_changed(self, points: int) -> None:
+        """Say the new size at once and apply it when the steps stop coming."""
+        label = t("settings.font_size_label", self._ui_language)
+        self.statusBar().showMessage(f"{label} {points} pt", 3000)
+        self._font_timer.start()
+
+    def _apply_font_size(self) -> None:
+        points = saved_font_size()
+        app = QApplication.instance()
+        if not isinstance(app, QApplication) or points == current_font_size():
+            return
+        set_font_size(app, points)
+        apply_theme(app, saved_theme(), saved_style())
+        self._fit_font_size()
+
+    def _fit_font_size(self) -> None:
+        """Re-fit what does not follow the font by itself: rows, sidebar, layout."""
+        for table in self.findChildren(QTableView):
+            table.verticalHeader().setDefaultSectionSize(table_row_height())
+        self._nav.refresh_width()
+        self._apply_breakpoint(breakpoint_for_width(self.width(), layout_scale()))
 
     def _on_system_scheme(self, _scheme: object) -> None:
         """Follow the OS switching light / dark, when the theme is "system"."""
