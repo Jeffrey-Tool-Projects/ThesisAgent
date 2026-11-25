@@ -5183,7 +5183,7 @@ _LABELS: Final[dict[str, dict[str, str]]] = {
         "pt": "Registros removidos por outros motivos",
         "ru": "Записи, удалённые по другим причинам",
         "it": "Record rimossi per altri motivi",
-        "vi": "Bản ghi loại bỏ vì lý do khác",
+        "vi": "Bản ghi bị loại bỏ vì lý do khác",
         "hi": "अन्य कारणों से हटाए गए रिकॉर्ड",
         "id": "Rekaman dihapus karena alasan lain",
     },
