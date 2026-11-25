@@ -374,8 +374,7 @@ A text box rendered taller than the 7.05" cap. Causes:
 Run the headless overflow check:
 
 ```bash
-python -c "from thesisagents.exporters.pptx import inspect_overflow; \
-           inspect_overflow('exports/your.pptx')"
+thesisagents review exports/your.pptx
 ```
 
 It lists every shape that overflows and by how much.

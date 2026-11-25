@@ -13,7 +13,8 @@ caps, semantic shape names, i18n keys, rendering-tier dispatch). The
 sibling `deck-design` subagent owns *visual identity* (typography per
 language, brand palette, accent geometry, "looks AI-generated"
 anti-patterns). Both apply to any change to
-`thesisagents/exporters/pptx.py` — consult the appropriate one for
+the deck modules (`thesisagents/exporters/pptx.py` and its parts
+`pptx_slides.py`, `pptx_text.py`, `pptx_finish.py`, `pptx_style.py`) — consult the appropriate one for
 the concern at hand.
 
 ## Slide Deck Rules

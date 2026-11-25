@@ -1795,6 +1795,7 @@ def test_stacked_section_body_renders_math_subscript():
     # _add_textbox(math=True); without that flag it flattened "$I(z_a;z_b)$" to
     # ASCII even though bullets / KPIs / tables already rendered it. Regression.
     from pptx import Presentation
+    from pptx.util import Inches
 
     from thesisagents.exporters import pptx as pptx_mod
 
@@ -1804,7 +1805,7 @@ def test_stacked_section_body_renders_math_subscript():
         slide,
         "互資訊式語意分解",
         "訓練目標最小化互資訊 $I(z_a;z_b|E_p)$ 以保證分離",
-        pptx_mod.Inches(2),
+        Inches(2),
     )
     body = next(s for s in slide.shapes if s.name == "body")
     runs = [r for p in body.text_frame.paragraphs for r in p.runs]

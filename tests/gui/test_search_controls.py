@@ -24,8 +24,10 @@ from thesisagents.gui.models.papers_table_model import (
 )
 from thesisagents.gui.pages.deck import DeckPage
 from thesisagents.gui.pages.enrich import EnrichPage
-from thesisagents.gui.pages.search import SearchPage, SnowballBounds
+from thesisagents.gui.pages.search import SearchPage
 from thesisagents.gui.pages.settings import settings_store
+from thesisagents.gui.widgets.paper_actions import paper_menu
+from thesisagents.gui.widgets.snowball_bounds import SnowballBounds
 from thesisagents.gui.workers import AsyncWorker
 
 SEARCH = "thesisagents.gui.pages.search"
@@ -232,7 +234,7 @@ def test_filter_matches_every_word_across_fields():
 
 def test_row_menu_copies_doi_and_bibtex_and_disables_missing_links(page, qtbot):
     paper = _paper(9, title="Attention", doi="10.1000/xyz", year=2020)
-    menu = page._paper_menu(paper)  # noqa: SLF001
+    menu = paper_menu(paper, "en", page)
     actions = {action.text(): action for action in menu.actions() if action.text()}
     assert not actions["Open PDF"].isEnabled()
     actions["Copy DOI"].trigger()

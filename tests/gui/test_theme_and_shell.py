@@ -20,6 +20,7 @@ from thesisagents.gui.pages.settings import (
     saved_theme,
     settings_store,
 )
+from thesisagents.gui.widgets import paper_actions
 from thesisagents.gui.widgets.nav_rail import NavRail
 
 
@@ -305,7 +306,7 @@ def test_search_page_reports_busy_until_the_run_ends(qtbot):
 )
 def test_double_click_opens_only_web_links(qtbot, monkeypatch, url, opened):
     calls: list[QUrl] = []
-    monkeypatch.setattr(search_module.QDesktopServices, "openUrl", calls.append)
+    monkeypatch.setattr(paper_actions.QDesktopServices, "openUrl", calls.append)
     page = search_module.SearchPage(ui_language="en")
     qtbot.addWidget(page)
     page._on_search_finished(_collection(1, url=url))  # noqa: SLF001

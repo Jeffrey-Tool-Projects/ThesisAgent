@@ -16,9 +16,3 @@ Cross-repo and workspace items live in `D:\Codes\progress.md` (none open at the 
 The rebuilt window (sidebar, light / dark / system theme, layouts that adapt to the width) changed how the GUI looks, not what it can do. The items below are the gaps between the GUI and the CLI / MCP surfaces, plus improvements to what the GUI already does, in suggested order.
 
 - **#28** [UNVERIFIED] The rebuilt GUI has been checked by the test suite and by offscreen renders at 680, 1000 and 1400 px in both themes and both styles (classic, Material 3), not on a real screen. Open: how it looks and behaves at 100 / 125 / 150 / 200 % Windows scaling, with the OS switching between light and dark while the app is open, on macOS and Linux, and with a screen reader (every input needs an accessible name, the focus order should follow the cards). Check by running `thesisagents gui` on such setups and fix what does not hold.
-
-### Expansion plan (owner's decision, 2026-11-26)
-
-The owner asked for all of the items below and decided: the app is for other people to use, API keys go to the system credential store (`keyring` becomes a dependency of the `gui` extra), both Word and LaTeX export, as many model providers as possible including local ones, and no paid code-signing certificate. Suggested order: #39 to #44 and #57 first (what other users meet first), then the library (#45 to #49), then the paper output (#50 to #54), then the rest.
-
-- **#58** Split the largest modules: `exporters/pptx.py` (about 3000 lines) and `gui/pages/search.py` (about 1000), before #50 and #51 add to them.

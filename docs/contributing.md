@@ -242,8 +242,7 @@ thesisagents --query "diffusion models" --source arxiv --max 3 --out ./smoke/
 thesisagents --paper "https://arxiv.org/abs/1706.03762" --out ./smoke/single/
 
 # (only when touching pptx / i18n) overflow check
-python -c "from thesisagents.exporters.pptx import inspect_overflow; \
-           inspect_overflow('./smoke/your-deck.pptx')"
+thesisagents review ./smoke/your-deck.pptx
 ```
 
 CI runs the same set on Ubuntu + Windows × Python 3.12 / 3.13 /

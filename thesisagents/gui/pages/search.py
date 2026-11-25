@@ -21,22 +21,19 @@ across threads is queue-routed automatically.
 from __future__ import annotations
 
 from collections.abc import Callable
-from dataclasses import dataclass, replace
+from dataclasses import replace
 from pathlib import Path
 
-from PySide6.QtCore import QModelIndex, QPoint, QSettings, Qt, QThreadPool, QUrl, Signal
-from PySide6.QtGui import QDesktopServices, QGuiApplication
+from PySide6.QtCore import QModelIndex, QPoint, QSettings, Qt, QThreadPool, Signal
 from PySide6.QtWidgets import (
     QCheckBox,
     QComboBox,
-    QDoubleSpinBox,
     QFileDialog,
     QFormLayout,
     QHBoxLayout,
     QHeaderView,
     QLabel,
     QLineEdit,
-    QMenu,
     QPushButton,
     QSpinBox,
     QTableView,
@@ -44,7 +41,6 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from thesisagents.cli_snowball import DEFAULT_SNOWBALL_MAX_TOTAL, DEFAULT_SNOWBALL_SEEDS
 from thesisagents.core.constants import (
     ALL_SOURCES,
     DEFAULT_PAGE_SIZE,
@@ -52,31 +48,27 @@ from thesisagents.core.constants import (
     EXPORT_PPTX,
     EXPORT_XLSX,
     MAX_RESULTS_PER_SOURCE,
-    SNOWBALL_DEFAULT_DEPTH,
-    SNOWBALL_DEFAULT_MAX_PER_SEED,
-    SNOWBALL_MAX_DEPTH,
-    SNOWBALL_MAX_PER_SEED,
-    SNOWBALL_MAX_TOTAL,
 )
-from thesisagents.core.diagnostics import SourceStatus
 from thesisagents.core.local_pdf import build_local_collection
 from thesisagents.core.models import ExportOptions, Paper, PaperCollection, Query
 from thesisagents.core.pipeline import run_search
 from thesisagents.core.query import normalize_query
 from thesisagents.core.snowball import Direction, expand_collection, snowball
 from thesisagents.exporters import export_collection
-from thesisagents.exporters.bibtex import bibtex_entry
 from thesisagents.exporters.i18n import SUPPORTED_LANGUAGES as DECK_LANGUAGES
 from thesisagents.fetchers.http import shutdown_clients
 from thesisagents.gui.i18n import LANGUAGE_DISPLAY_NAMES, t
 from thesisagents.gui.models.papers_table_model import PaperFilterProxy, PapersTableModel
 from thesisagents.gui.pages.settings import saved_vpn_access
+from thesisagents.gui.search_outcome import SearchOutcome, finished_status
+from thesisagents.gui.widgets.paper_actions import open_web_link, paper_menu
 from thesisagents.gui.widgets.responsive import (
     AdaptiveSplit,
     Breakpoint,
     adapt_form_rows,
     make_card,
 )
+from thesisagents.gui.widgets.snowball_bounds import SnowballBounds, SnowballBoundsForm
 from thesisagents.gui.widgets.source_multiselect import SourceMultiselect
 from thesisagents.gui.workers import AsyncWorker, BlockingWorker
 from thesisagents.library import AddReport, Library
@@ -91,11 +83,6 @@ QUICK_EXPORT_FORMATS: tuple[str, ...] = (EXPORT_PPTX, EXPORT_XLSX, EXPORT_BIBTEX
 #: Label shown next to a source that contributed nothing for a reason other
 #: than "no match". ``SourceStatus.OK`` is absent on purpose: an ok source
 #: shows its result count instead.
-_SOURCE_STATUS_KEYS: dict[SourceStatus, str] = {
-    SourceStatus.FAILED: "search.source_failed",
-    SourceStatus.RATE_LIMITED: "search.source_rate_limited",
-    SourceStatus.DISABLED: "search.source_disabled",
-}
 
 
 #: The snowball selector: label key and the direction it stands for. The
@@ -115,52 +102,8 @@ _COMPACT_HIDDEN_COLUMNS: tuple[int, ...] = (1, 4)
 _TITLE_COLUMN_WIDTH = 300
 _AUTHORS_COLUMN_WIDTH = 150
 #: Link schemes a double-click may hand to the desktop browser.
-_OPENABLE_SCHEMES: frozenset[str] = frozenset({"http", "https"})
 #: QSettings group the form is saved under when the window closes.
 _FORM_GROUP = "form/search"
-
-
-@dataclass(frozen=True)
-class SnowballBounds:
-    """The snowball bounds the Search page passes to ``snowball()``.
-
-    The defaults are the CLI's (``--snowball-seeds`` 5, depth 1, 20 per seed,
-    20 new papers in all, no relevance floor), so a user who never opens the
-    *Advanced* section gets the same expansion as before. ``min_relevance``
-    of ``None`` keeps every paper found.
-
-    Example: ``SnowballBounds(seeds=10, max_total=50)``.
-    """
-
-    seeds: int = DEFAULT_SNOWBALL_SEEDS
-    depth: int = SNOWBALL_DEFAULT_DEPTH
-    max_per_seed: int = SNOWBALL_DEFAULT_MAX_PER_SEED
-    max_total: int = DEFAULT_SNOWBALL_MAX_TOTAL
-    min_relevance: float | None = None
-
-
-@dataclass(frozen=True)
-class _SearchOutcome:
-    """What a search worker hands back to the UI thread besides the papers.
-
-    The boundary this guards: the worker thread. Everything the status line
-    needs travels in this one frozen object through the ``finished`` signal,
-    so the worker never touches a widget or a page attribute.
-
-    ``discovered`` is the number of papers the snowball added (``None`` when
-    it was off), ``library`` what merging into the library changed, and
-    ``library_total`` the size of the library when the papers came from it.
-
-    Example: ``_SearchOutcome(collection, discovered=3)`` after a search with
-    the snowball on.
-    """
-
-    collection: PaperCollection
-    discovered: int | None = None
-    library: AddReport | None = None
-    library_total: int | None = None
-    #: Export folder the local PDFs were copied into (``None`` for a search).
-    local_folder: str | None = None
 
 
 class SearchPage(QWidget):
@@ -284,7 +227,7 @@ class SearchPage(QWidget):
         library_form.addRow(t("search.snowball_label", language), self._snowball_combo)
         self._snowball_advanced_check = QCheckBox(t("search.snowball_advanced", language), self)
         library_form.addRow(self._snowball_advanced_check)
-        self._snowball_advanced = self._build_snowball_advanced()
+        self._snowball_advanced = SnowballBoundsForm(language, self)
         self._snowball_advanced.setVisible(False)
         self._snowball_advanced_check.toggled.connect(self._snowball_advanced.setVisible)
         library_form.addRow(self._snowball_advanced)
@@ -393,7 +336,7 @@ class SearchPage(QWidget):
         """
         paper = self._paper_at(index)
         if paper is not None:
-            _open_web_link(paper.url)
+            open_web_link(paper.url)
 
     def _paper_at(self, index: QModelIndex) -> Paper | None:
         """The paper behind a table index (sorted / filtered or not)."""
@@ -485,78 +428,17 @@ class SearchPage(QWidget):
         paper = self._paper_at(self._table.indexAt(pos))
         if paper is None:
             return
-        menu = self._paper_menu(paper)
+        menu = paper_menu(paper, self._ui_language, self)
         menu.exec(self._table.viewport().mapToGlobal(pos))
-
-    def _paper_menu(self, paper: Paper) -> QMenu:
-        """Open page / Open PDF / Copy DOI / Copy BibTeX for one paper."""
-        language = self._ui_language
-        menu = QMenu(self)
-        open_page = menu.addAction(t("search.menu_open_page", language))
-        open_page.triggered.connect(lambda: _open_web_link(paper.url))
-        open_pdf = menu.addAction(t("search.menu_open_pdf", language))
-        open_pdf.setEnabled(bool(paper.pdf_url))
-        open_pdf.triggered.connect(lambda: _open_web_link(paper.pdf_url or ""))
-        menu.addSeparator()
-        copy_doi = menu.addAction(t("search.menu_copy_doi", language))
-        copy_doi.setEnabled(bool(paper.doi))
-        copy_doi.triggered.connect(lambda: _copy(paper.doi or ""))
-        copy_bib = menu.addAction(t("search.menu_copy_bibtex", language))
-        copy_bib.triggered.connect(lambda: _copy(bibtex_entry(paper)))
-        return menu
 
     # --- snowball bounds ------------------------------------------------
 
-    def _build_snowball_advanced(self) -> QWidget:
-        """The collapsed bounds form; defaults are the CLI's."""
-        language = self._ui_language
-        box = QWidget(self)
-        form = QFormLayout(box)
-        form.setContentsMargins(0, 0, 0, 0)
-        defaults = SnowballBounds()
-        self._snowball_seeds = self._bounded_spin(MAX_RESULTS_PER_SOURCE, defaults.seeds)
-        self._snowball_depth = self._bounded_spin(SNOWBALL_MAX_DEPTH, defaults.depth)
-        self._snowball_per_seed = self._bounded_spin(SNOWBALL_MAX_PER_SEED, defaults.max_per_seed)
-        self._snowball_total = self._bounded_spin(SNOWBALL_MAX_TOTAL, defaults.max_total)
-        self._snowball_floor = QDoubleSpinBox(self)
-        self._snowball_floor.setRange(0.0, 1.0)
-        self._snowball_floor.setSingleStep(0.05)
-        self._snowball_floor.setDecimals(2)
-        # 0 shows as a dash and means "no floor", the CLI's omitted flag.
-        self._snowball_floor.setSpecialValueText("—")
-        form.addRow(t("search.snowball_seeds", language), self._snowball_seeds)
-        form.addRow(t("search.snowball_depth", language), self._snowball_depth)
-        form.addRow(t("search.snowball_max_per_seed", language), self._snowball_per_seed)
-        form.addRow(t("search.snowball_max_total", language), self._snowball_total)
-        form.addRow(t("search.snowball_min_relevance", language), self._snowball_floor)
-        adapt_form_rows(box, form)
-        return box
-
-    def _bounded_spin(self, upper: int, value: int) -> QSpinBox:
-        spin = QSpinBox(self)
-        spin.setRange(1, upper)
-        spin.setValue(value)
-        return spin
-
     def snowball_bounds(self) -> SnowballBounds:
         """The bounds the next search will use."""
-        floor = self._snowball_floor.value()
-        return SnowballBounds(
-            seeds=self._snowball_seeds.value(),
-            depth=self._snowball_depth.value(),
-            max_per_seed=self._snowball_per_seed.value(),
-            max_total=self._snowball_total.value(),
-            min_relevance=floor if floor > 0 else None,
-        )
+        return self._snowball_advanced.bounds()
 
     def set_snowball_bounds(self, bounds: SnowballBounds) -> None:
-        self._snowball_seeds.setValue(bounds.seeds)
-        self._snowball_depth.setValue(bounds.depth)
-        self._snowball_per_seed.setValue(bounds.max_per_seed)
-        self._snowball_total.setValue(bounds.max_total)
-        self._snowball_floor.setValue(bounds.min_relevance or 0.0)
-
-    # --- remembered form ------------------------------------------------
+        self._snowball_advanced.set_bounds(bounds)
 
     # --- local PDFs (progress #29) -----------------------------------------
 
@@ -586,13 +468,15 @@ class SearchPage(QWidget):
         self._local_button.setEnabled(False)
         self._set_status(t("search.local_running", self._ui_language))
 
-        def call() -> _SearchOutcome:
-            return _SearchOutcome(build_local_collection(paths, out_dir), local_folder=out_dir)
+        def call() -> SearchOutcome:
+            return SearchOutcome(build_local_collection(paths, out_dir), local_folder=out_dir)
 
         worker = BlockingWorker(call)
         worker.signals.finished.connect(self._on_search_finished)
         worker.signals.failed.connect(self._on_worker_failed)
         QThreadPool.globalInstance().start(worker)
+
+    # --- remembered form ------------------------------------------------
 
     def apply_access(self, vpn_access: bool) -> None:
         """Lock the ``ieee`` source while VPN / institutional access is not declared.
@@ -716,7 +600,7 @@ class SearchPage(QWidget):
             return
         self._set_busy()
 
-        async def coro() -> _SearchOutcome:
+        async def coro() -> SearchOutcome:
             discovered: int | None = None
             try:
                 collection = await run_search(query)
@@ -739,7 +623,7 @@ class SearchPage(QWidget):
             if add_to_library and collection.papers:
                 with Library(library_path) as library:
                     report = library.add_collection(collection)
-            return _SearchOutcome(collection, discovered=discovered, library=report)
+            return SearchOutcome(collection, discovered=discovered, library=report)
 
         worker = AsyncWorker(coro)
         worker.signals.finished.connect(self._on_search_finished)
@@ -778,12 +662,12 @@ class SearchPage(QWidget):
         year_to = self._year(self._year_to_spin)
         self._set_busy()
 
-        def call() -> _SearchOutcome:
+        def call() -> SearchOutcome:
             with Library(library_path, create=False) as library:
                 collection = library.collection(
                     text, limit=limit, year_from=year_from, year_to=year_to
                 )
-                return _SearchOutcome(collection, library_total=len(library))
+                return SearchOutcome(collection, library_total=len(library))
 
         worker = BlockingWorker(call)
         worker.signals.finished.connect(self._on_search_finished)
@@ -829,7 +713,7 @@ class SearchPage(QWidget):
         self.busy_changed.emit(False)
 
     def _on_search_finished(self, result: object) -> None:
-        outcome = result if isinstance(result, _SearchOutcome) else None
+        outcome = result if isinstance(result, SearchOutcome) else None
         collection = outcome.collection if outcome is not None else result
         if not isinstance(collection, PaperCollection):  # pragma: no cover — defensive
             self._on_worker_failed(
@@ -848,58 +732,7 @@ class SearchPage(QWidget):
         # so they enable their own actions without polling. Every paper
         # starts ticked, so this is the whole result.
         self.collection_ready.emit(collection)
-        self._set_status(self._finished_status(collection, outcome))
-
-    def _finished_status(
-        self, collection: PaperCollection, outcome: _SearchOutcome | None
-    ) -> str:
-        """The status line after a run: counts, sources, snowball, library."""
-        language = self._ui_language
-        if outcome is not None and outcome.local_folder is not None:
-            return t(
-                "search.local_done", language,
-                count=len(collection.papers),
-                folder=str(Path(outcome.local_folder) / "pdfs"),
-            )
-        if outcome is not None and outcome.library_total is not None:
-            return t(
-                "search.library_found", language,
-                count=len(collection.papers), total=outcome.library_total,
-            )
-        parts = [t("search.status_done", language, count=len(collection.papers))]
-        summary = self._source_summary(collection)
-        if summary:
-            parts.append(t("search.sources_summary", language, summary=summary))
-        if outcome is not None and outcome.discovered is not None:
-            parts.append(t("search.snowball_summary", language, count=outcome.discovered))
-        if outcome is not None and outcome.library is not None:
-            parts.append(
-                t(
-                    "search.library_added", language,
-                    added=outcome.library.added, merged=outcome.library.merged,
-                )
-            )
-        return " ".join(parts)
-
-    def _source_summary(self, collection: PaperCollection) -> str:
-        """What each source returned, as ``"arxiv 23, openalex 25, ieee (failed)"``.
-
-        Why it is on the status line: a source that fails is skipped without
-        stopping the search, so "Found 3 papers" alone cannot tell a narrow
-        topic from a search that lost most of its sources. Empty when the
-        collection carries no per-source counts.
-        """
-        diagnostics = collection.diagnostics
-        if diagnostics is None:
-            return ""
-        parts: list[str] = []
-        for stat in diagnostics.source_stats:
-            label_key = _SOURCE_STATUS_KEYS.get(stat.status)
-            if label_key is None:
-                parts.append(f"{stat.source} {stat.returned}")
-            else:
-                parts.append(f"{stat.source} ({t(label_key, self._ui_language)})")
-        return ", ".join(parts)
+        self._set_status(finished_status(collection, outcome, self._ui_language))
 
     def _on_worker_failed(self, err: object) -> None:
         self._end_busy()
@@ -993,21 +826,6 @@ class SearchPage(QWidget):
 
     def snowball_combo(self) -> QComboBox:
         return self._snowball_combo
-
-
-def _open_web_link(url: str) -> None:
-    """Open ``url`` in the browser when it is an ``http`` / ``https`` link.
-
-    The URL comes from a remote API: handing a ``file:`` or custom-scheme
-    link to the desktop would let a source record launch a local program.
-    """
-    link = QUrl(url)
-    if link.scheme() in _OPENABLE_SCHEMES:
-        QDesktopServices.openUrl(link)
-
-
-def _copy(text: str) -> None:
-    QGuiApplication.clipboard().setText(text)
 
 
 def _select_data(combo: QComboBox, data: object) -> None:

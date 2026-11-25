@@ -307,7 +307,7 @@ deliverable surfaces:
 | Editing this surface | Read these subagent(s) FIRST |
 |---|---|
 | Any `.pptx` (generated or hand-made) | `deck-design`, `slide-deck-rules` |
-| `thesisagents/exporters/pptx.py` visual code | `deck-design`, `slide-deck-rules` |
+| `thesisagents/exporters/pptx*.py` visual code | `deck-design`, `slide-deck-rules` |
 | `thesisagents/exporters/i18n.py` or any localised string | `slide-deck-rules`, `language-vocabulary-check` |
 | Source plugins under `sources/` or `thesisagents/fetchers/` | `compliance-auditor` |
 | Paper / thesis text in any locale | `paper_rule` |
@@ -329,7 +329,7 @@ RGB values to their dark-palette equivalents — but it can only swap colours
 it can read. **A text run with `run.font.color.rgb = None` inherits the
 slide-master's theme colour, renders as near-black on the dark slide
 background, and is invisible.** Every text-adding helper in
-`thesisagents/exporters/pptx.py` MUST therefore assign
+`thesisagents/exporters/pptx*.py` MUST therefore assign
 `run.font.color.rgb = _BRAND_*` (one of the four
 palette constants) after creating or overwriting a run. Never leave the
 colour at its default; never pass `colour=None` to `_add_textbox`;

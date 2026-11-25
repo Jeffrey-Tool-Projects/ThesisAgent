@@ -8,7 +8,8 @@ from pathlib import Path
 
 import pytest
 from pptx import Presentation
-from pptx.util import Inches
+from pptx.oxml.ns import qn
+from pptx.util import Inches, Pt
 
 from thesisagents import cli as cli_module
 from thesisagents import mcp as mcp_pkg
@@ -19,7 +20,7 @@ from thesisagents.core.models import (
     PaperSummary,
     Query,
 )
-from thesisagents.exporters import export_collection, pptx, pptx_edit, template
+from thesisagents.exporters import export_collection, pptx, pptx_edit, pptx_text, template
 from thesisagents.exporters.audit import audit_deck
 from thesisagents.exporters.review import review_deck
 from thesisagents.exporters.template import (
@@ -144,7 +145,7 @@ def test_the_built_in_deck_is_unchanged(tmp_path):
 def test_the_shared_title_area_constant_matches_the_exporter():
     # The contract's limit for a title placeholder is where the exporter puts
     # the line under the title, and the canvas is the exporter's canvas.
-    assert pptx.TITLE_AREA_BOTTOM is template.TITLE_AREA_BOTTOM
+    assert pptx_text.TITLE_AREA_BOTTOM is template.TITLE_AREA_BOTTOM
     assert (template.SLIDE_WIDTH, template.SLIDE_HEIGHT) == (pptx._SLIDE_WIDTH, pptx._SLIDE_HEIGHT)
     assert Inches(1.24) < template.TITLE_AREA_BOTTOM <= pptx._BODY_TOP
 
@@ -467,7 +468,7 @@ def test_the_title_goes_into_the_templates_title_placeholder_when_asked(tmp_path
     assert title.has_text_frame
     assert title.text_frame.text.strip()
     assert _run_colours(title) == {NAVY}                                # explicit, not white
-    assert title.text_frame.paragraphs[0].runs[0].font.size == pptx.Pt(pptx._SECTION_TITLE_PT)
+    assert title.text_frame.paragraphs[0].runs[0].font.size == Pt(pptx._SECTION_TITLE_PT)
     assert _shape(slide, "accent_top") is None                  # the template owns the header
     assert [p for p in slide.placeholders] == [title]                   # and nothing else is left
     # The cover is not a title-placeholder role: it keeps its own text box.
@@ -504,7 +505,7 @@ def test_custom_fonts_are_applied_to_every_run(tmp_path):
     assert runs
     assert {run.font.name for run in runs} == {"Source Sans 3"}
     east_asian = {
-        run._r.get_or_add_rPr().find(pptx.qn("a:ea")).get("typeface") for run in runs
+        run._r.get_or_add_rPr().find(qn("a:ea")).get("typeface") for run in runs
     }
     assert east_asian == {"Noto Sans TC"}
 
@@ -518,7 +519,7 @@ def test_a_latin_only_font_override_keeps_the_languages_east_asian_font(tmp_path
     run = _shape(prs.slides[0], "title").text_frame.paragraphs[0].runs[0]
 
     assert run.font.name == "Source Sans 3"
-    assert run._r.get_or_add_rPr().find(pptx.qn("a:ea")).get("typeface") == "Microsoft JhengHei UI"
+    assert run._r.get_or_add_rPr().find(qn("a:ea")).get("typeface") == "Microsoft JhengHei UI"
 
 
 def test_custom_colours_replace_the_palette_as_text_and_as_fill(tmp_path):
