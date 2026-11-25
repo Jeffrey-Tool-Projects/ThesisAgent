@@ -750,7 +750,7 @@ def _call(name: str, **kwargs):
 def test_mcp_lists_eighteen_tools_including_the_template_check():
     names = [tool.name for tool in asyncio.run(mcp_pkg.build_server().list_tools())]
     assert "pptx_validate_template" in names
-    assert len(names) == 18
+    assert len(names) == 25
 
 
 def test_mcp_validate_template_returns_the_report(tmp_path):

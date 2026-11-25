@@ -48,7 +48,7 @@ MCP 6 단계 워크플로
    5. (각 PDF 읽고 구조화된 summary dict 생성)
    6. export(papers=[{...paper, "summary": {...}}], language="ko", ...)
 
-18 개 MCP 도구의 완전한 참조: :doc:`/mcp`.
+25 개 MCP 도구의 완전한 참조: :doc:`/mcp`.
 
 **주제에서 벗어난 결과를 찾으려면 먼저 도구가 내놓는 권고를 참고하세요.** CLI 의 ``--diagnostics`` 또는
 MCP ``search`` 도구의 ``diagnostics=true`` 는 순위의 근거를 설명합니다. 각 논문의 점수를 관련성,
@@ -184,7 +184,7 @@ CLI 플래그 전체 표: :doc:`/cli`.
 ---------
 
 * CLI 플래그 + 환경 변수: :doc:`/cli`
-* 18 개 MCP 서버 도구: :doc:`/mcp`
+* 25 개 MCP 서버 도구: :doc:`/mcp`
 * PPTX 편집 툴킷: :doc:`/pptx_editing`
 * repo 루트의 ``readmes/README.ko.md`` 에 기능 전체 목록이 있습니다.
 * 깊이 있는 기술 참조 (플러그인 아키텍처, 보안 정책, Definition of

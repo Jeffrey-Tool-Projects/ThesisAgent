@@ -56,7 +56,7 @@ ThesisAgents/
 │   ├── intelligence/               # PDF + Anthropic summariser ([intelligence] extra)
 │   ├── library/                    # SQLite literature library kept across runs
 │   ├── evaluation/                 # offline search-quality benchmark (see docs/search-quality.md)
-│   ├── mcp/                        # FastMCP server registering 18 tools ([mcp] extra)
+│   ├── mcp/                        # FastMCP server registering 25 tools ([mcp] extra)
 │   ├── gui/                        # PySide6 desktop UI ([gui] extra)
 │   ├── utils/                      # logging, path safety, async helpers
 │   ├── cli.py                      # argparse CLI
@@ -462,7 +462,7 @@ library APIs return coroutines.
 
 ### MCP server (`thesisagents.mcp`)
 
-FastMCP registers eighteen tools. The agent calls them in sequence
+FastMCP registers twenty-five tools. The agent calls them in sequence
 (`list_sources` → `search` → optionally `snowball` → `fetch_pdf_text`
 per paper → `export`). The server is stateless across tool calls, so
 state lives in the agent's context, or, when it should outlast the

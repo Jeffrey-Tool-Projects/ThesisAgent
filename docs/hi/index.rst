@@ -49,7 +49,7 @@ MCP 6 चरण
    5. (आप प्रत्येक PDF पढ़ें और संरचित summary dict तैयार करें)
    6. export(papers=[{...paper, "summary": {...}}], language="hi", ...)
 
-कुल 18 MCP उपकरण: डिस्कवरी (``list_sources``, ``list_exports``),
+कुल 25 MCP उपकरण: डिस्कवरी (``list_sources``, ``list_exports``),
 ``search``, ``snowball``, ``library_add``, ``library_search``, ``library_stats``, ``fetch_paper``, ``fetch_pdf_text``, ``download_pdfs``, ``pptx_validate_template``,
 ``export`` और छह ``pptx_*`` डेक ऑपरेशन (``pptx_inspect``,
 ``pptx_review``, ``pptx_update_slide``, ``pptx_delete_slide``,
@@ -207,7 +207,7 @@ CLI फ़्लैग की पूरी तालिका: :doc:`/cli`।
 --------------
 
 * CLI फ़्लैग और पर्यावरण चर: :doc:`/cli`
-* 18 MCP सर्वर उपकरण: :doc:`/mcp`
+* 25 MCP सर्वर उपकरण: :doc:`/mcp`
 * PPTX संपादन टूलकिट: :doc:`/pptx_editing`
 * repo जड़ में ``readmes/README.hi.md`` फ़ाइल में सुविधाओं की पूरी सूची है।
 * गहन तकनीकी संदर्भ (प्लगइन वास्तुकला, सुरक्षा नीतियाँ, Definition of

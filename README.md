@@ -64,7 +64,7 @@ it.
 6. export(papers=[{...paper, "summary": {...}}], language="zh-tw", ...)
 ```
 
-All eighteen MCP tools (including `list_sources`, `list_exports`,
+All twenty-five MCP tools (including `list_sources`, `list_exports`,
 `download_pdfs`, `pptx_inspect` / `pptx_review` / `pptx_update_slide` /
 `pptx_add_slide` / etc.) are
 documented in [`docs/mcp.md`](docs/mcp.md).
@@ -242,7 +242,7 @@ entry per paper in the `PaperCollection` tuple.
   (inspect / update_slide / delete_slide / reorder_slides / add_slide)
   works against any deck the exporter produces, plus the equivalent
   `pptx_*` MCP tools so an LLM agent can iterate on a generated deck.
-- **MCP server**: 18 tools — `list_sources` + `list_exports`
+- **MCP server**: 25 tools — `list_sources` + `list_exports`
   (discovery), `search`, `snowball`, `library_add`, `library_search`, `library_stats`, `fetch_paper`, `fetch_pdf_text`,
   `download_pdfs`, `pptx_validate_template`, `export`, and the six `pptx_*` deck tools
   (`inspect`, `review`, `update_slide`, `delete_slide`,
@@ -481,6 +481,7 @@ Tools:
 | `library_add` | Papers → a literature library (the SQLite file at `library`), kept for later sessions. Adding is a merge: a paper already there is updated, not duplicated. `relations` stores the citation links `snowball` returns. |
 | `library_search` | Query → papers already in the library, scored like a search, with no network access. Each comes with its history: first and last seen, and which sources returned it. |
 | `library_stats` | Library → how many papers, runs and citation links it holds, the papers per source, and the latest imports. |
+| `library_update`, `library_delete`, `library_import`, `library_duplicates`, `library_merge`, `library_saved_search`, `library_prisma` | Library → tags, notes, reading status and screening decisions, deleting and merging papers, importing BibTeX / RIS, searches that report only what is new, and the PRISMA flow. |
 | `fetch_paper` | arXiv / DOI / PMID / IEEE identifier → single paper. |
 | `fetch_pdf_text` | Download one PDF, return extracted body text. **The MCP path to "I read the paper".** |
 | `download_pdfs` | Batch-download a papers list's PDFs into `{out_dir}/pdfs/`. Returns per-paper results keyed by BibTeX key. |
@@ -518,7 +519,7 @@ ThesisAgents/
 │   ├── intelligence/                # PDF fetch + Anthropic summariser  ([intelligence] extra)
 │   ├── library/                     # SQLite literature library kept across runs
 │   ├── evaluation/                  # offline search-quality benchmark (docs/search-quality.md)
-│   ├── mcp/                         # FastMCP server (18 tools)
+│   ├── mcp/                         # FastMCP server (25 tools)
 │   ├── sources/<name>/              # plugin folders: arxiv, semantic_scholar,
 │   │                                #   openalex, pubmed, acm, ieee, scholar,
 │   │                                #   dblp, crossref, openaire, springer,

@@ -443,7 +443,7 @@ reverse for zh-cn strings. Full rule + the regex catalogue live in
 MCP server
 ----------
 
-ThesisAgents ships an MCP server exposing **eighteen tools** — discovery
+ThesisAgents ships an MCP server exposing **twenty-five tools** — discovery
 (``list_sources``, ``list_exports``), search, citation snowballing (``snowball``), a literature library
 (``library_add``, ``library_search``, ``library_stats``), single-paper fetch,
 single-PDF text extraction (``fetch_pdf_text``), batch PDF download
@@ -622,7 +622,7 @@ Architecture
    │   │                             #   bibtex, markdown, json + pptx_edit + i18n
    │   ├── intelligence/             # PDF fetch + Anthropic summariser ([intelligence] extra)
    │   ├── library/                  # SQLite literature library kept across runs
-   │   ├── mcp/                      # FastMCP server registering 18 tools
+   │   ├── mcp/                      # FastMCP server registering 25 tools
    │   ├── utils/                    # logging, path safety
    │   ├── cli.py                    # argparse CLI
    │   └── __main__.py               # `python -m thesisagents`

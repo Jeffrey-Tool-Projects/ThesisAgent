@@ -229,7 +229,7 @@ for key in irrelevant_keys:
   add_slide)는 내보내기가 만들어 낸 어떤 덱에도 작동하며, 여기에
   더해 동등한 `pptx_*` MCP 도구가 있어 LLM 에이전트가 생성된 덱을
   반복 개선할 수 있습니다.
-- **MCP 서버**: 18개 도구 — `list_sources` + `list_exports`
+- **MCP 서버**: 25개 도구 — `list_sources` + `list_exports`
   (탐색), `search`, `snowball`, `library_add`, `library_search`, `library_stats`, `fetch_paper`, `fetch_pdf_text`,
   `download_pdfs`, `pptx_validate_template`, `export`, 그리고 여섯 개의 `pptx_*` 덱 도구
   (`inspect`, `review`, `update_slide`, `delete_slide`,
@@ -450,6 +450,7 @@ claude mcp add thesisagents -- ".venv\Scripts\python.exe" -m thesisagents.mcp
 | `library_add` | 논문 → 문헌 라이브러리 (`library` 가 가리키는 SQLite 파일) 에 보관해 이후 세션에서 쓸 수 있게 합니다. 추가는 곧 병합입니다. 이미 있는 논문은 갱신될 뿐 중복되지 않습니다. `relations` 에는 `snowball` 이 반환한 인용 관계를 보관할 수 있습니다. |
 | `library_search` | 쿼리 → 라이브러리에 이미 있는 논문을 검색과 같은 방식으로 채점해 반환합니다. 네트워크를 쓰지 않습니다. 논문마다 이력이 붙습니다. 처음과 마지막으로 본 시각, 그리고 어떤 소스가 반환했는지입니다. |
 | `library_stats` | 라이브러리 → 보관 중인 논문, 실행, 인용 관계의 수, 소스별 논문 수, 최근 가져오기 내역. |
+| `library_update`, `library_delete`, `library_import`, `library_duplicates`, `library_merge`, `library_saved_search`, `library_prisma` | 라이브러리 → 태그, 메모, 읽기 상태와 선별 결정, 논문 삭제와 병합, BibTeX / RIS 가져오기, 새 논문만 알려 주는 저장된 검색, PRISMA 흐름. |
 | `fetch_paper` | arXiv / DOI / PMID / IEEE 식별자 → 단일 논문. |
 | `fetch_pdf_text` | 하나의 PDF 를 다운로드하여 추출한 본문 텍스트를 반환. **"내가 논문을 읽었다"에 이르는 MCP 경로.** |
 | `download_pdfs` | 논문 목록의 PDF 를 `{out_dir}/pdfs/` 로 일괄 다운로드. BibTeX 키로 키가 지정된 논문별 결과를 반환. |
@@ -487,7 +488,7 @@ ThesisAgents/
 │   ├── intelligence/                # PDF fetch + Anthropic summariser  ([intelligence] extra)
 │   ├── library/                     # SQLite literature library kept across runs
 │   ├── evaluation/                  # offline search-quality benchmark (docs/search-quality.md)
-│   ├── mcp/                         # FastMCP server (18 tools)
+│   ├── mcp/                         # FastMCP server (25 tools)
 │   ├── sources/<name>/              # plugin folders: arxiv, semantic_scholar,
 │   │                                #   openalex, pubmed, acm, ieee, scholar,
 │   │                                #   dblp, crossref, openaire, springer,

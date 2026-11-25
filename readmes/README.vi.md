@@ -244,7 +244,7 @@ cho mỗi bài trong tuple `PaperCollection`.
   (inspect / update_slide / delete_slide / reorder_slides / add_slide)
   làm việc với bất kỳ deck nào exporter sinh ra, cộng với các công cụ MCP
   `pptx_*` tương đương để một LLM agent có thể lặp trên một deck đã sinh.
-- **Server MCP**: 18 công cụ — `list_sources` + `list_exports`
+- **Server MCP**: 25 công cụ — `list_sources` + `list_exports`
   (khám phá), `search`, `snowball`, `library_add`, `library_search`, `library_stats`, `fetch_paper`, `fetch_pdf_text`,
   `download_pdfs`, `pptx_validate_template`, `export`, và sáu công cụ deck `pptx_*`
   (`inspect`, `review`, `update_slide`, `delete_slide`,
@@ -486,6 +486,7 @@ Công cụ:
 | `library_add` | Bài báo → thư viện tài liệu (tệp SQLite tại `library`), giữ lại cho các phiên sau. Thêm tức là gộp: bài đã có sẽ được cập nhật, không bị trùng lặp. `relations` lưu các liên kết trích dẫn mà `snowball` trả về. |
 | `library_search` | Truy vấn → các bài báo đã có trong thư viện, được chấm điểm như một lần tìm kiếm, không cần mạng. Mỗi bài kèm lịch sử của nó: lần đầu và lần cuối được thấy, và những nguồn nào đã trả về nó. |
 | `library_stats` | Thư viện → số bài báo, số lần chạy và số liên kết trích dẫn mà nó đang giữ, số bài theo từng nguồn và các lần nhập gần nhất. |
+| `library_update`, `library_delete`, `library_import`, `library_duplicates`, `library_merge`, `library_saved_search`, `library_prisma` | Thư viện → thẻ, ghi chú, trạng thái đọc và quyết định sàng lọc, xóa và gộp bài báo, nhập BibTeX / RIS, tìm kiếm chỉ báo bài mới, và sơ đồ PRISMA. |
 | `fetch_paper` | Định danh arXiv / DOI / PMID / IEEE → một bài đơn. |
 | `fetch_pdf_text` | Tải một PDF, trả về văn bản thân bài đã trích. **Cổng MCP tới "tôi đã đọc bài".** |
 | `download_pdfs` | Tải hàng loạt PDF của một danh sách bài vào `{out_dir}/pdfs/`. Trả về kết quả từng bài có khóa theo khóa BibTeX. |
@@ -523,7 +524,7 @@ ThesisAgents/
 │   ├── intelligence/                # tải PDF + bộ tóm tắt Anthropic  ([intelligence] extra)
 │   ├── library/                     # SQLite literature library kept across runs
 │   ├── evaluation/                  # benchmark chất lượng tìm kiếm offline (docs/search-quality.md)
-│   ├── mcp/                         # server FastMCP (18 công cụ)
+│   ├── mcp/                         # server FastMCP (25 công cụ)
 │   ├── sources/<name>/              # thư mục plugin: arxiv, semantic_scholar,
 │   │                                #   openalex, pubmed, acm, ieee, scholar,
 │   │                                #   dblp, crossref, openaire, springer,

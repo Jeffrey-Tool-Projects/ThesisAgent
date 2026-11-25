@@ -27,7 +27,7 @@ from __future__ import annotations
 import json
 import sqlite3
 import threading
-from collections.abc import Callable, Iterable, Mapping
+from collections.abc import Callable, Iterable, Mapping, Sequence
 from dataclasses import dataclass, replace
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
@@ -56,6 +56,15 @@ from thesisagents.core.models import (
 )
 from thesisagents.core.pruning import recommend_pruning
 from thesisagents.core.ranking import RankedPaper, rank_with_scores
+from thesisagents.library.curation import (
+    READING_UNREAD,
+    STAGE_ABSTRACT,
+    Annotation,
+    CurationMixin,
+    Screening,
+    matches_filter,
+)
+from thesisagents.library.saved import SavedSearchMixin, query_to_dict
 from thesisagents.library.schema import prepare, transaction
 from thesisagents.utils.path_safety import resolve_library_path
 
@@ -118,6 +127,9 @@ class LibraryEntry:
     ``sources`` lists every search source that returned the paper in any run,
     which is the run-level counterpart of the field-level ``Paper.provenance``.
     ``score`` is set by :meth:`Library.search` when a query was given.
+    ``paper_id`` names the paper to the methods that edit the library, and
+    ``tags``, ``status``, ``note`` and ``screening`` are what the reader
+    recorded about it (``curation.py``).
     """
 
     paper: Paper
@@ -126,6 +138,15 @@ class LibraryEntry:
     times_seen: int
     sources: tuple[str, ...] = ()
     score: RelevanceScore | None = None
+    paper_id: int = 0
+    tags: tuple[str, ...] = ()
+    status: str = READING_UNREAD
+    note: str = ""
+    screening: tuple[Screening, ...] = ()
+
+    def annotation(self) -> Annotation:
+        """The reader's records as one value, for filtering."""
+        return Annotation(self.status, self.note, self.tags, self.screening)
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -135,6 +156,11 @@ class LibraryEntry:
             "times_seen": self.times_seen,
             "sources": list(self.sources),
             "score": None if self.score is None else self.score.to_dict(),
+            "paper_id": self.paper_id,
+            "tags": list(self.tags),
+            "status": self.status,
+            "note": self.note,
+            "screening": [entry.to_dict() for entry in self.screening],
         }
 
 
@@ -199,7 +225,7 @@ class LibraryStats:
         }
 
 
-class Library:
+class Library(CurationMixin, SavedSearchMixin):
     """A literature library in one SQLite file. See the module docstring.
 
     ``create=False`` refuses a path that does not exist. Reads use it so that a
@@ -302,7 +328,7 @@ class Library:
             collection.papers,
             kind=kind,
             keywords=collection.query.keywords,
-            query=_query_record(collection.query),
+            query=query_to_dict(collection.query),
             diagnostics=diagnostics,
             relations=diagnostics.relations if diagnostics is not None else (),
         )
@@ -396,18 +422,7 @@ class Library:
         stored papers (it carries the DOI of one and the arXiv ID of the
         other) joins them into one.
         """
-        matches: set[int] = set()
-        for key in paper.identity_keys():
-            row = self._conn.execute(
-                "SELECT paper_id FROM identity_keys WHERE key = ?", (key,)
-            ).fetchone()
-            if row is None:
-                continue
-            if key.startswith(FUZZY_KEY_PREFIX) and not fuzzy_link_allowed(
-                self._load(row[0]), paper
-            ):
-                continue
-            matches.add(int(row[0]))
+        matches = self._matches(paper)
         if not matches:
             paper_id = int(
                 self._conn.execute(
@@ -435,6 +450,27 @@ class Library:
         self._claim_keys(paper_id, paper)
         self._claim_keys(paper_id, stored)
         return paper_id, False
+
+    def _matches(self, paper: Paper) -> set[int]:
+        """The stored papers that ``paper`` is."""
+        matches: set[int] = set()
+        for key in paper.identity_keys():
+            row = self._conn.execute(
+                "SELECT paper_id FROM identity_keys WHERE key = ?", (key,)
+            ).fetchone()
+            if row is None:
+                continue
+            if key.startswith(FUZZY_KEY_PREFIX) and not fuzzy_link_allowed(
+                self._load(row[0]), paper
+            ):
+                continue
+            matches.add(int(row[0]))
+        return matches
+
+    def holds(self, paper: Paper) -> bool:
+        """Whether an import of ``paper`` would be a merge."""
+        with self._lock:
+            return bool(self._matches(paper))
 
     def _claim_keys(self, paper_id: int, paper: Paper) -> None:
         # OR IGNORE: a key already owned by another paper was refused by the
@@ -473,6 +509,7 @@ class Library:
             "(SELECT first_seen FROM papers WHERE id = ?)) WHERE id = ?",
             (absorbed, survivor),
         )
+        self._move_annotations(absorbed, survivor)
         # Cascades to what is left of the absorbed row's sightings and links.
         conn.execute("DELETE FROM papers WHERE id = ?", (absorbed,))
 
@@ -536,22 +573,32 @@ class Library:
                 "SELECT p.record, p.first_seen, p.last_seen, "
                 "(SELECT count(*) FROM observations o WHERE o.paper_id = p.id), "
                 "(SELECT group_concat(DISTINCT o.source) FROM observations o "
-                " WHERE o.paper_id = p.id) "
+                " WHERE o.paper_id = p.id), p.id "
                 "FROM papers p "
                 "WHERE (?1 IS NULL OR p.year >= ?1) AND (?2 IS NULL OR p.year <= ?2) "
                 "ORDER BY p.last_seen DESC, p.id",
                 (year_from, year_to),
             ).fetchall()
-        return [
-            LibraryEntry(
-                paper=Paper.from_dict(json.loads(record)),
-                first_seen=first_seen,
-                last_seen=last_seen,
-                times_seen=int(times_seen),
-                sources=tuple(sorted(sources.split(","))) if sources else (),
+        annotations = self.annotations()
+        blank = Annotation()
+        entries: list[LibraryEntry] = []
+        for record, first_seen, last_seen, times_seen, sources, paper_id in rows:
+            own = annotations.get(int(paper_id), blank)
+            entries.append(
+                LibraryEntry(
+                    paper=Paper.from_dict(json.loads(record)),
+                    first_seen=first_seen,
+                    last_seen=last_seen,
+                    times_seen=int(times_seen),
+                    sources=tuple(sorted(sources.split(","))) if sources else (),
+                    paper_id=int(paper_id),
+                    tags=own.tags,
+                    status=own.status,
+                    note=own.note,
+                    screening=own.screening,
+                )
             )
-            for record, first_seen, last_seen, times_seen, sources in rows
-        ]
+        return entries
 
     def search(
         self,
@@ -560,6 +607,10 @@ class Library:
         limit: int | None = 50,
         year_from: int | None = None,
         year_to: int | None = None,
+        tags: Sequence[str] = (),
+        status: str = "",
+        decision: str = "",
+        stage: str = STAGE_ABSTRACT,
     ) -> list[LibraryEntry]:
         """Stored papers that match ``query``, best first. No network.
 
@@ -569,13 +620,21 @@ class Library:
         are returned, each with its score.
 
         An empty ``query`` lists the library, most recently seen first.
-        ``limit=None`` returns every match.
+        ``limit=None`` returns every match. ``tags`` (all of them), ``status``
+        and ``decision`` narrow the list to what the reader recorded, see
+        ``curation.matches_filter``.
 
         Example: ``library.search("graph neural network", limit=5)``.
         """
         if limit is not None and limit < 1:
             raise ValueError("limit must be at least 1")
-        entries = self.entries(year_from=year_from, year_to=year_to)
+        entries = [
+            entry
+            for entry in self.entries(year_from=year_from, year_to=year_to)
+            if matches_filter(
+                entry.annotation(), tags=tags, status=status, decision=decision, stage=stage
+            )
+        ]
         if not query.strip():
             return entries[:limit]
         by_identity = {id(entry.paper): entry for entry in entries}
@@ -593,15 +652,19 @@ class Library:
         limit: int | None = None,
         year_from: int | None = None,
         year_to: int | None = None,
+        **reader_filter: Any,
     ) -> PaperCollection:
         """The library, or the part matching ``query``, as a ``PaperCollection``.
 
         This is how stored papers reach the exporters. The citation links
         between the returned papers come along in ``diagnostics.relations``.
         With a ``query``, so do each paper's score against it and the same
-        advisory pruning recommendations a search gives.
+        advisory pruning recommendations a search gives. ``reader_filter`` is
+        passed to :meth:`search` (``tags``, ``status``, ``decision``, ``stage``).
         """
-        entries = self.search(query, limit=limit, year_from=year_from, year_to=year_to)
+        entries = self.search(
+            query, limit=limit, year_from=year_from, year_to=year_to, **reader_filter
+        )
         papers = tuple(entry.paper for entry in entries)
         keys = {paper.dedup_key() for paper in papers}
         links = tuple(
@@ -812,18 +875,6 @@ def _utc_now() -> datetime:
 
 def _dump(value: Any) -> str:
     return json.dumps(value, ensure_ascii=False, sort_keys=True)
-
-
-def _query_record(query: Query) -> dict[str, Any]:
-    return {
-        "keywords": query.keywords,
-        "sources": list(query.sources),
-        "max_results": query.max_results,
-        "year_from": query.year_from,
-        "year_to": query.year_to,
-        "min_citations": query.min_citations,
-        "top_tier_only": query.top_tier_only,
-    }
 
 
 def _summary_tier(summary: PaperSummary | None) -> int:

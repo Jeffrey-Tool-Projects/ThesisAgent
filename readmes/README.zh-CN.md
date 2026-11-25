@@ -199,7 +199,7 @@ for key in irrelevant_keys:
   (inspect / update_slide / delete_slide / reorder_slides / add_slide)
   可对导出器产出的任何幻灯片运作,加上对应的 `pptx_*` MCP 工具,好让
   一个 LLM agent 能在产出的幻灯片上反复迭代。
-- **MCP 服务器**:18 个工具 —— `list_sources` + `list_exports`
+- **MCP 服务器**:25 个工具 —— `list_sources` + `list_exports`
   (发现)、`search`、`snowball`、`library_add`、`library_search`、`library_stats`、`fetch_paper`、`fetch_pdf_text`、`download_pdfs`、`pptx_validate_template`、
   `export`,以及六个 `pptx_*` 幻灯片工具(`inspect`、`review`、
   `update_slide`、`delete_slide`、`reorder_slides`、`add_slide`)。让任何
@@ -386,6 +386,7 @@ claude mcp add thesisagents -- ".venv\Scripts\python.exe" -m thesisagents.mcp
 | `library_add` | 论文 → 文献库 (`library` 指向的 SQLite 文件),保留给之后的会话使用。加入就是合并: 已经存在的论文会被更新,不会重复。`relations` 可存入 `snowball` 返回的引用关系。 |
 | `library_search` | 查询 → 文献库里已有的论文,评分方式与搜索相同,不需要网络。每篇都附上它的记录: 第一次与最近一次看到的时间,以及哪些来源返回过它。 |
 | `library_stats` | 文献库 → 它保存了多少论文、运行记录与引用关系,各来源的论文数,以及最近几次导入。 |
+| `library_update`, `library_delete`, `library_import`, `library_duplicates`, `library_merge`, `library_saved_search`, `library_prisma` | 文献库 → 标签、笔记、阅读状态与筛选决定，删除与合并论文，导入 BibTeX / RIS，只报告新论文的保存搜索，以及 PRISMA 流程。 |
 | `fetch_paper` | arXiv / DOI / PMID / IEEE 标识符 → 单篇论文。 |
 | `fetch_pdf_text` | 下载一份 PDF,返回提取出的正文文本。**这是「我读了论文」的 MCP 路径。** |
 | `download_pdfs` | 批量把一份论文清单的 PDF 下载到 `{out_dir}/pdfs/`。返回以 BibTeX 键为索引的每篇论文结果。 |
@@ -423,7 +424,7 @@ ThesisAgents/
 │   ├── intelligence/                # PDF fetch + Anthropic summariser  ([intelligence] extra)
 │   ├── library/                     # SQLite literature library kept across runs
 │   ├── evaluation/                  # offline search-quality benchmark (docs/search-quality.md)
-│   ├── mcp/                         # FastMCP server (18 tools)
+│   ├── mcp/                         # FastMCP server (25 tools)
 │   ├── sources/<name>/              # plugin folders: arxiv, semantic_scholar,
 │   │                                #   openalex, pubmed, acm, ieee, scholar,
 │   │                                #   dblp, crossref, openaire, springer,

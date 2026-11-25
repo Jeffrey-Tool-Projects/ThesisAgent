@@ -1053,6 +1053,10 @@ def main(argv: list[str] | None = None) -> int:
     if raw_argv[0] == "validate-template":
         from thesisagents.exporters.template import main as template_main
         return template_main(raw_argv[1:])
+    # ``library`` edits a literature library and has its own actions.
+    if raw_argv[0] == "library":
+        from thesisagents.cli_library_edit import main as library_main
+        return library_main(raw_argv[1:])
     # Discovery flags short-circuit before argparse: they answer "what can I
     # search / export?" and so must NOT trip the required query/paper/pdf mutex
     # group (same reasoning as the bare-invocation gui shim above).

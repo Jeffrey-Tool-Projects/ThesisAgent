@@ -50,7 +50,7 @@ Fluxo MCP de 6 passos
    5. (você lê cada PDF e produz dict summary estruturado)
    6. export(papers=[{...paper, "summary": {...}}], language="pt", ...)
 
-As 18 ferramentas MCP completas: :doc:`/mcp`.
+As 25 ferramentas MCP completas: :doc:`/mcp`.
 
 **Para identificar resultados fora do tema, comece pelo conselho da
 própria ferramenta.** ``--diagnostics`` (CLI) ou ``diagnostics=true`` na
@@ -205,7 +205,7 @@ Onde procurar mais
 ------------------
 
 * Flags CLI e variáveis de ambiente: :doc:`/cli`
-* 18 ferramentas do servidor MCP: :doc:`/mcp`
+* 25 ferramentas do servidor MCP: :doc:`/mcp`
 * Toolkit de edição PPTX: :doc:`/pptx_editing`
 * O arquivo ``readmes/README.pt.md`` na raiz do repo tem a lista completa de
   funcionalidades.

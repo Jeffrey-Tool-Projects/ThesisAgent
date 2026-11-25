@@ -247,7 +247,7 @@ for key in irrelevant_keys:
   работает с любым деком, произведённым экспортёром, плюс эквивалентные
   MCP-инструменты `pptx_*`, чтобы LLM-агент мог итеративно дорабатывать
   сгенерированный дек.
-- **MCP-сервер**: 18 инструментов — `list_sources` + `list_exports`
+- **MCP-сервер**: 25 инструментов — `list_sources` + `list_exports`
   (обнаружение), `search`, `snowball`, `library_add`, `library_search`, `library_stats`, `fetch_paper`, `fetch_pdf_text`,
   `download_pdfs`, `pptx_validate_template`, `export` и шесть инструментов дека `pptx_*`
   (`inspect`, `review`, `update_slide`, `delete_slide`,
@@ -492,6 +492,7 @@ claude mcp add thesisagents -- ".venv\Scripts\python.exe" -m thesisagents.mcp
 | `library_add` | Статьи → библиотека литературы (файл SQLite по пути `library`), сохраняемая для следующих сеансов. Добавление означает слияние: уже имеющаяся статья обновляется и не дублируется. В `relations` передаются связи цитирования, которые возвращает `snowball`. |
 | `library_search` | Запрос → статьи, уже лежащие в библиотеке, оценённые так же, как при поиске, без обращения к сети. У каждой есть история: когда она была увидена впервые и в последний раз и какие источники её вернули. |
 | `library_stats` | Библиотека → сколько в ней статей, запусков и связей цитирования, число статей по источникам и последние импорты. |
+| `library_update`, `library_delete`, `library_import`, `library_duplicates`, `library_merge`, `library_saved_search`, `library_prisma` | Библиотека → теги, заметки, статус чтения и решения отбора, удаление и объединение статей, импорт BibTeX / RIS, поиски, сообщающие только о новом, и схема PRISMA. |
 | `fetch_paper` | Идентификатор arXiv / DOI / PMID / IEEE → одна статья. |
 | `fetch_pdf_text` | Загрузить один PDF, вернуть извлечённый текст тела. **MCP-путь к «я прочитал статью».** |
 | `download_pdfs` | Пакетно загрузить PDF из списка статей в `{out_dir}/pdfs/`. Возвращает результаты по каждой статье с ключами по ключу BibTeX. |
@@ -529,7 +530,7 @@ ThesisAgents/
 │   ├── intelligence/                # PDF fetch + Anthropic summariser  ([intelligence] extra)
 │   ├── library/                     # SQLite literature library kept across runs
 │   ├── evaluation/                  # offline search-quality benchmark (docs/search-quality.md)
-│   ├── mcp/                         # FastMCP server (18 tools)
+│   ├── mcp/                         # FastMCP server (25 tools)
 │   ├── sources/<name>/              # plugin folders: arxiv, semantic_scholar,
 │   │                                #   openalex, pubmed, acm, ieee, scholar,
 │   │                                #   dblp, crossref, openaire, springer,

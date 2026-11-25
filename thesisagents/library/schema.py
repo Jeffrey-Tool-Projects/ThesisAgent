@@ -27,6 +27,13 @@ Tables (version 1)
                    provider and depth that found them.
 ``verifications``  the export preflight's verdict per DOI / URL, so an
                    identifier checked last week is not looked up again.
+
+Added in version 2 (what the reader records, see ``curation.py``)
+-----------------------------------------------------------------
+``annotations``    reading status and note of a paper.
+``tags``           the tags of a paper, one row each, compared without case.
+``screening``      the decision of a systematic review per paper and stage.
+``saved_searches`` named queries that can be run again (``saved.py``).
 """
 
 from __future__ import annotations
@@ -39,7 +46,7 @@ from thesisagents.core.exceptions import LibraryError
 
 #: "THAG" in ASCII. Lets a library be told from any other SQLite file.
 APPLICATION_ID: int = 0x54484147
-SCHEMA_VERSION: int = 1
+SCHEMA_VERSION: int = 2
 
 
 @contextmanager
@@ -149,8 +156,55 @@ def _create_version_1(conn: sqlite3.Connection) -> None:
         conn.execute(statement)
 
 
+_VERSION_2: tuple[str, ...] = (
+    """
+    CREATE TABLE annotations (
+        paper_id INTEGER PRIMARY KEY REFERENCES papers(id) ON DELETE CASCADE,
+        status TEXT NOT NULL DEFAULT 'unread',
+        note TEXT NOT NULL DEFAULT '',
+        updated_at TEXT NOT NULL
+    )
+    """,
+    """
+    CREATE TABLE tags (
+        paper_id INTEGER NOT NULL REFERENCES papers(id) ON DELETE CASCADE,
+        tag TEXT NOT NULL COLLATE NOCASE,
+        PRIMARY KEY (paper_id, tag)
+    )
+    """,
+    "CREATE INDEX tags_tag ON tags(tag)",
+    """
+    CREATE TABLE screening (
+        paper_id INTEGER NOT NULL REFERENCES papers(id) ON DELETE CASCADE,
+        stage TEXT NOT NULL,
+        decision TEXT NOT NULL,
+        reason TEXT NOT NULL,
+        decided_at TEXT NOT NULL,
+        PRIMARY KEY (paper_id, stage)
+    )
+    """,
+    """
+    CREATE TABLE saved_searches (
+        name TEXT PRIMARY KEY COLLATE NOCASE,
+        query TEXT NOT NULL,
+        created_at TEXT NOT NULL,
+        last_run_at TEXT,
+        last_new INTEGER
+    )
+    """,
+)
+
+
+def _add_version_2(conn: sqlite3.Connection) -> None:
+    for statement in _VERSION_2:
+        conn.execute(statement)
+
+
 #: ``MIGRATIONS[n]`` upgrades a database from version ``n`` to ``n + 1``.
-MIGRATIONS: tuple[Callable[[sqlite3.Connection], None], ...] = (_create_version_1,)
+MIGRATIONS: tuple[Callable[[sqlite3.Connection], None], ...] = (
+    _create_version_1,
+    _add_version_2,
+)
 
 
 def prepare(conn: sqlite3.Connection, path: str) -> int:

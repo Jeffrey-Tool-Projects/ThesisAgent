@@ -438,6 +438,45 @@ another application's database, a text file) is refused and left
 untouched. `--library-search` and `--library-export` on a path that
 does not exist are an error, not an empty result.
 
+### Editing a library: `thesisagents library`
+
+The flags above fill a library and read it back. This subcommand records
+what you decide about the papers in it:
+
+```powershell
+thesisagents library thesis.db list "graph" --tag "chapter 2" --status unread
+thesisagents library thesis.db show 3
+thesisagents library thesis.db tag 3 7 --add "chapter 2" --remove later
+thesisagents library thesis.db note 3 "cite in 2.3"
+thesisagents library thesis.db status read 3 7
+thesisagents library thesis.db screen 7 exclude --reason "off topic"
+thesisagents library thesis.db screen 3 include --stage full_text
+thesisagents library thesis.db duplicates
+thesisagents library thesis.db merge 3 9
+thesisagents library thesis.db delete 12
+thesisagents library thesis.db import zotero.bib --tag "from zotero"
+thesisagents library thesis.db save-search tf "transformer" --source arxiv,dblp
+thesisagents library thesis.db run-search tf
+thesisagents library thesis.db searches
+thesisagents library thesis.db prisma --svg prisma.svg
+```
+
+The numbers are the ones `list` prints in brackets. They stay the same
+until a paper is deleted or merged into another. Searching again never
+changes a tag, a note or a decision.
+
+- `import` reads BibTeX and RIS (Zotero, Mendeley, EndNote, JabRef) and
+  says why a record was left out.
+- `run-search` adds what it finds and prints only the papers the library
+  did not hold before.
+- `duplicates` lists near misses an import cannot decide on, such as a
+  preprint and its journal version. `merge` keeps the first paper's fields
+  and fills its gaps from the others.
+- `screen … --stage full_text exclude` needs a `--reason`, which PRISMA
+  asks to be reported. `undo` takes a decision back.
+- `prisma` counts what was recorded and estimates nothing.
+- `delete` and `merge` cannot be undone. `delete` asks unless `--yes`.
+
 ## Source statistics
 
 After every `--query` search the CLI prints what each source contributed.

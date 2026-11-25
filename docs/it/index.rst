@@ -49,7 +49,7 @@ Flusso MCP in 6 passi
    5. (leggi ogni PDF e produci dict di riassunto strutturato)
    6. export(papers=[{...paper, "summary": {...}}], language="it", ...)
 
-I 18 strumenti MCP completi: :doc:`/mcp`.
+I 25 strumenti MCP completi: :doc:`/mcp`.
 
 **Per individuare i risultati fuori tema, parti dai consigli dello
 strumento stesso.** ``--diagnostics`` (CLI) o ``diagnostics=true`` sullo
@@ -208,7 +208,7 @@ Dove cercare oltre
 ------------------
 
 * Flag CLI e variabili d'ambiente: :doc:`/cli`
-* 18 strumenti del server MCP: :doc:`/mcp`
+* 25 strumenti del server MCP: :doc:`/mcp`
 * Toolkit di editing PPTX: :doc:`/pptx_editing`
 * Il file ``readmes/README.it.md`` nella radice del repo contiene l'elenco
   completo delle funzionalità.

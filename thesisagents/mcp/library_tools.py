@@ -78,6 +78,10 @@ def register_library_tools(tool: Callable[[Callable[..., Any]], Any]) -> None:
         limit: int = 20,
         year_from: int | None = None,
         year_to: int | None = None,
+        tags: list[str] | None = None,
+        status: str = "",
+        decision: str = "",
+        stage: str = "title_abstract",
     ) -> dict[str, Any]:
         """Find papers already kept in a literature library. No network access.
 
@@ -87,18 +91,26 @@ def register_library_tools(tool: Callable[[Callable[..., Any]], Any]) -> None:
         ``query`` is scored like a search (stemming, phrases, acronyms), and
         only papers matching at least one query term are returned, best
         first. An empty ``query`` lists the most recently seen papers.
-        ``limit`` is 1..200.
+        ``limit`` is 1..200. ``tags`` (all of them), ``status`` (``unread``,
+        ``reading``, ``read``) and ``decision`` (``include``, ``maybe``,
+        ``exclude``, or ``none`` for undecided) at ``stage`` narrow the list
+        to what the reader recorded.
 
         Returns ``papers`` (plain paper dicts, ready for ``export`` or
         ``download_pdfs``) and ``entries``, one per paper in the same order,
         with its history: ``first_seen``, ``last_seen``, ``times_seen``, the
-        ``sources`` that returned it, and its ``score`` for the query.
+        ``sources`` that returned it, its ``score`` for the query, the
+        ``paper_id`` that names it to ``library_update`` and its siblings,
+        and its ``tags``, ``status``, ``note`` and ``screening``.
         ``total`` is the number of papers in the library.
         """
         if not 1 <= limit <= _SEARCH_MAX_LIMIT:
             raise ThesisAgentsError(f"limit must be in [1, {_SEARCH_MAX_LIMIT}]")
         with Library(library, create=False) as store:
-            found = store.search(query, limit=limit, year_from=year_from, year_to=year_to)
+            found = store.search(
+                query, limit=limit, year_from=year_from, year_to=year_to,
+                tags=tags or (), status=status, decision=decision, stage=stage,
+            )
             total = len(store)
             path = str(store.path)
         return {
@@ -116,6 +128,11 @@ def register_library_tools(tool: Callable[[Callable[..., Any]], Any]) -> None:
                     "times_seen": entry.times_seen,
                     "sources": list(entry.sources),
                     "score": None if entry.score is None else entry.score.to_dict(),
+                    "paper_id": entry.paper_id,
+                    "tags": list(entry.tags),
+                    "status": entry.status,
+                    "note": entry.note,
+                    "screening": [decision.to_dict() for decision in entry.screening],
                 }
                 for entry in found
             ],

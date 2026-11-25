@@ -247,7 +247,7 @@ mengikuti bentuk yang sama, dengan satu entri
   bekerja terhadap deck apa pun yang dihasilkan eksportir, plus tool MCP
   `pptx_*` setara sehingga agen LLM dapat beriterasi di atas deck yang
   telah dibuat.
-- **Server MCP**: 18 tool — `list_sources` + `list_exports`
+- **Server MCP**: 25 tool — `list_sources` + `list_exports`
   (discovery), `search`, `snowball`, `library_add`, `library_search`, `library_stats`, `fetch_paper`, `fetch_pdf_text`,
   `download_pdfs`, `pptx_validate_template`, `export`, dan enam tool deck `pptx_*`
   (`inspect`, `review`, `update_slide`, `delete_slide`,
@@ -497,6 +497,7 @@ Tool:
 | `library_add` | Makalah → pustaka literatur (file SQLite di `library`), disimpan untuk sesi berikutnya. Menambahkan berarti menggabungkan: makalah yang sudah ada diperbarui, tidak diduplikasi. `relations` menyimpan tautan sitasi yang dikembalikan `snowball`. |
 | `library_search` | Kueri → makalah yang sudah ada di pustaka, dinilai seperti pencarian, tanpa akses jaringan. Masing-masing disertai riwayatnya: kapan pertama dan terakhir terlihat, serta sumber mana yang mengembalikannya. |
 | `library_stats` | Pustaka → berapa makalah, proses, dan tautan sitasi yang disimpannya, jumlah makalah per sumber, dan impor terbaru. |
+| `library_update`, `library_delete`, `library_import`, `library_duplicates`, `library_merge`, `library_saved_search`, `library_prisma` | Pustaka → tag, catatan, status baca dan keputusan penyaringan, menghapus dan menggabungkan makalah, mengimpor BibTeX / RIS, pencarian yang hanya melaporkan yang baru, dan alur PRISMA. |
 | `fetch_paper` | Identifier arXiv / DOI / PMID / IEEE → satu makalah. |
 | `fetch_pdf_text` | Unduh satu PDF, kembalikan teks tubuh hasil ekstraksi. **Jalur MCP menuju "saya membaca makalahnya".** |
 | `download_pdfs` | Unduh PDF daftar makalah secara batch ke `{out_dir}/pdfs/`. Mengembalikan hasil per-makalah berindeks kunci BibTeX. |
@@ -534,7 +535,7 @@ ThesisAgents/
 │   ├── intelligence/                # unduh PDF + summarizer Anthropic  (extra [intelligence])
 │   ├── library/                     # SQLite literature library kept across runs
 │   ├── evaluation/                  # benchmark kualitas-pencarian offline (docs/search-quality.md)
-│   ├── mcp/                         # server FastMCP (18 tool)
+│   ├── mcp/                         # server FastMCP (25 tool)
 │   ├── sources/<name>/              # folder plugin: arxiv, semantic_scholar,
 │   │                                #   openalex, pubmed, acm, ieee, scholar,
 │   │                                #   dblp, crossref, openaire, springer,

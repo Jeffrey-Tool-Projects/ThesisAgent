@@ -23,8 +23,8 @@ def library_path(tmp_path) -> str:
     return str(tmp_path / "thesis.db")
 
 
-def _call(server, name: str, **kwargs):
-    result = asyncio.run(server.call_tool(name, kwargs))
+def _call(server, tool: str, /, **kwargs):
+    result = asyncio.run(server.call_tool(tool, kwargs))
     if isinstance(result, tuple):
         result = result[0]
     result = getattr(result, "content", result)
@@ -167,3 +167,113 @@ def test_export_remembers_verdicts_in_the_library(
     with Library(library_path) as library:
         assert library.stats().verifications == {"ok": 3}
         assert len(library) == 0                       # export stores verdicts, not papers
+
+
+# --- editing (mcp/curation_tools.py) ------------------------------------------------
+
+
+def _fails(server, tool: str, match: str, /, **kwargs):
+    with pytest.raises(ToolError, match=match):
+        asyncio.run(server.call_tool(tool, kwargs))
+
+
+def test_the_curation_tools_are_registered(server):
+    names = {tool.name for tool in asyncio.run(server.list_tools())}
+    assert {
+        "library_update", "library_delete", "library_import", "library_duplicates",
+        "library_merge", "library_saved_search", "library_prisma",
+    } <= names
+
+
+def test_library_update_records_what_the_reader_decided(server, library_path, sample_papers):
+    _add(server, library_path, sample_papers)
+    found = _call(server, "library_search", library=library_path, query="")
+    first, second = (entry["paper_id"] for entry in found["entries"])
+    updated = _call(
+        server, "library_update", library=library_path, paper_ids=[first, second],
+        add_tags=["chapter 2"], status="read", decision="include",
+    )
+    assert updated["tags"] == {"chapter 2": 2}
+    assert {p["status"] for p in updated["papers"]} == {"read"}
+    assert "abstract" not in updated["papers"][0]
+    _call(server, "library_update", library=library_path, paper_ids=[first], note="cite")
+    tagged = _call(server, "library_search", library=library_path, tags=["Chapter 2"])
+    assert len(tagged["papers"]) == 2
+    assert _call(server, "library_search", library=library_path, status="unread")["papers"] == []
+    _call(
+        server, "library_update", library=library_path, paper_ids=[second],
+        remove_tags=["chapter 2"], decision="exclude", stage="full_text", reason="no data",
+    )
+    flow = _call(server, "library_prisma", library=library_path)
+    assert flow["reasons_full_text"] == {"no data": 1}
+    _fails(server, "library_update", "exactly one", library=library_path,
+           paper_ids=[first, second], note="x")
+    _fails(server, "library_update", "reading status", library=library_path,
+           paper_ids=[first], status="skimmed")
+    _fails(server, "library_update", "no paper with id", library=library_path,
+           paper_ids=[999], status="read")
+
+
+def test_library_delete_merge_and_duplicates(server, library_path, sample_papers):
+    from dataclasses import replace
+
+    twin = replace(
+        sample_papers[0], source_id="twin", doi="10.9/twin", arxiv_id=None,
+        title=sample_papers[0].title + ".", year=1999,
+    )
+    _add(server, library_path, [*sample_papers, twin])
+    groups = _call(server, "library_duplicates", library=library_path)["groups"]
+    assert len(groups) == 1
+    keep, other = (paper["paper_id"] for paper in groups[0])
+    merged = _call(
+        server, "library_merge", library=library_path, survivor=keep, others=[other]
+    )
+    assert merged["total"] == 2
+    _fails(server, "library_merge", "two different", library=library_path,
+           survivor=keep, others=[keep])
+    assert _call(
+        server, "library_delete", library=library_path, paper_ids=[keep]
+    ) == {"deleted": 1, "total": 1}
+
+
+def test_library_import_reads_a_bibliography(server, library_path, tmp_path):
+    file = tmp_path / "x.bib"
+    file.write_text("@misc{a, title={One}}\n@misc{b, author={Nobody}}", encoding="utf-8")
+    result = _call(server, "library_import", library=library_path, file=str(file), tags=["z"])
+    assert (result["added"], result["skipped"]) == (1, ["line 2: b has no title"])
+    file.write_text("@misc{b, author={Nobody}}", encoding="utf-8")
+    _fails(server, "library_import", "no usable record", library=library_path, file=str(file))
+
+
+def test_saved_searches_over_mcp(server, library_path, sample_papers, monkeypatch):
+    from thesisagents.core.models import PaperCollection
+
+    async def fake(query, **_kwargs):
+        return PaperCollection(query=query, papers=tuple(sample_papers))
+
+    monkeypatch.setattr("thesisagents.core.pipeline.run_search", fake)
+    saved = _call(
+        server, "library_saved_search", library=library_path, action="save",
+        name="att", keywords="attention", sources=["arxiv"],
+    )
+    assert saved["searches"][0]["query"]["keywords"] == "attention"
+    ran = _call(server, "library_saved_search", library=library_path, action="run", name="att")
+    assert (ran["found"], len(ran["new"])) == (2, 2)
+    again = _call(server, "library_saved_search", library=library_path, action="run", name="att")
+    assert again["new"] == []
+    listed = _call(
+        server, "library_saved_search", library=library_path, action="delete", name="att"
+    )
+    assert listed["searches"] == []
+    _fails(server, "library_saved_search", "action must be", library=library_path, action="go")
+    _fails(server, "library_saved_search", "name needs", library=library_path, action="save",
+           name="", keywords="x")
+
+
+def test_library_prisma_draws(server, library_path, sample_papers, tmp_path):
+    _add(server, library_path, sample_papers)
+    target = tmp_path / "flow.svg"
+    result = _call(server, "library_prisma", library=library_path, svg_path=str(target))
+    assert result["unique"] == 2
+    assert target.read_text(encoding="utf-8").startswith("<svg")
+    _fails(server, "library_prisma", "cannot write", library=library_path, svg_path=str(tmp_path))

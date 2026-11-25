@@ -241,7 +241,7 @@ tupla `PaperCollection`.
   funciona contra qualquer slide que o exportador produz, mais as ferramentas
   MCP `pptx_*` equivalentes, para que um agente LLM possa iterar sobre um slide
   gerado.
-- **Servidor MCP**: 18 ferramentas — `list_sources` + `list_exports`
+- **Servidor MCP**: 25 ferramentas — `list_sources` + `list_exports`
   (descoberta), `search`, `snowball`, `library_add`, `library_search`, `library_stats`, `fetch_paper`, `fetch_pdf_text`, `download_pdfs`, `pptx_validate_template`,
   `export` e as seis ferramentas de slide `pptx_*` (`inspect`, `review`,
   `update_slide`, `delete_slide`, `reorder_slides`, `add_slide`). Permite que
@@ -489,6 +489,7 @@ Ferramentas:
 | `library_add` | Artigos → uma biblioteca de literatura (o arquivo SQLite em `library`), guardada para sessões posteriores. Adicionar é mesclar: um artigo que já está lá é atualizado, não duplicado. `relations` guarda os vínculos de citação que `snowball` retorna. |
 | `library_search` | Consulta → artigos que já estão na biblioteca, pontuados como em uma busca, sem acesso à rede. Cada um vem com seu histórico: quando foi visto pela primeira e pela última vez, e quais fontes o retornaram. |
 | `library_stats` | Biblioteca → quantos artigos, execuções e vínculos de citação ela contém, os artigos por fonte e as últimas importações. |
+| `library_update`, `library_delete`, `library_import`, `library_duplicates`, `library_merge`, `library_saved_search`, `library_prisma` | Biblioteca → etiquetas, notas, estado de leitura e decisões de triagem, excluir e mesclar artigos, importar BibTeX / RIS, buscas que só relatam o que é novo e o fluxo PRISMA. |
 | `fetch_paper` | Identificador arXiv / DOI / PMID / IEEE → artigo único. |
 | `fetch_pdf_text` | Baixa um PDF, retorna o texto do corpo extraído. **O caminho MCP para "eu li o artigo".** |
 | `download_pdfs` | Baixa em lote os PDFs de uma lista de artigos em `{out_dir}/pdfs/`. Retorna resultados por artigo indexados pela chave BibTeX. |
@@ -527,7 +528,7 @@ ThesisAgents/
 │   ├── intelligence/                # PDF fetch + Anthropic summariser  ([intelligence] extra)
 │   ├── library/                     # SQLite literature library kept across runs
 │   ├── evaluation/                  # offline search-quality benchmark (docs/search-quality.md)
-│   ├── mcp/                         # FastMCP server (18 tools)
+│   ├── mcp/                         # FastMCP server (25 tools)
 │   ├── sources/<name>/              # plugin folders: arxiv, semantic_scholar,
 │   │                                #   openalex, pubmed, acm, ieee, scholar,
 │   │                                #   dblp, crossref, openaire, springer,

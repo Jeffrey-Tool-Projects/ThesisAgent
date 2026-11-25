@@ -119,6 +119,7 @@ from thesisagents.exporters import export_collection, pptx_edit, review
 from thesisagents.exporters.template import validate_template
 from thesisagents.fetchers.http import shutdown_clients
 from thesisagents.library import Library
+from thesisagents.mcp.curation_tools import register_curation_tools
 from thesisagents.mcp.library_tools import register_library_tools
 from thesisagents.utils.logging import get_logger
 
@@ -191,6 +192,7 @@ def build_server() -> FastMCP:
     _register_search_tools(server)
     _register_snowball_tool(server)
     register_library_tools(_tool(server))
+    register_curation_tools(_tool(server))
     _register_export_tool(server)
     _register_pdf_tool(server)
     _register_pdf_download_tool(server)

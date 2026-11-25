@@ -50,7 +50,7 @@ Alur MCP 6 langkah
    5. (Anda membaca tiap PDF dan menghasilkan dict ringkasan terstruktur)
    6. export(papers=[{...paper, "summary": {...}}], language="id", ...)
 
-18 tool MCP lengkap: :doc:`/mcp`.
+25 tool MCP lengkap: :doc:`/mcp`.
 
 **Untuk menemukan hasil yang melenceng dari topik, mulailah dari saran
 alat itu sendiri.** ``--diagnostics`` (CLI) atau ``diagnostics=true``
@@ -207,7 +207,7 @@ Bacaan lebih lanjut
 -------------------
 
 * Flag CLI dan variabel lingkungan: :doc:`/cli`
-* 18 tool server MCP: :doc:`/mcp`
+* 25 tool server MCP: :doc:`/mcp`
 * Toolkit edit PPTX: :doc:`/pptx_editing`
 * Berkas ``readmes/README.id.md`` di akar repo berisi daftar fitur lengkap.
 * Referensi teknis mendalam (arsitektur plugin, kebijakan keamanan,

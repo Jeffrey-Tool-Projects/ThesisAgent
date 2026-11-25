@@ -87,8 +87,8 @@ venv-resolved binary directly:
 
 ## Tools
 
-The server exposes eighteen tools, grouped into seven concerns:
-discovery, search, citation snowballing, the literature library, PDF
+The server exposes twenty-five tools, grouped into eight concerns:
+discovery, search, citation snowballing, the literature library, editing the library, PDF
 retrieval, export and deck editing.
 
 ### `list_sources`
@@ -478,7 +478,7 @@ Returns (the same library):
 ```json
 {
   "path": "/abs/path/thesis.db",
-  "schema_version": 1,
+  "schema_version": 2,
   "papers": 5,
   "runs": 2,
   "relations": 2,
@@ -502,6 +502,55 @@ by two sources counts once for each). `verifications` counts the stored
 DOI / URL verdicts by status. `recent_runs` lists the ten latest
 imports, and `kind` says where one came from: `search`, `paper` or `pdf`
 for a CLI run, `mcp` for `library_add`.
+
+### `library_update`
+
+Record what a reader decided. Papers are named by the `paper_id` of
+`library_search`. Every argument left out is left alone.
+
+```json
+{"library": "./thesis.db", "paper_ids": [3, 7], "add_tags": ["chapter 2"],
+ "status": "read", "decision": "exclude", "stage": "full_text",
+ "reason": "no data"}
+```
+
+`status` is `unread`, `reading` or `read`. `decision` is `include`,
+`maybe`, `exclude`, or an empty string to take it back, at `stage`
+`title_abstract` (the default) or `full_text`. Excluding at `full_text`
+needs a `reason`, which PRISMA asks to be reported. `note` replaces the
+note of one paper. Importing the same search again never changes any of
+this.
+
+### `library_delete`, `library_merge`, `library_duplicates`
+
+`library_duplicates` lists groups of papers that look like one, such as a
+preprint and its journal version. `library_merge` (`survivor`, `others`)
+folds papers into one: the survivor's fields win, gaps are filled, tags
+and notes are joined. `library_delete` (`paper_ids`) removes papers with
+everything recorded about them. Neither can be undone, so ask first.
+
+### `library_import`
+
+Add the papers of a `.bib` or `.ris` file (`file`), optionally with
+`tags`. A paper already held is updated, not duplicated, and `skipped`
+says why a record was left out.
+
+### `library_saved_search`
+
+```json
+{"library": "./thesis.db", "action": "run", "name": "transformers"}
+```
+
+`action` is `list`, `save` (with `name`, `keywords`, and optionally
+`sources`, `max_results`, `year_from`, `year_to`), `run` or `delete`.
+`run` adds what it finds to the library and returns in `new` the papers
+it did not hold before.
+
+### `library_prisma`
+
+The PRISMA 2020 flow: records identified per source, duplicates removed,
+screened, excluded with reasons, assessed and included. `svg_path` also
+draws the diagram. Counts what was recorded, nothing is estimated.
 
 ### `fetch_paper`
 

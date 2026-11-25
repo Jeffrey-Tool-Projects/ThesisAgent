@@ -199,7 +199,7 @@ for key in irrelevant_keys:
   (inspect / update_slide / delete_slide / reorder_slides / add_slide)
   可對匯出器產出的任何投影片運作,加上對應的 `pptx_*` MCP 工具,好讓
   一個 LLM agent 能在產出的投影片上反覆迭代。
-- **MCP 伺服器**:18 個工具 —— `list_sources` + `list_exports`
+- **MCP 伺服器**:25 個工具 —— `list_sources` + `list_exports`
   (探索)、`search`、`snowball`、`library_add`、`library_search`、`library_stats`、`fetch_paper`、`fetch_pdf_text`、`download_pdfs`、`pptx_validate_template`、
   `export`,以及六個 `pptx_*` 投影片工具(`inspect`、`review`、
   `update_slide`、`delete_slide`、`reorder_slides`、`add_slide`)。讓任何
@@ -386,6 +386,7 @@ claude mcp add thesisagents -- ".venv\Scripts\python.exe" -m thesisagents.mcp
 | `library_add` | 論文 → 文獻庫 (`library` 指向的 SQLite 檔案),保留給之後的工作階段使用。加入就是合併: 已經存在的論文會被更新,不會重複。`relations` 可存入 `snowball` 回傳的引用關係。 |
 | `library_search` | 查詢 → 文獻庫裡已有的論文,評分方式與搜尋相同,不需要網路。每篇都附上它的紀錄: 第一次與最近一次看到的時間,以及哪些來源回傳過它。 |
 | `library_stats` | 文獻庫 → 它保存了多少論文、執行紀錄與引用關係,各來源的論文數,以及最近幾次匯入。 |
+| `library_update`, `library_delete`, `library_import`, `library_duplicates`, `library_merge`, `library_saved_search`, `library_prisma` | 文獻庫 → 標籤、筆記、閱讀狀態與篩選決定，刪除與合併論文，匯入 BibTeX / RIS，只回報新論文的儲存搜尋，以及 PRISMA 流程。 |
 | `fetch_paper` | arXiv / DOI / PMID / IEEE 識別碼 → 單篇論文。 |
 | `fetch_pdf_text` | 下載一份 PDF,回傳擷取出的本文文字。**這是「我讀了論文」的 MCP 路徑。** |
 | `download_pdfs` | 批次把一份論文清單的 PDF 下載到 `{out_dir}/pdfs/`。回傳以 BibTeX 鍵為索引的每篇論文結果。 |
@@ -423,7 +424,7 @@ ThesisAgents/
 │   ├── intelligence/                # PDF fetch + Anthropic summariser  ([intelligence] extra)
 │   ├── library/                     # SQLite literature library kept across runs
 │   ├── evaluation/                  # offline search-quality benchmark (docs/search-quality.md)
-│   ├── mcp/                         # FastMCP server (18 tools)
+│   ├── mcp/                         # FastMCP server (25 tools)
 │   ├── sources/<name>/              # plugin folders: arxiv, semantic_scholar,
 │   │                                #   openalex, pubmed, acm, ieee, scholar,
 │   │                                #   dblp, crossref, openaire, springer,

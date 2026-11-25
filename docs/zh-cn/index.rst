@@ -45,7 +45,7 @@ MCP 6 步流程
    5. (你逐篇读 PDF,自己产 structured summary dict)
    6. export(papers=[{..., "summary": {...}}], language="zh-cn", ...)
 
-共 18 个 MCP 工具,完整参考见 :doc:`/mcp`。
+共 25 个 MCP 工具,完整参考见 :doc:`/mcp`。
 
 **要找出离题的结果,先参考工具自己的建议。** CLI 的 ``--diagnostics`` 或 MCP ``search`` 工具的 ``diagnostics=true`` 会解释排名: 每篇论文的分数拆成相关性、新近度与引用数三部分,列出命中的查询词,并给出 ``keep`` / ``review`` / ``prune`` 建议与触发它的阈值。CLI 还会把完整明细写到输出目录的 ``diagnostics.json``。这些只是建议,工具不会替你移除任何论文,所以删除前请先读过 ``review`` 与 ``prune`` 论文的摘要。
 
@@ -321,7 +321,7 @@ PPTX 布局
 MCP server
 ----------
 
-ThesisAgents 附带一个暴露 **18 个工具** 的 MCP server:发现
+ThesisAgents 附带一个暴露 **25 个工具** 的 MCP server:发现
 (``list_sources``、``list_exports``)、搜索、引用滚雪球搜索(``snowball``)、文献库(``library_add``、
 ``library_search``、``library_stats``)、单篇抓取、单个 PDF 正文提取
 (``fetch_pdf_text``)、批量 PDF 下载(``download_pdfs``)、
@@ -471,7 +471,7 @@ Python 模块)让你在不重跑搜索的情况下继续对它做迭代:
    │   ├── intelligence/             # PDF 抓取 + Anthropic 摘要器([intelligence] extra)
    │   ├── library/                  # SQLite literature library kept across runs
    │   ├── evaluation/               # 离线搜索质量评测(docs/search-quality.md)
-   │   ├── mcp/                      # 注册 18 个工具的 FastMCP server
+   │   ├── mcp/                      # 注册 25 个工具的 FastMCP server
    │   ├── sources/<name>/           # 各来源 plugin(arxiv、semantic_scholar、
    │   │                             #   openalex、pubmed、acm、ieee、scholar、
    │   │                             #   dblp、crossref、openaire、springer、

@@ -248,7 +248,7 @@ Eine Suche über mehrere Paper folgt derselben Form mit einem
   funktioniert mit jedem Foliensatz, den der Exporter erzeugt, plus den
   äquivalenten `pptx_*`-MCP-Tools, sodass ein LLM-Agent an einem erzeugten
   Foliensatz iterieren kann.
-- **MCP-Server**: 18 Tools — `list_sources` + `list_exports`
+- **MCP-Server**: 25 Tools — `list_sources` + `list_exports`
   (Discovery), `search`, `snowball`, `library_add`, `library_search`, `library_stats`, `fetch_paper`, `fetch_pdf_text`,
   `download_pdfs`, `pptx_validate_template`, `export` und die sechs `pptx_*`-Deck-Tools
   (`inspect`, `review`, `update_slide`, `delete_slide`,
@@ -498,6 +498,7 @@ Tools:
 | `library_add` | Papers → eine Literaturbibliothek (die SQLite-Datei unter `library`), aufbewahrt für spätere Sitzungen. Hinzufügen heißt zusammenführen: Ein bereits vorhandenes Paper wird aktualisiert, nicht dupliziert. `relations` speichert die Zitationsverknüpfungen, die `snowball` zurückgibt. |
 | `library_search` | Anfrage → Papers, die bereits in der Bibliothek liegen, bewertet wie bei einer Suche, ohne Netzwerkzugriff. Jedes kommt mit seiner Historie: wann zuerst und zuletzt gesehen und von welchen Quellen geliefert. |
 | `library_stats` | Bibliothek → wie viele Papers, Läufe und Zitationsverknüpfungen sie enthält, die Papers je Quelle und die letzten Importe. |
+| `library_update`, `library_delete`, `library_import`, `library_duplicates`, `library_merge`, `library_saved_search`, `library_prisma` | Bibliothek → Tags, Notizen, Lesestatus und Screening-Entscheidungen, Artikel löschen und zusammenführen, BibTeX / RIS importieren, Suchen, die nur Neues melden, und der PRISMA-Fluss. |
 | `fetch_paper` | arXiv / DOI / PMID / IEEE-Identifikator → einzelnes Paper. |
 | `fetch_pdf_text` | Lädt ein PDF herunter, gibt extrahierten Fließtext zurück. **Der MCP-Pfad zu „Ich habe das Paper gelesen".** |
 | `download_pdfs` | Lädt die PDFs einer Paper-Liste stapelweise nach `{out_dir}/pdfs/` herunter. Gibt Ergebnisse pro Paper zurück, indiziert nach BibTeX-Schlüssel. |
@@ -535,7 +536,7 @@ ThesisAgents/
 │   ├── intelligence/                # PDF fetch + Anthropic summariser  ([intelligence] extra)
 │   ├── library/                     # SQLite literature library kept across runs
 │   ├── evaluation/                  # offline search-quality benchmark (docs/search-quality.md)
-│   ├── mcp/                         # FastMCP server (18 tools)
+│   ├── mcp/                         # FastMCP server (25 tools)
 │   ├── sources/<name>/              # plugin folders: arxiv, semantic_scholar,
 │   │                                #   openalex, pubmed, acm, ieee, scholar,
 │   │                                #   dblp, crossref, openaire, springer,
