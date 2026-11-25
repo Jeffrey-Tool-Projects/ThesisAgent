@@ -21,6 +21,7 @@ Example::
 from __future__ import annotations
 
 import json
+import math
 import re
 import sqlite3
 import threading
@@ -350,10 +351,6 @@ class CurationMixin:
             rows = self._conn.execute("SELECT id, title FROM papers ORDER BY id").fetchall()
         words = [(int(i), frozenset(_WORD.findall(title.casefold()))) for i, title in rows]
         words = [(i, w) for i, w in words if len(w) >= _SHORTEST_TITLE]
-        by_word: dict[str, list[int]] = {}
-        for index, (_paper_id, bag) in enumerate(words):
-            for word in bag:
-                by_word.setdefault(word, []).append(index)
         parent = list(range(len(words)))
 
         def root(index: int) -> int:
@@ -362,12 +359,9 @@ class CurationMixin:
                 index = parent[index]
             return index
 
-        for index, (_paper_id, bag) in enumerate(words):
-            # Only papers sharing the rarest word are compared.
-            rarest = min(bag, key=lambda word: len(by_word[word]))
-            for other in by_word[rarest]:
-                if other != index and _overlap(bag, words[other][1]) >= _DUPLICATE_OVERLAP:
-                    parent[root(max(index, other))] = root(min(index, other))
+        for index, other in _candidate_pairs([bag for _paper_id, bag in words]):
+            if _overlap(words[index][1], words[other][1]) >= _DUPLICATE_OVERLAP:
+                parent[root(max(index, other))] = root(min(index, other))
         groups: dict[int, list[int]] = {}
         for index, (paper_id, _bag) in enumerate(words):
             groups.setdefault(root(index), []).append(paper_id)
@@ -391,6 +385,37 @@ class CurationMixin:
                 "no paper with id " + ", ".join(str(i) for i in missing) + " in the library"
             )
         return ids
+
+
+def _candidate_pairs(bags: Sequence[frozenset[str]]) -> set[tuple[int, int]]:
+    """The pairs of titles that can reach :data:`_DUPLICATE_OVERLAP`, each once.
+
+    Prefix filtering: with the words of every title in one order, rarest
+    first, two titles that share that much have a word in common among the
+    first ``n - ceil(overlap * n) + 1`` of each. So only titles that share one
+    of those are compared, and none that could pass is left out. Comparing
+    only papers that shared the single rarest word missed every pair in which
+    that word stood in one title alone, such as 之 and 的 in two spellings of
+    one Chinese title, and which word was the rarest among equals depended on
+    the process.
+
+    Example: ``_candidate_pairs([frozenset("abcd"), frozenset("abce")])`` is
+    ``{(0, 1)}``.
+    """
+    counts: dict[str, int] = {}
+    for bag in bags:
+        for word in bag:
+            counts[word] = counts.get(word, 0) + 1
+    by_word: dict[str, list[int]] = {}
+    pairs: set[tuple[int, int]] = set()
+    for index, bag in enumerate(bags):
+        ordered = sorted(bag, key=lambda word: (counts[word], word))
+        prefix = len(ordered) - math.ceil(_DUPLICATE_OVERLAP * len(ordered) - 1e-9) + 1
+        for word in ordered[:prefix]:
+            for other in by_word.get(word, ()):
+                pairs.add((other, index))
+            by_word.setdefault(word, []).append(index)
+    return pairs
 
 
 def _overlap(a: frozenset[str], b: frozenset[str]) -> float:

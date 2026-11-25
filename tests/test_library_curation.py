@@ -492,6 +492,18 @@ def test_chinese_titles_are_compared_too(library):
     assert all(ids["c3"] not in group for group in library.duplicate_candidates())
 
 
+def test_a_word_only_one_title_has_does_not_hide_the_pair(library):
+    # Each title's rarest word was its own, so only papers that shared it were
+    # compared, and these two never were.
+    words = "graph neural networks for molecular property prediction with message passing and edge"
+    library.add_papers([
+        _paper("x", f"{words} attention", doi=None),
+        _paper("y", f"{words} transformers", doi=None),
+    ])
+    ids = _ids(library)
+    assert (ids["x"], ids["y"]) in library.duplicate_candidates()
+
+
 def test_imported_papers_are_found_under_their_stored_record(library, run, tmp_path):
     ids = _ids(library)
     # The journal version, merged into the preprint, keeps the preprint's DOI.
