@@ -58,6 +58,7 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 
 | ID | Date | Title | Tags | Batch |
 |---|---|---|---|---|
+| U-20261126-11 | 2026-11-26 | A tool for judging search results by hand | #done #evaluation | [2026-11](2026-11.md) |
 | U-20261126-10 | 2026-11-26 | Slide editor in the GUI, edits keep the look of the text | #done #gui #pptx #mcp #i18n | [2026-11](2026-11.md) |
 | U-20261126-09 | 2026-11-26 | Summary editor, comparison table, Word and LaTeX literature review drafts | #done #gui #export #i18n | [2026-11](2026-11.md) |
 | U-20261126-08 | 2026-11-26 | Summaries from many model providers, local ones included | #done #intelligence #gui #cli #i18n | [2026-11](2026-11.md) |

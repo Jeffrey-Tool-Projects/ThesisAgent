@@ -23,6 +23,20 @@ and omitted IDs are treated as non-relevant.
 }
 ```
 
+`thesisagents.evaluation.judge` makes such a file. It runs the queries once
+and then shows one paper at a time to grade, in random order and without
+rank or source, because a judge who sees rank 1 tends to agree with it:
+
+```powershell
+py -m thesisagents.evaluation.judge collect benchmark.json --queries queries.txt --source arxiv,dblp
+py -m thesisagents.evaluation.judge grade benchmark.json
+```
+
+`queries.txt` holds one query per line. Every grade is saved at once, `s`
+skips a paper, `u` takes the last grade back, `q` stops, and `grade` goes on
+where it stopped. Running `collect` again refreshes the ranking and keeps
+the judgements.
+
 Run the evaluator without network access:
 
 ```powershell
