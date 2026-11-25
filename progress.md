@@ -18,3 +18,25 @@ Cross-repo and workspace items live in `D:\Codes\progress.md` (none open at the 
 The rebuilt window (sidebar, light / dark / system theme, layouts that adapt to the width) changed how the GUI looks, not what it can do. The items below are the gaps between the GUI and the CLI / MCP surfaces, plus improvements to what the GUI already does, in suggested order.
 
 - **#28** [UNVERIFIED] The rebuilt GUI has been checked by the test suite and by offscreen renders at 680, 1000 and 1400 px in both themes and both styles (classic, Material 3), not on a real screen. Open: how it looks and behaves at 100 / 125 / 150 / 200 % Windows scaling, with the OS switching between light and dark while the app is open, on macOS and Linux, and with a screen reader (every input needs an accessible name, the focus order should follow the cards). Check by running `thesisagents gui` on such setups and fix what does not hold.
+
+### Expansion plan (owner's decision, 2026-11-26)
+
+The owner asked for all of the items below and decided: the app is for other people to use, API keys go to the system credential store (`keyring` becomes a dependency of the `gui` extra), both Word and LaTeX export, as many model providers as possible including local ones, and no paid code-signing certificate. Suggested order: #39 to #44 and #57 first (what other users meet first), then the library (#45 to #49), then the paper output (#50 to #54), then the rest.
+
+- **#39** The GUI shows no log. A captcha that has to be solved in the visible Chrome window is announced only in the log (`webrunner_browser.wait_for_captcha_solved`), and since U-20261125-01 the released app has no console, so the user sees nothing until the 5 minute timeout. Add a status line for it, a log window, a log file, and a dialog when start-up fails.
+- **#40** `webrunner_pdf.should_use_webrunner` compares hosts with `endswith` and no dot boundary, so `evilieee.org` counts as `ieee.org` and is opened with the user's Chrome profile (`code-review.md` CR-01, a defect).
+- **#41** `code-review.md` CR-02 to CR-05 (PDF download rate limits, unused retry constants, Chrome `--no-sandbox`, the contact e-mail note): check which still hold, fix those, and close the records.
+- **#44** API keys are stored in plain text (the registry on Windows). Move them to the system credential store with `keyring`, migrate saved ones, and keep working where no store exists.
+- **#45** The Library page is read-only. Add tags, notes, a reading status, deleting and merging duplicates, in the store, the CLI, MCP and the GUI.
+- **#46** Import BibTeX and RIS files (only export exists), so a Zotero or EndNote library can be taken over.
+- **#47** Saved searches that list only the papers new since the last run.
+- **#48** A citation graph of the library in the GUI (the `relations` table holds the data).
+- **#49** Screening records (include / exclude with a reason) and a PRISMA flow diagram.
+- **#50** A summary editor in the GUI that shows which of the seven thesis sections have no content.
+- **#51** Slide editing in the GUI (update, delete, reorder, add, which MCP has), with previews.
+- **#52** A comparison table across papers (method, data set, result, weakness), for thesis section 2.3.
+- **#53** Word and LaTeX export of a literature review draft with citations.
+- **#54** More model providers for the summariser (it supports Anthropic only), including local models.
+- **#55** [BLOCKED] A benchmark for #4 needs relevance judgements made by a person. Provide the tool for making them.
+- **#57** Update notice in the GUI, and a Windows installer (unsigned, by the owner's decision).
+- **#58** Split the largest modules: `exporters/pptx.py` (about 3000 lines) and `gui/pages/search.py` (about 1000), before #50 and #51 add to them.
