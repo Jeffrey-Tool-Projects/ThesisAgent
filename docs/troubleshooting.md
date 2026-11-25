@@ -413,7 +413,8 @@ override of either to a wrong value can cause this symptom.
 Releases up to v0.1.26 shipped one console executable. Later ones open
 `thesisagents.exe` without a console. If the window still appears, you
 opened `thesisagents-cli.exe`, which is the command line. With pip,
-`thesisagents-gui` is a console script and keeps its terminal.
+`thesisagents-gui` opens without a console as well, and `thesisagents gui`
+keeps the terminal.
 
 ### The app does not start and shows nothing (Windows release)
 

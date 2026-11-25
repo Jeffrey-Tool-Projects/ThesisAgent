@@ -16,7 +16,7 @@ matches how you plan to use the project.
 | Developer / contributor | `pip install -e ".[dev]"` from a clone | Full toolchain — pytest, pytest-asyncio, pytest-httpx, pytest-qt, ruff, bandit + every runtime extra. |
 
 The published distribution name on PyPI is `thesisagents`. The
-console scripts installed are `thesisagents` (CLI),
+commands installed are `thesisagents` (CLI),
 `thesisagents-mcp` (MCP server), `thesisagents-gui` (desktop UI).
 
 ## Supported runtimes

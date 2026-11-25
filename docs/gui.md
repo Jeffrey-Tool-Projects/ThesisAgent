@@ -25,7 +25,7 @@ pip install thesisagents[gui,intelligence,mcp]
 Three equivalent entry points:
 
 ```powershell
-thesisagents-gui                    # PyPI console script
+thesisagents-gui                    # PyPI window program, no console on Windows
 thesisagents gui                    # CLI subcommand
 py -m thesisagents gui              # module entry, useful while developing
 ```

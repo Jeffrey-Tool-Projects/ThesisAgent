@@ -92,6 +92,10 @@ dev = [
 [project.scripts]
 thesisagents = "thesisagents.__main__:main"
 thesisagents-mcp = "thesisagents.mcp.__main__:main"
+
+# A window program: on Windows it opens without a console, like the release
+# executable. `thesisagents gui` keeps the terminal and shows the log there.
+[project.gui-scripts]
 thesisagents-gui = "thesisagents.gui.app:main"
 
 [tool.setuptools.packages.find]
