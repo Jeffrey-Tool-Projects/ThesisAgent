@@ -1,6 +1,7 @@
 """Settings page.
 
-Stores API keys / contact email / cookies-file path locally via
+Stores API keys in the system credential store (``gui/credentials.py``)
+and the rest (contact email, cookies-file path, appearance) locally via
 ``QSettings`` (native registry on Windows / plist on macOS / ini on
 Linux). On startup the values are also pushed into ``os.environ`` so
 the existing source plugins pick them up — saving here is equivalent
@@ -34,6 +35,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from thesisagents.gui import credentials
 from thesisagents.gui.font_size import (
     MAX_FONT_PT,
     MIN_FONT_PT,
@@ -85,6 +87,11 @@ _SETTINGS_FIELDS: Final[tuple[tuple[str, str, str], ...]] = (
     ),
 )
 
+#: The fields whose value is a secret and belongs in the credential store.
+_SECRET_KEYS: Final[frozenset[str]] = frozenset(
+    key for key, _env, _label in _SETTINGS_FIELDS if key.startswith("api/")
+)
+
 _COOKIES_KEY: Final[str] = "pdf/cookies_file"
 _COOKIES_ENV: Final[str] = "THESISAGENTS_PDF_COOKIES_FILE"
 _CHROME_PROFILE_KEY: Final[str] = "browser/chrome_profile_dir"
@@ -126,8 +133,9 @@ def apply_saved_env() -> None:
     the user typed in Settings without needing a shell restart.
     """
     store = settings_store()
+    credentials.migrate(store, _SECRET_KEYS)
     for key, env_var, _label in _SETTINGS_FIELDS:
-        value = store.value(key, "", type=str)
+        value = _saved_value(store, key)
         if value:
             os.environ[env_var] = value
         else:
@@ -142,6 +150,13 @@ def apply_saved_env() -> None:
         os.environ[_CHROME_PROFILE_ENV] = chrome_profile
     else:
         os.environ.pop(_CHROME_PROFILE_ENV, None)
+
+
+def _saved_value(store: QSettings, key: str) -> str:
+    """The saved value of one form field, wherever it is kept."""
+    if key in _SECRET_KEYS:
+        return credentials.read(store, key)
+    return store.value(key, "", type=str)
 
 
 def saved_ui_language(default: str = "en") -> str:
@@ -302,10 +317,15 @@ class SettingsPage(QWidget):
         for key, _env_var, label_key in _SETTINGS_FIELDS:
             edit = QLineEdit(self)
             # Mask secret-shaped fields; contact email stays plain.
-            if key.startswith("api/"):
+            if key in _SECRET_KEYS:
                 edit.setEchoMode(QLineEdit.PasswordEchoOnEdit)
             api_form.addRow(t(label_key, language), edit)
             self._field_inputs[key] = edit
+        self._storage_note = QLabel("", self)
+        self._storage_note.setObjectName("Muted")
+        self._storage_note.setWordWrap(True)
+        self._show_storage(credentials.available())
+        api_layout.addWidget(self._storage_note)
         adapt_form_rows(api_card, api_form)
         self._columns.addWidget(api_card, stretch=1, alignment=Qt.AlignmentFlag.AlignTop)
 
@@ -412,6 +432,14 @@ class SettingsPage(QWidget):
     def style_combo(self) -> QComboBox:
         return self._style_combo
 
+    def _show_storage(self, in_store: bool) -> None:
+        """Say where the keys are kept, in particular when that is plain text."""
+        key = "settings.keys_in_store" if in_store else "settings.keys_plain"
+        self._storage_note.setText(t(key, self._ui_language))
+
+    def storage_note(self) -> str:
+        return self._storage_note.text()
+
     def _on_browse_cookies(self) -> None:
         start = self._cookies_input.text() or str(Path.home())
         path, _ = QFileDialog.getOpenFileName(
@@ -435,13 +463,18 @@ class SettingsPage(QWidget):
 
     def _on_save(self) -> None:
         store = settings_store()
+        in_store = credentials.available()
         for key, env_var, _label in _SETTINGS_FIELDS:
             value = self._field_inputs[key].text().strip()
-            store.setValue(key, value)
+            if key in _SECRET_KEYS:
+                in_store = credentials.write(store, key, value) and in_store
+            else:
+                store.setValue(key, value)
             if value:
                 os.environ[env_var] = value
             else:
                 os.environ.pop(env_var, None)
+        self._show_storage(in_store)
         cookies = self._cookies_input.text().strip()
         store.setValue(_COOKIES_KEY, cookies)
         if cookies:
@@ -472,7 +505,7 @@ class SettingsPage(QWidget):
     def _load_from_store(self) -> None:
         store = settings_store()
         for key, _env_var, _label in _SETTINGS_FIELDS:
-            self._field_inputs[key].setText(store.value(key, "", type=str))
+            self._field_inputs[key].setText(_saved_value(store, key))
         self._cookies_input.setText(store.value(_COOKIES_KEY, "", type=str))
         self._chrome_profile_input.setText(
             store.value(_CHROME_PROFILE_KEY, "", type=str),

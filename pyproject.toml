@@ -40,6 +40,7 @@ dependencies = [
     "defusedxml>=0.7",
     "python-pptx>=0.6.23",
     "openpyxl>=3.1",
+    "python-docx>=1.1",
     "bibtexparser>=1.4",
     "beautifulsoup4>=4.12",
     "lxml>=5.2",
@@ -69,6 +70,9 @@ intelligence = [
 ]
 gui = [
     "PySide6>=6.7",
+    # API keys go to the system credential store (Windows Credential Manager,
+    # macOS Keychain, Secret Service), not into a settings file.
+    "keyring>=25.0",
 ]
 dev = [
     "pytest>=8.2",
@@ -82,6 +86,7 @@ dev = [
     "anthropic>=0.40",
     "pymupdf>=1.24",
     "PySide6>=6.7",
+    "keyring>=25.0",
 ]
 
 [project.scripts]

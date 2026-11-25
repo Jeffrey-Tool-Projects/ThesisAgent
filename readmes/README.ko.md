@@ -526,7 +526,7 @@ thesisagents-gui                 # or: thesisagents gui
 **Enrich**(`collection_ready` 시그널을 통해 LLM-as-agent / Python
 파이프라인 보강을 구동), **Deck**(Dark mode 토글, 슬라이드 상한, 식별자
 검사, 덱 템플릿이 `ExportOptions` 로 흘러 들어감), 그리고
-**Settings**(QSettings 를 통해 API 키를 영속화). Windows 릴리스 zip 은 PySide6 를 포함한 Nuitka 컴파일
+**Settings**(API 키와 환경 설정). Windows 릴리스 zip 은 PySide6 를 포함한 Nuitka 컴파일
 번들을 제공하므로, `thesisagents.exe` 를 열면 별도의 Python 설치 없이, 콘솔 창도
 띄우지 않고 데스크톱 앱이 시작됩니다. 같은 폴더의 `thesisagents-cli.exe` 는 명령줄 프로그램입니다.
 Search 페이지에서는 상위 결과에서 인용을 따라가거나 (스노볼), 결과를 라이브러리 파일에 보관하고 네트워크 없이 그 라이브러리를
@@ -542,7 +542,7 @@ Italiano, Tiếng Việt, हिन्दी, Bahasa Indonesia) — 첫 실행�
 사이드바가 아이콘으로 접히고 폼 레이블이 입력란 위로 옮겨집니다. 창은
 640×480 까지 줄어들며, HiDPI 스케일링이 기본으로 켜져 있습니다.
 **Settings → Theme** 에서 라이트, 다크, 시스템 따르기 중 하나를 고르면
-바로 적용되며, 덱 자체의 다크 모드와는 별개입니다. 결과를 정렬·필터링하고 체크해 일부 논문만 Enrich, Deck, Export 로 보낼 수 있고, 스노볼 범위를 조정할 수 있으며, 실행 중인 검색이나 보강은 취소할 수 있고, 폼 내용은 다음 실행 때도 유지됩니다. Deck 페이지에서는 내보내기 전에 템플릿을 검사하고 완성된 슬라이드를 검토할 수 있으며, API 키가 없으면 Enrich 페이지가 논문을 JSON 파일로 LLM 에이전트에게 넘기고 그 요약을 가져옵니다. Deck 페이지는 PDF도 다운로드할 수 있고, Settings 에서 기관 / VPN 접근을 선언하기 전까지 IEEE 는 제외하며, 새 인터페이스 언어는 작업을 유지한 채 바로 적용됩니다. 같은 스위치로 `ieee` 는 검색에서도 제외됩니다. Search 페이지는 CLI 의 `--pdf` 처럼 로컬 PDF를 결과로 읽어 올 수도 있습니다. 상태 줄은 Chrome 을 거쳐 받은 PDF 수를 알려 주고, 출판사 PDF가 Chrome 을 쓰지 못했을 때 경고합니다. **Settings → Style** 에서 클래식 네이비 스타일과 Material 3 를 전환합니다. **Settings → Font size** 에서 앱 전체의 글자 크기를 8~24 pt 범위로 바꾸면 바로 적용되고, `Ctrl++`, `Ctrl+-`, `Ctrl+0`(기본값 복원)으로도 바꿀 수 있으며, 레이아웃도 그에 맞춰집니다. 상태 표시줄의 **Log**(`Ctrl+L`)에서 앱이 하는 일을 볼 수 있고, 오류 보고에 첨부할 로그 파일도 남으며, Chrome 이 캡차 해결을 기다리면 배너로 알려 줍니다. `Ctrl+1` …
+바로 적용되며, 덱 자체의 다크 모드와는 별개입니다. 결과를 정렬·필터링하고 체크해 일부 논문만 Enrich, Deck, Export 로 보낼 수 있고, 스노볼 범위를 조정할 수 있으며, 실행 중인 검색이나 보강은 취소할 수 있고, 폼 내용은 다음 실행 때도 유지됩니다. Deck 페이지에서는 내보내기 전에 템플릿을 검사하고 완성된 슬라이드를 검토할 수 있으며, API 키가 없으면 Enrich 페이지가 논문을 JSON 파일로 LLM 에이전트에게 넘기고 그 요약을 가져옵니다. Deck 페이지는 PDF도 다운로드할 수 있고, Settings 에서 기관 / VPN 접근을 선언하기 전까지 IEEE 는 제외하며, 새 인터페이스 언어는 작업을 유지한 채 바로 적용됩니다. 같은 스위치로 `ieee` 는 검색에서도 제외됩니다. Search 페이지는 CLI 의 `--pdf` 처럼 로컬 PDF를 결과로 읽어 올 수도 있습니다. 상태 줄은 Chrome 을 거쳐 받은 PDF 수를 알려 주고, 출판사 PDF가 Chrome 을 쓰지 못했을 때 경고합니다. **Settings → Style** 에서 클래식 네이비 스타일과 Material 3 를 전환합니다. **Settings → Font size** 에서 앱 전체의 글자 크기를 8~24 pt 범위로 바꾸면 바로 적용되고, `Ctrl++`, `Ctrl+-`, `Ctrl+0`(기본값 복원)으로도 바꿀 수 있으며, 레이아웃도 그에 맞춰집니다. 상태 표시줄의 **Log**(`Ctrl+L`)에서 앱이 하는 일을 볼 수 있고, 오류 보고에 첨부할 로그 파일도 남으며, Chrome 이 캡차 해결을 기다리면 배너로 알려 줍니다. API 키는 설정 파일이 아니라 시스템 자격 증명 저장소(Windows 자격 증명 관리자, macOS 키체인, Secret Service)에 보관됩니다. `Ctrl+1` …
 `Ctrl+5` 로 페이지를 전환합니다.
 
 전체 레퍼런스: [`docs/gui.md`](../docs/gui.md).

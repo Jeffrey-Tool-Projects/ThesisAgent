@@ -238,8 +238,11 @@ page (**Add results to the library**), the CLI and MCP.
 
 ### Settings
 
-Interface language, theme, style, API keys, contact email, cookies file and
-Chrome profile directory are stored locally via Qt's
+API keys are kept in the system credential store (Windows Credential
+Manager, macOS Keychain, Secret Service), see
+[`configuration.md`](configuration.md) "API keys". Interface language,
+theme, style, contact email, cookies file and Chrome profile directory are
+stored locally via Qt's
 [`QSettings`](https://doc.qt.io/qtforpython-6/PySide6/QtCore/QSettings.html)
 (Windows registry, macOS plist, Linux ini). Saving a value also
 exports the matching environment variable into the current process,

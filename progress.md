@@ -21,7 +21,6 @@ The rebuilt window (sidebar, light / dark / system theme, layouts that adapt to 
 
 The owner asked for all of the items below and decided: the app is for other people to use, API keys go to the system credential store (`keyring` becomes a dependency of the `gui` extra), both Word and LaTeX export, as many model providers as possible including local ones, and no paid code-signing certificate. Suggested order: #39 to #44 and #57 first (what other users meet first), then the library (#45 to #49), then the paper output (#50 to #54), then the rest.
 
-- **#44** API keys are stored in plain text (the registry on Windows). Move them to the system credential store with `keyring`, migrate saved ones, and keep working where no store exists.
 - **#45** The Library page is read-only. Add tags, notes, a reading status, deleting and merging duplicates, in the store, the CLI, MCP and the GUI.
 - **#46** Import BibTeX and RIS files (only export exists), so a Zotero or EndNote library can be taken over.
 - **#47** Saved searches that list only the papers new since the last run.

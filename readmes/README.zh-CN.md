@@ -461,7 +461,7 @@ thesisagents-gui                 # or: thesisagents gui
 窗口有一个侧边栏,含五个页面:**Search**、**Library**(文献库文件的只读视图：概况、收录论文及其引用关系与标识符检查，以及积累它的历次搜索)、**Enrich**(经由一个
 `collection_ready` 信号驱动 LLM-as-agent / Python-pipeline 增强)、
 **Deck**(深色模式切换、幻灯片上限、标识符检查与幻灯片模板会流向
-`ExportOptions`),以及 **Settings**(经由 QSettings 保存 API 密钥)。
+`ExportOptions`),以及 **Settings**(API 密钥与偏好设置)。
 Windows 发行版 zip 发货的是 Nuitka 编译的包,已含 PySide6。打开
 `thesisagents.exe` 就会启动桌面应用,不显示控制台窗口,也不必另外装 Python。
 同一文件夹里的 `thesisagents-cli.exe` 则是命令行程序。
@@ -475,7 +475,7 @@ Tiếng Việt、हिन्दी、Bahasa Indonesia)—— 首次运行会从
 结果旁边,中等宽度时放在结果上方,宽度低于 760 px 时侧边栏收起为图标,
 表单标签移到字段上方。窗口可以缩小到 640×480,并默认开启 HiDPI 缩放。
 **Settings → Theme** 可选浅色、深色或跟随系统,立即生效,且与幻灯片本身的
-深色模式无关。结果可以排序、筛选并勾选，只把勾选的论文交给 Enrich、Deck 与导出，滚雪球的范围可以调整，执行中的搜索或丰富化可以取消，表单内容在下次启动时会保留。Deck 页面可在导出前检查模板，也能审查任何完成的幻灯片。没有 API 密钥时，Enrich 页面会把论文以 JSON 文件交给 LLM 代理，再导入它写的摘要。Deck 页面也能下载 PDF，在 Settings 声明机构 / VPN 访问权限之前会跳过 IEEE，新的界面语言会立即生效并保留当前工作。同一个开关也会让搜索跳过 `ieee`。Search 页面也能像 CLI 的 `--pdf` 一样，把本地 PDF 读入结果。状态栏会显示经由 Chrome 下载的 PDF 数量，出版商 PDF 无法使用 Chrome 时也会发出警告。**Settings → Style** 可在经典海军蓝外观与 Material 3 之间切换。**Settings → Font size** 可立即把整个应用的文字大小调整为 8 到 24 pt，也可以用 `Ctrl++`、`Ctrl+-` 和 `Ctrl+0`(恢复默认)，布局会随之调整。状态栏的 **Log**(`Ctrl+L`)显示程序正在做什么，并有日志文件可附在错误报告中，Chrome 等你完成验证时上方会出现提示。`Ctrl+1` … `Ctrl+5` 切换页面。
+深色模式无关。结果可以排序、筛选并勾选，只把勾选的论文交给 Enrich、Deck 与导出，滚雪球的范围可以调整，执行中的搜索或丰富化可以取消，表单内容在下次启动时会保留。Deck 页面可在导出前检查模板，也能审查任何完成的幻灯片。没有 API 密钥时，Enrich 页面会把论文以 JSON 文件交给 LLM 代理，再导入它写的摘要。Deck 页面也能下载 PDF，在 Settings 声明机构 / VPN 访问权限之前会跳过 IEEE，新的界面语言会立即生效并保留当前工作。同一个开关也会让搜索跳过 `ieee`。Search 页面也能像 CLI 的 `--pdf` 一样，把本地 PDF 读入结果。状态栏会显示经由 Chrome 下载的 PDF 数量，出版商 PDF 无法使用 Chrome 时也会发出警告。**Settings → Style** 可在经典海军蓝外观与 Material 3 之间切换。**Settings → Font size** 可立即把整个应用的文字大小调整为 8 到 24 pt，也可以用 `Ctrl++`、`Ctrl+-` 和 `Ctrl+0`(恢复默认)，布局会随之调整。状态栏的 **Log**(`Ctrl+L`)显示程序正在做什么，并有日志文件可附在错误报告中，Chrome 等你完成验证时上方会出现提示。API 密钥存放在系统的凭据管理器(Windows 凭据管理器、macOS 钥匙串、Secret Service)，不会写进设置文件。`Ctrl+1` … `Ctrl+5` 切换页面。
 
 完整参考:[`docs/gui.md`](../docs/gui.md)。
 

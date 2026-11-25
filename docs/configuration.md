@@ -62,8 +62,9 @@ for the full HiDPI story.
 
 ## QSettings on-disk store
 
-When the GUI's **Settings → Save** is clicked, the values land
-in a per-OS persistent store **and** are mirrored into
+When the GUI's **Settings → Save** is clicked, the API keys land in the
+system credential store (see below), the other values land in a per-OS
+persistent store **and** all of them are mirrored into
 `os.environ` for the current process. Each subsequent launch
 of the GUI calls `apply_saved_env()` at startup, so the env
 vars are re-applied automatically.
@@ -81,9 +82,21 @@ application name is `ThesisAgents`. Tests inject a temporary
 storage path via `QSettings.setPath(...)` so they never touch
 the user's real store.
 
+### API keys
+
+The `api/…` values are secrets and go to the system credential store,
+under the service name `ThesisAgents` and the key in the table below:
+Windows Credential Manager, macOS Keychain, or the Secret Service (GNOME
+Keyring, KWallet) on Linux. Keys that an earlier version saved in
+QSettings are moved at the next start, and the plain copy is removed only
+after the stored one was read back. Where no store is usable (a headless
+Linux box, a locked keychain), keys stay in QSettings as plain text and
+the Settings page says so under the fields. Keys set as environment
+variables are never written anywhere.
+
 ### Keys
 
-| QSettings key | Env var mirrored to | Type |
+| Key | Env var mirrored to | Type |
 |---|---|---|
 | `api/anthropic` | `ANTHROPIC_API_KEY` | string |
 | `api/semantic_scholar` | `THESISAGENTS_S2_API_KEY` | string |

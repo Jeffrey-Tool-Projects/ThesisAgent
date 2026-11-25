@@ -1138,20 +1138,20 @@ _LABELS: Final[dict[str, dict[str, str]]] = {
         "id": "Bahasa antarmuka",
     },
     "settings.api_keys_group": {
-        "en": "API keys (stored locally via QSettings)",
-        "zh-tw": "API 金鑰(透過 QSettings 儲存在本機)",
-        "zh-cn": "API 密钥(通过 QSettings 存储在本机)",
-        "ja": "API キー(QSettings でローカル保存)",
-        "es": "Claves de API (guardadas localmente vía QSettings)",
-        "fr": "Clés API (stockées localement via QSettings)",
-        "de": "API-Schlüssel (lokal via QSettings gespeichert)",
-        "ko": "API 키 (QSettings로 로컬 저장)",
-        "pt": "Chaves de API (armazenadas localmente via QSettings)",
-        "ru": "Ключи API (хранятся локально через QSettings)",
-        "it": "Chiavi API (memorizzate localmente tramite QSettings)",
-        "vi": "Khóa API (lưu cục bộ qua QSettings)",
-        "hi": "API कुंजियाँ (QSettings के माध्यम से स्थानीय रूप से संग्रहीत)",
-        "id": "Kunci API (disimpan lokal lewat QSettings)",
+        "en": "API keys",
+        "zh-tw": "API 金鑰",
+        "zh-cn": "API 密钥",
+        "ja": "API キー",
+        "es": "Claves de API",
+        "fr": "Clés API",
+        "de": "API-Schlüssel",
+        "ko": "API 키",
+        "pt": "Chaves de API",
+        "ru": "Ключи API",
+        "it": "Chiavi API",
+        "vi": "Khóa API",
+        "hi": "API कुंजियाँ",
+        "id": "Kunci API",
     },
     "settings.anthropic_key": {
         "en": "Anthropic API key",
@@ -4182,6 +4182,75 @@ _LABELS: Final[dict[str, dict[str, str]]] = {
         "vi": "ThesisAgents không khởi động được.\n{error}\nChi tiết có trong tệp nhật ký:",
         "hi": "ThesisAgents शुरू नहीं हो सका।\n{error}\nविवरण लॉग फ़ाइल में है:",
         "id": "ThesisAgents tidak dapat dimulai.\n{error}\nRinciannya ada di berkas log:",
+    },
+    # Where API keys are kept -------------------------------------------
+    "settings.keys_in_store": {
+        "en": "Kept in this system's credential store.",
+        "zh-tw": "存放在系統的憑證管理員。",
+        "zh-cn": "存放在系统的凭据管理器。",
+        "ja": "システムの資格情報ストアに保存されます。",
+        "es": "Se guardan en el almacén de credenciales del sistema.",
+        "fr": "Conservées dans le coffre d'identifiants du système.",
+        "de": "Werden im Anmeldeinformationsspeicher des Systems abgelegt.",
+        "ko": "시스템 자격 증명 저장소에 보관됩니다.",
+        "pt": "Guardadas no cofre de credenciais do sistema.",
+        "ru": "Хранятся в системном хранилище учётных данных.",
+        "it": "Conservate nell'archivio credenziali del sistema.",
+        "vi": "Được lưu trong kho thông tin xác thực của hệ thống.",
+        "hi": "सिस्टम के क्रेडेंशियल स्टोर में रखी जाती हैं।",
+        "id": "Disimpan di penyimpanan kredensial sistem.",
+    },
+    "settings.keys_plain": {
+        "en": (
+            "This system has no usable credential store, so keys are kept as plain text in the "
+            "app's settings."
+        ),
+        "zh-tw": "這個系統沒有可用的憑證管理員，金鑰會以純文字存放在程式設定中。",
+        "zh-cn": "这个系统没有可用的凭据管理器，密钥会以纯文本存放在程序设置中。",
+        "ja": (
+            "このシステムには使用できる資格情報ストアがないため、キーはアプリの設定に平文で保存"
+            "されます。"
+        ),
+        "es": (
+            "Este sistema no tiene un almacén de credenciales utilizable, así que las claves "
+            "se guardan como texto sin cifrar en los ajustes."
+        ),
+        "fr": (
+            "Ce système n'a pas de coffre d'identifiants utilisable, les clés sont donc "
+            "conservées en clair dans les réglages."
+        ),
+        "de": (
+            "Dieses System hat keinen nutzbaren Anmeldeinformationsspeicher, daher liegen die "
+            "Schlüssel im Klartext in den Einstellungen."
+        ),
+        "ko": (
+            "이 시스템에는 사용할 수 있는 자격 증명 저장소가 없어 키가 앱 설정에 일반 텍스트로 "
+            "저장됩니다."
+        ),
+        "pt": (
+            "Este sistema não tem um cofre de credenciais utilizável, então as chaves ficam "
+            "como texto simples nas configurações."
+        ),
+        "ru": (
+            "В этой системе нет доступного хранилища учётных данных, поэтому ключи хранятся в "
+            "настройках открытым текстом."
+        ),
+        "it": (
+            "Questo sistema non ha un archivio credenziali utilizzabile, quindi le chiavi "
+            "restano in chiaro nelle impostazioni."
+        ),
+        "vi": (
+            "Hệ thống này không có kho thông tin xác thực dùng được, nên khóa được lưu dạng "
+            "văn bản thuần trong cài đặt."
+        ),
+        "hi": (
+            "इस सिस्टम में उपयोग योग्य क्रेडेंशियल स्टोर नहीं है, इसलिए कुंजियाँ ऐप की सेटिंग में "
+            "सादे पाठ के रूप में रहती हैं।"
+        ),
+        "id": (
+            "Sistem ini tidak memiliki penyimpanan kredensial yang dapat dipakai, jadi kunci "
+            "disimpan sebagai teks biasa di pengaturan."
+        ),
     },
     "settings.vpn_access": {
         "en": "I have institutional / VPN access (download IEEE PDFs)",
