@@ -336,7 +336,8 @@ def test_pages_do_not_scroll_at_the_default_size(qtbot, points):
         qtbot.wait(20)
         viewport = page.parentWidget()
         assert isinstance(viewport.parentWidget(), QScrollArea)
-        assert page.height() <= viewport.height()
+        # With room to spare: fonts differ by a pixel or two between machines.
+        assert page.minimumSizeHint().height() <= viewport.height() - 6
 
 
 def test_a_language_switch_right_after_a_step_keeps_the_size(qtbot):

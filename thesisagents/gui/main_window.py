@@ -301,9 +301,10 @@ class MainWindow(QMainWindow):
             self._nav.set_compact(breakpoint is Breakpoint.COMPACT)
         self._breakpoint = breakpoint
         self._layout_scale = scale
-        margin = 12 if breakpoint is Breakpoint.COMPACT else 24
+        compact = breakpoint is Breakpoint.COMPACT
+        margin, top, bottom = (12, 8, 6) if compact else (24, 14, 10)
         for frame in self._headers:
-            frame.layout().setContentsMargins(margin, 14, margin, 10)
+            frame.layout().setContentsMargins(margin, top, margin, bottom)
         for page in (
             self._search_page, self._library_page, self._enrich_page,
             self._deck_page, self._settings_page,

@@ -667,7 +667,7 @@ QStatusBar {{
     color: {p.muted};
 }}
 #StatusButton {{
-    padding: 1px 10px;
+    padding: 0px 10px;
     min-height: 16px;
 }}
 #NoticeBanner {{
