@@ -487,6 +487,15 @@ produces — `title`, `meta`, `body`, `kpi`, `rq_question`, `figure`,
 `accent_top`, `accent_left` — so the editor list view labels each
 slide by its semantic role rather than by raw shape index.
 
+**Edit slides…** opens the deck selected in the list of written files, or
+one you pick. Thumbnails on the left can be dragged into another order. On
+the right is the selected slide and its texts, which keep their colour and
+size when you change them. Slides can be added in the deck's own look and
+deleted, every step can be undone, and the page numbers are counted again.
+The file on disk changes only with **Save** (`Ctrl+S`) or **Save as…**. The
+preview is drawn from the file without PowerPoint, so fonts and line breaks
+differ a little, and charts are not drawn.
+
 ## i18n
 
 The UI ships in **all 14 languages** that the slide-deck exporter

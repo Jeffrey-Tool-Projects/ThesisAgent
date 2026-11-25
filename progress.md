@@ -21,6 +21,5 @@ The rebuilt window (sidebar, light / dark / system theme, layouts that adapt to 
 
 The owner asked for all of the items below and decided: the app is for other people to use, API keys go to the system credential store (`keyring` becomes a dependency of the `gui` extra), both Word and LaTeX export, as many model providers as possible including local ones, and no paid code-signing certificate. Suggested order: #39 to #44 and #57 first (what other users meet first), then the library (#45 to #49), then the paper output (#50 to #54), then the rest.
 
-- **#51** Slide editing in the GUI (update, delete, reorder, add, which MCP has), with previews.
 - **#55** [BLOCKED] A benchmark for #4 needs relevance judgements made by a person. Provide the tool for making them.
 - **#58** Split the largest modules: `exporters/pptx.py` (about 3000 lines) and `gui/pages/search.py` (about 1000), before #50 and #51 add to them.

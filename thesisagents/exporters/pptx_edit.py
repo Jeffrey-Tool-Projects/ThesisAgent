@@ -5,14 +5,25 @@ by shape name when the file was written by `PptxExporter`, falling back to
 positional access otherwise) and the slide-list XML manipulation required to
 delete and reorder slides — python-pptx does not expose those operations
 directly.
+
+An edit keeps how the text looked. Writing ``text_frame.text`` alone drops
+the runs' colour and size, and text without an explicit colour is invisible
+on a dark deck (the dark-mode contract in ``deck-design``). A slide that is
+added takes the look of the deck's other content slides, and the page
+numbers are counted again whenever slides come, go or move.
 """
 
 from __future__ import annotations
 
+import copy
+import re
 from dataclasses import dataclass
 from pathlib import Path
 
 from pptx import Presentation
+from pptx.dml.color import RGBColor
+from pptx.exc import PackageNotFoundError
+from pptx.oxml.ns import qn
 from pptx.util import Inches, Pt
 
 from thesisagents.core.exceptions import ExportError
@@ -25,6 +36,13 @@ _SLIDE_TOP = Inches(0.6)
 _SLIDE_WIDTH = Inches(9.0)
 _TITLE_HEIGHT = Inches(1.2)
 _BODY_HEIGHT = Inches(5.4)
+#: Text colours for a shape that has none to keep, on a light and a dark slide.
+_INK = RGBColor(0x1F, 0x29, 0x37)
+_INK_ON_DARK = RGBColor(0xE5, 0xE7, 0xEB)
+_DARK_LUMINANCE = 90
+#: Shapes that make the look of a content slide and hold no content.
+_CHROME_NAMES = ("accent_top", "accent_rule")
+_PAGE_NUMBER = re.compile(r"^\s*\d+(\s*/\s*)\d+\s*$")
 
 
 @dataclass(frozen=True, slots=True)
@@ -78,7 +96,8 @@ def update_slide(
 
     `title` / `body` / `meta` look the shape up by name when present; if the
     file was produced by PptxExporter that always works. `shape_updates` is the
-    fallback — `{shape_index: new_text}` for arbitrary shape edits.
+    fallback — `{shape_index: new_text}` for arbitrary shape edits, with the
+    indices `inspect` reports.
     """
     presentation = _open(path)
     slide = _slide_at(presentation, slide_index)
@@ -90,14 +109,21 @@ def update_slide(
     if body is not None:
         _set_text_by_name(by_name, "body", body, _DEFAULT_BODY_PT)
     if shape_updates:
-        text_shapes = [s for s in slide.shapes if s.has_text_frame]
+        # Every shape counts, as in ``inspect``. Counting only those with text
+        # hit a neighbour as soon as a picture came before the shape.
+        shapes = list(slide.shapes)
         for shape_idx, new_text in shape_updates.items():
-            if shape_idx < 0 or shape_idx >= len(text_shapes):
+            if shape_idx < 0 or shape_idx >= len(shapes):
                 raise ExportError(
                     "pptx_edit",
                     f"shape index {shape_idx} out of range for slide {slide_index}",
                 )
-            _write_text_frame(text_shapes[shape_idx], new_text)
+            if not shapes[shape_idx].has_text_frame:
+                raise ExportError(
+                    "pptx_edit",
+                    f"shape {shape_idx} on slide {slide_index} holds no text",
+                )
+            _write_text_frame(shapes[shape_idx], new_text)
     return _save(presentation, path, out_path)
 
 
@@ -110,6 +136,7 @@ def delete_slide(
     presentation = _open(path)
     _ = _slide_at(presentation, slide_index)
     _remove_slide_at(presentation, slide_index)
+    _renumber(presentation)
     return _save(presentation, path, out_path)
 
 
@@ -129,6 +156,7 @@ def reorder_slides(
         sld_id_lst.remove(child)
     for child in reordered:
         sld_id_lst.append(child)
+    _renumber(presentation)
     return _save(presentation, path, out_path)
 
 
@@ -148,17 +176,25 @@ def add_slide(
     slide = LayoutSet({ROLE_CONTENT: content_layout(presentation)}).add_slide(
         presentation, ROLE_CONTENT
     )
-    _add_named_textbox(
-        slide, "title", title, _SLIDE_TOP, _TITLE_HEIGHT, _DEFAULT_TITLE_PT, bold=True
-    )
-    if meta:
-        _add_named_textbox(slide, "meta", meta, Inches(1.8), Inches(0.8), _DEFAULT_BODY_PT)
-    if body:
-        _add_named_textbox(slide, "body", body, Inches(2.8), _BODY_HEIGHT, _DEFAULT_BODY_PT)
+    look = _content_slide(presentation, exclude=slide)
+    if look is not None:
+        _take_look(slide, look)
+    for name, text, top, height, size, bold in (
+        ("title", title, _SLIDE_TOP, _TITLE_HEIGHT, _DEFAULT_TITLE_PT, True),
+        ("meta", meta, Inches(1.8), Inches(0.8), _DEFAULT_BODY_PT, False),
+        ("body", body, Inches(2.8), _BODY_HEIGHT, _DEFAULT_BODY_PT, False),
+    ):
+        if text or name == "title":
+            model = _text_shape(look, name) if look is not None else None
+            if model is not None:
+                _add_like(slide, model, text)
+            else:
+                _add_named_textbox(slide, name, text, top, height, size, bold=bold)
     if position is not None:
         target = max(0, min(position, len(presentation.slides) - 1))
         current_index = len(presentation.slides) - 1
         _move_slide(presentation, current_index, target)
+    _renumber(presentation)
     return _save(presentation, path, out_path)
 
 
@@ -166,7 +202,10 @@ def _open(path: str | Path) -> Presentation:
     resolved = Path(path).expanduser().resolve()
     if not resolved.exists():
         raise ExportError("pptx_edit", f"pptx file not found: {resolved}")
-    return Presentation(str(resolved))
+    try:
+        return Presentation(str(resolved))
+    except (PackageNotFoundError, KeyError, ValueError) as err:
+        raise ExportError("pptx_edit", f"{resolved} is not a PowerPoint file") from err
 
 
 def _save(
@@ -201,14 +240,111 @@ def _set_text_by_name(by_name, key, text, font_pt, bold=False):
 
 
 def _write_text_frame(shape, text: str, *, font_pt: int | None = None, bold: bool = False) -> None:
+    """Replace the text and keep its formatting, paragraph by paragraph.
+
+    More lines than before look like the last one. ``font_pt`` and ``bold``
+    are for a shape that had no text to take the look from.
+    """
     text_frame = shape.text_frame
+    looks = [
+        (copy.deepcopy(paragraph._p.pPr), copy.deepcopy(paragraph.runs[0]._r.rPr))  # noqa: SLF001
+        for paragraph in text_frame.paragraphs
+        if paragraph.runs
+    ]
     text_frame.word_wrap = True
     text_frame.text = text
-    for paragraph in text_frame.paragraphs:
+    for index, paragraph in enumerate(text_frame.paragraphs):
+        paragraph_look, run_look = looks[min(index, len(looks) - 1)] if looks else (None, None)
+        if paragraph_look is not None:
+            _replace_child(paragraph._p, "a:pPr", paragraph_look)  # noqa: SLF001
         for run in paragraph.runs:
-            if font_pt is not None:
-                run.font.size = Pt(font_pt)
-            run.font.bold = bold
+            if run_look is not None:
+                _replace_child(run._r, "a:rPr", run_look)  # noqa: SLF001
+            else:
+                if font_pt is not None:
+                    run.font.size = Pt(font_pt)
+                run.font.bold = bold
+            _ensure_colour(shape, run)
+
+
+def _replace_child(element, tag: str, replacement) -> None:
+    """Put a copy of ``replacement`` where ``tag`` belongs: first in the element."""
+    for old in element.findall(qn(tag)):
+        element.remove(old)
+    element.insert(0, copy.deepcopy(replacement))
+
+
+def _ensure_colour(shape, run) -> None:
+    """Give a run without any colour one that shows on its slide."""
+    colour = run.font.color
+    if colour is not None and colour.type is not None:
+        return
+    run.font.color.rgb = _INK_ON_DARK if _on_dark(shape) else _INK
+
+
+def _on_dark(shape) -> bool:
+    """Whether the shape's slide has a dark background of its own."""
+    try:
+        fill = shape.part.slide.background.fill
+        red, green, blue = fill.fore_color.rgb
+    except (AttributeError, TypeError):
+        return False
+    return 0.299 * red + 0.587 * green + 0.114 * blue < _DARK_LUMINANCE
+
+
+def _text_shape(slide, name: str):
+    return next(
+        (s for s in slide.shapes if s.has_text_frame and (s.name or "").lower() == name), None
+    )
+
+
+def _content_slide(presentation: Presentation, *, exclude):
+    """A slide to copy the look from: one with a title and a body, not the cover."""
+    best = None
+    for index, slide in enumerate(presentation.slides):
+        if slide.slide_id == exclude.slide_id or _text_shape(slide, "title") is None:
+            continue
+        if _text_shape(slide, "body") is not None and index > 0:
+            return slide
+        if index > 0:
+            best = best or slide
+    return best
+
+
+def _take_look(slide, look) -> None:
+    """Copy the background and the decoration of ``look`` behind the new slide."""
+    background = look._element.cSld.find(qn("p:bg"))  # noqa: SLF001
+    if background is not None:
+        slide._element.cSld.insert(0, copy.deepcopy(background))  # noqa: SLF001
+    # The new slide's empty placeholders would cover the copied title.
+    for placeholder in list(slide.placeholders):
+        placeholder._element.getparent().remove(placeholder._element)  # noqa: SLF001
+    for shape in look.shapes:
+        if (shape.name or "").lower() in (*_CHROME_NAMES, "page_number"):
+            slide.shapes._spTree.append(copy.deepcopy(shape._element))  # noqa: SLF001
+
+
+def _add_like(slide, model, text: str) -> None:
+    """A copy of the text shape ``model`` with other text."""
+    element = copy.deepcopy(model._element)  # noqa: SLF001
+    slide.shapes._spTree.append(element)  # noqa: SLF001
+    added = list(slide.shapes)[-1]
+    _write_text_frame(added, text)
+
+
+def _renumber(presentation: Presentation) -> None:
+    """Count the page numbers again ("3  /  12"), in the deck's own spacing."""
+    numbered = [
+        shape
+        for slide in presentation.slides
+        for shape in slide.shapes
+        if (shape.name or "").lower() == "page_number"
+        and shape.has_text_frame
+        and _PAGE_NUMBER.match(shape.text_frame.text)
+    ]
+    for number, shape in enumerate(numbered, 1):
+        separator = _PAGE_NUMBER.match(shape.text_frame.text).group(1)
+        _write_text_frame(shape, f"{number}{separator}{len(numbered)}")
 
 
 def _add_named_textbox(slide, name: str, text: str, top, height, font_pt: int, bold: bool = False):

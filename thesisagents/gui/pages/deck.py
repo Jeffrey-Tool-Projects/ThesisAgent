@@ -39,6 +39,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from thesisagents.core.exceptions import ExportError
 from thesisagents.core.models import ExportOptions, PaperCollection
 from thesisagents.exporters import export_collection
 from thesisagents.exporters.i18n import SUPPORTED_LANGUAGES as DECK_LANGUAGES
@@ -49,6 +50,7 @@ from thesisagents.exporters.template import format_report as format_template_rep
 from thesisagents.gui.i18n import LANGUAGE_DISPLAY_NAMES, t
 from thesisagents.gui.pages.settings import saved_vpn_access
 from thesisagents.gui.pdf_stage import PdfStageReport, run_pdf_stage
+from thesisagents.gui.widgets.deck_editor import DeckEditor
 from thesisagents.gui.widgets.report_dialog import ReportDialog
 from thesisagents.gui.widgets.responsive import (
     AdaptiveSplit,
@@ -253,6 +255,9 @@ class DeckPage(QWidget):
         self._review_button = QPushButton(t("deck.review_button", language), self)
         self._review_button.clicked.connect(self._on_review_clicked)
         review_row.addWidget(self._review_button)
+        self._edit_button = QPushButton(t("slides.button", language), self)
+        self._edit_button.clicked.connect(self._on_edit_clicked)
+        review_row.addWidget(self._edit_button)
         review_row.addStretch(1)
         results_layout.addLayout(review_row)
         self._table = QTableView(self)
@@ -647,6 +652,34 @@ class DeckPage(QWidget):
         )
         if path:
             self.review_deck_file(path)
+
+    def _on_edit_clicked(self) -> None:
+        """Edit the deck selected in the list, or one the user picks."""
+        path = self._selected_deck()
+        if not path:
+            path, _ = QFileDialog.getOpenFileName(
+                self, t("slides.button", self._ui_language),
+                self.output_dir() or str(Path.cwd()), "PowerPoint (*.pptx)",
+            )
+        if path:
+            self.edit_deck_file(path)
+
+    def _selected_deck(self) -> str:
+        rows = self._table.selectionModel().selectedRows(1)
+        path = str(rows[0].data() or "") if len(rows) == 1 else ""
+        return path if path.lower().endswith(".pptx") and Path(path).is_file() else ""
+
+    def edit_deck_file(self, path: str) -> None:
+        """Open the slide editor on ``path``."""
+        try:
+            self._deck_editor = DeckEditor(path, self._ui_language, self)
+        except (ExportError, OSError) as err:
+            self._status_label.setText(t("deck.check_failed", self._ui_language, error=str(err)))
+            return
+        self._deck_editor.open()
+
+    def deck_editor(self) -> DeckEditor:
+        return self._deck_editor
 
     def review_deck_file(self, path: str) -> None:
         """Review ``path`` on a worker thread and show the report."""
