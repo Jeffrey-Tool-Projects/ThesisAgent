@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import json
 
+import pytest
+
 from thesisagents.core.models import ExportOptions, PaperCollection, Query
 from thesisagents.exporters import export_collection
 
@@ -1956,3 +1958,16 @@ def test_pptx_shape_error_names_the_summary_field(tmp_path):
     message = str(excinfo.value)
     assert message.count("render failed") == 1   # not double-wrapped
     assert "bee2026long" in message              # names the offending paper
+
+
+@pytest.mark.parametrize(("language", "header"), [
+    ("zh-tw", ("技術", "於本研究之角色")),
+    ("zh-cn", ("技术", "在本研究中的作用")),
+    ("ko", ("기술", "본 연구에서의 역할")),
+    ("id", ("Teknik", "Peran dalam makalah ini")),
+])
+def test_technique_table_header_is_in_the_deck_language(language, header):
+    """zh-cn decks got the Traditional pair and ten languages the English one."""
+    from thesisagents.exporters.i18n import t
+
+    assert (t(language, "label_technique"), t(language, "label_technique_role")) == header

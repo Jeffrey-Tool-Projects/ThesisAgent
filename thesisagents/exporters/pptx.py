@@ -1092,14 +1092,7 @@ def _add_technique_table_slide(
     title = t(ctx.language, "section_technique_overview")
     slide = _new_section_slide(prs, layout, title, role=ROLE_TABLE)
     _add_paper_subtitle(slide, paper, ctx)
-    # The header row is labelled here per language: i18n.py has no
-    # technique / role keys yet, so every other locale gets the English pair.
-    if ctx.language.startswith("zh"):
-        rows = [("技術", "於本研究之角色")]
-    elif ctx.language == "ja":
-        rows = [("技術", "本研究での役割")]
-    else:
-        rows = [("Technique", "Role in this paper")]
+    rows = [(t(ctx.language, "label_technique"), t(ctx.language, "label_technique_role"))]
     rows.extend(summary.technique_table)
     _add_table(
         slide, rows=rows,

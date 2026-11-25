@@ -1,7 +1,10 @@
 """Download paper PDFs alongside the exported artefacts.
 
-Reuses the shared per-source HTTPS-only client so the same rate-limit token
-bucket, TLS guardrails, and User-Agent rules apply as for search traffic.
+Reuses the shared per-source HTTPS-only client, so the same TLS and
+local-network guardrails apply as for search traffic. The sources' token
+buckets do not: they pace API calls, and a PDF sits on some other host. What
+keeps this stage polite is a cap on parallel downloads and a smaller one per
+host.
 Failures (missing pdf_url, network errors, wrong content-type) are logged
 and skipped — the rest of the export workflow is unaffected.
 
@@ -33,12 +36,13 @@ _PDF_SUBDIR: str = "pdfs"
 _MAX_PDF_BYTES: int = 50_000_000
 _MAX_FILENAME_LENGTH: int = 80
 
-#: Cap on simultaneously-downloading PDFs. Each per-source client already has
-#: its own token bucket, but several sources can hand back PDF URLs on the SAME
-#: publisher CDN (dl.acm.org, link.springer.com, …) under different source
-#: clients — bypassing any single bucket. A global cap keeps that burst from
-#: looking like a scrape and risking an IP block. 4 keeps the stage brisk.
+#: Cap on simultaneously-downloading PDFs. Several sources can hand back PDF
+#: URLs on the SAME host under different source clients, so the cap is global.
+#: 4 keeps the stage brisk.
 _DOWNLOAD_CONCURRENCY: int = 4
+#: Of those, how many may run against one host (arxiv.org, a repository). A
+#: burst against a single host looks like a scrape and risks an IP block.
+_PER_HOST_CONCURRENCY: int = 2
 
 #: Real browser User-Agent — many publisher CDNs (Elsevier, IEEE Xplore,
 #: Springer) return 403 to non-browser UAs even for open-access PDFs.
@@ -96,14 +100,21 @@ async def download_pdfs(
     without a ``pdf_url`` are skipped with reason ``no_pdf_url``. A semaphore
     caps how many downloads run at once (``concurrency``, default
     ``_DOWNLOAD_CONCURRENCY``) so a large collection doesn't hammer a single
-    publisher CDN with one request per paper simultaneously.
+    publisher CDN with one request per paper simultaneously, and at most
+    ``_PER_HOST_CONCURRENCY`` of them run against the same host.
     """
     root = ensure_export_dir(out_dir)
     pdf_dir = ensure_export_dir(root / _PDF_SUBDIR)
     sem = asyncio.Semaphore(max(1, concurrency))
 
+    per_host: dict[str, asyncio.Semaphore] = {}
+
     async def _bounded(paper: Paper) -> PdfDownloadResult:
-        async with sem:
+        host = urlparse(paper.pdf_url or "").hostname or ""
+        host_sem = per_host.setdefault(host, asyncio.Semaphore(_PER_HOST_CONCURRENCY))
+        # The host's slot first: a paper that waits for a busy host must not
+        # hold one of the global slots meanwhile.
+        async with host_sem, sem:
             return await _download_one(paper, pdf_dir)
 
     # ``return_exceptions=True``: a download is per-paper best-effort, and the
@@ -191,7 +202,7 @@ async def _download_one(paper: Paper, pdf_dir: Path) -> PdfDownloadResult:
             route = ROUTE_DIRECT_NO_BROWSER
     result = await _fetch_and_validate(paper, target, key)
     return replace(  # NOSONAR dataclasses.replace returns the same dataclass type
-        result, route=route
+        result, route=result.route or route
     )
 
 
@@ -222,6 +233,12 @@ async def _fetch_and_validate(
                 "pdf %s returned HTML; retrying via <meta name=\"citation_pdf_url\"> %s",
                 key, retry_url,
             )
+            # The page names this address, so it gets the same routing as the
+            # first one: a publisher's PDF goes through visible Chrome.
+            if await _browser_fetched(retry_url, target):
+                return PdfDownloadResult(
+                    paper_key=key, path=target, skipped_reason=None, route=ROUTE_BROWSER
+                )
             fetched = await _request_pdf(client, paper, retry_url)
             if isinstance(fetched, PdfDownloadResult):
                 return PdfDownloadResult(
@@ -238,6 +255,19 @@ async def _fetch_and_validate(
     target.write_bytes(body)
     _LOG.info("pdf saved %s (%d bytes) for %s", target, len(body), key)
     return PdfDownloadResult(paper_key=key, path=target, skipped_reason=None)
+
+
+async def _browser_fetched(url: str, target: Path) -> bool:
+    """Fetch ``url`` with visible Chrome when it is a paywalled publisher's.
+
+    False when it is an open host, no browser is available, or Chrome did not
+    get the PDF. The caller then tries a direct request.
+    """
+    from thesisagents.fetchers import webrunner_pdf
+
+    if not webrunner_pdf.should_use_webrunner(url) or not webrunner_pdf.is_available():
+        return False
+    return await webrunner_pdf.download_via_browser(url, target)
 
 
 async def _request_pdf(client, paper: Paper, url: str):

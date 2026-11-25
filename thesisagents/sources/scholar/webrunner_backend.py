@@ -92,23 +92,3 @@ def _drive_chrome_sync(url: str) -> str:
     finally:
         with contextlib.suppress(Exception):
             driver.quit()
-
-
-# Backward-compat alias for tests that monkeypatch _build_chrome_args.
-def _build_chrome_args() -> list[str]:
-    """Return the Chrome args list (used by tests; the actual driver
-    is built by ``webrunner_browser.make_driver``)."""
-    args = [
-        "--disable-blink-features=AutomationControlled",
-        "--lang=en-US",
-        "--disable-gpu",
-        "--no-sandbox",
-        "--window-size=1280,720",
-    ]
-    import os
-    profile_dir = os.environ.get(
-        "THESISAGENTS_CHROME_PROFILE_DIR", ""
-    ).strip()
-    if profile_dir:
-        args.append(f"--user-data-dir={profile_dir}")
-    return args

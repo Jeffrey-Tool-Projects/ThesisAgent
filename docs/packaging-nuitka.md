@@ -54,6 +54,7 @@ python -m nuitka `
   --onefile `
   --output-filename=thesisagents `
   --include-package=thesisagents `
+  --include-package-data=thesisagents `
   --include-package-data=pptx `
   --include-package-data=openpyxl `
   --assume-yes-for-downloads `

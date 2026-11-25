@@ -2,26 +2,47 @@
 
 All outbound HTTP goes through `get_client(source)`. The transport rejects any
 non-HTTPS request (including redirect targets) so a misconfigured endpoint or a
-malicious redirect cannot exfiltrate over plain HTTP.
+malicious redirect cannot exfiltrate over plain HTTP. It also rejects addresses
+of this machine and of private networks: PDF links come from third-party
+metadata, and a link to `https://192.168.1.1/` would make the app call the
+user's router. Only literal addresses are checked, not what a name resolves
+to, because a university proxy commonly has a private address.
 """
 
 from __future__ import annotations
 
 import asyncio
 import contextlib
+import ipaddress
 from collections.abc import AsyncIterator
 from dataclasses import dataclass
 
 import httpx
 
+from thesisagents import __version__
 from thesisagents.core.constants import HTTP_TIMEOUT_SECONDS
 from thesisagents.utils.logging import get_logger
 
 _LOG = get_logger(__name__)
 
 
+def is_local_host(host: str) -> bool:
+    """True for this machine's names and for non-public IP address literals.
+
+    >>> is_local_host("localhost"), is_local_host("10.0.0.5"), is_local_host("arxiv.org")
+    (True, True, False)
+    """
+    name = host.strip("[]").rstrip(".").lower()
+    if name == "localhost" or name.endswith(".localhost"):
+        return True
+    try:
+        return not ipaddress.ip_address(name).is_global
+    except ValueError:
+        return False
+
+
 class HttpsOnlyTransport(httpx.AsyncBaseTransport):
-    """Wrap an underlying transport and reject non-HTTPS requests."""
+    """Wrap an underlying transport, reject non-HTTPS and local-network requests."""
 
     def __init__(self, inner: httpx.AsyncBaseTransport) -> None:
         self._inner = inner
@@ -31,6 +52,11 @@ class HttpsOnlyTransport(httpx.AsyncBaseTransport):
         if scheme != "https":
             raise httpx.RequestError(
                 f"refusing non-HTTPS request to {request.url}",
+                request=request,
+            )
+        if is_local_host(request.url.host):
+            raise httpx.RequestError(
+                f"refusing a request to the local network: {request.url}",
                 request=request,
             )
         return await self._inner.handle_async_request(request)
@@ -63,10 +89,7 @@ _BROWSER_UA_SOURCES = frozenset({"ieee", "scholar"})
 def _user_agent_for(source: str) -> str:
     if source in _BROWSER_UA_SOURCES:
         return _BROWSER_UA
-    return (
-        f"ThesisAgents/0.1 (+source={source}; "
-        "contact=set THESISAGENTS_CONTACT)"
-    )
+    return f"ThesisAgents/{__version__} (source={source})"
 
 
 def _build_client(source: str) -> httpx.AsyncClient:

@@ -351,7 +351,7 @@ jobs:
             --standalone \
             --python-flag=-m \
             --output-filename=thesisagents.exe \
-            --windows-icon-from-ico=assets/icon.ico \
+            --windows-icon-from-ico=thesisagents/gui/icon.ico \
             --include-package=thesisagents \
             --enable-plugin=pyside6 \
             --nofollow-import-to=pymupdf \
@@ -362,6 +362,7 @@ jobs:
             --nofollow-import-to=streamlit \
             --nofollow-import-to=tornado \
             --lto=no \
+            --include-package-data=thesisagents \
             --include-package-data=pptx \
             --include-package-data=openpyxl \
             --assume-yes-for-downloads \

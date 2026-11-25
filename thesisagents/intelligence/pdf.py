@@ -1,7 +1,7 @@
 """Fetch a paper's PDF over HTTPS-only and extract its text.
 
-We reuse the shared per-source HTTPS-only client so the same rate limiter
-and TLS guardrails apply. Output is plain text, joined per page, capped at
+We reuse the shared per-source HTTPS-only client so the same TLS and
+local-network guardrails apply. Output is plain text, joined per page, capped at
 ``MAX_PDF_CHARS`` so a malicious 1000-page PDF cannot blow out the LLM
 context window.
 """

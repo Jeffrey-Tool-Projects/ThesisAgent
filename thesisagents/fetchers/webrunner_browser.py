@@ -20,6 +20,7 @@ owns its driver, never shares state, and quits cleanly when done.
 from __future__ import annotations
 
 import os
+import sys
 import time
 from typing import Any
 
@@ -62,6 +63,33 @@ def is_available() -> bool:
     return True
 
 
+def _is_root_on_linux() -> bool:
+    """True in a Linux container or CI job that runs as root."""
+    return sys.platform == "linux" and getattr(os, "geteuid", lambda: 1)() == 0
+
+
+def chrome_arguments() -> list[str]:
+    """Command-line arguments of every Chrome this project starts.
+
+    Chrome's sandbox stays on. Pages opened here come from publishers and
+    search engines, and the user's own profile may be loaded. It used to be
+    off everywhere, which is only needed where Chrome refuses to start with
+    it: as root on Linux, which a desktop user is not.
+    """
+    arguments = [
+        "--disable-blink-features=AutomationControlled",
+        "--lang=en-US",
+        "--disable-gpu",
+        "--window-size=1280,720",
+    ]
+    if _is_root_on_linux():
+        arguments.append("--no-sandbox")
+    profile_dir = os.environ.get(_PROFILE_DIR_ENV, "").strip()
+    if profile_dir:
+        arguments.append(f"--user-data-dir={profile_dir}")
+    return arguments
+
+
 def make_driver(*, download_dir: str | None = None) -> Any:
     """Boot a fresh visible Chrome with anti-detection options.
 
@@ -74,21 +102,14 @@ def make_driver(*, download_dir: str | None = None) -> Any:
     from selenium.webdriver.chrome.options import Options
 
     options = Options()
-    options.add_argument("--disable-blink-features=AutomationControlled")
-    options.add_argument("--lang=en-US")
-    options.add_argument("--disable-gpu")
-    options.add_argument("--no-sandbox")
-    options.add_argument("--window-size=1280,720")
-    profile_dir = os.environ.get(_PROFILE_DIR_ENV, "").strip()
-    if profile_dir:
-        options.add_argument(f"--user-data-dir={profile_dir}")
+    for argument in chrome_arguments():
+        options.add_argument(argument)
     if download_dir:
         prefs = {
             "download.default_directory": download_dir,
             "download.prompt_for_download": False,
             "download.directory_upgrade": True,
             "plugins.always_open_pdf_externally": True,
-            "safebrowsing.enabled": False,
         }
         options.add_experimental_option("prefs", prefs)
     return webdriver.Chrome(options=options)

@@ -93,6 +93,9 @@ thesisagents-gui = "thesisagents.gui.app:main"
 where = ["."]
 include = ["thesisagents*"]
 
+[tool.setuptools.package-data]
+"thesisagents.gui" = ["icon.ico"]
+
 [tool.ruff]
 line-length = 100
 target-version = "py312"

@@ -21,11 +21,10 @@ if TYPE_CHECKING:
     from PySide6.QtGui import QFont, QIcon
 
 
-# Repo root → assets/icon.ico. parents[2] = thesisagents/gui/app.py
-# → thesisagents/gui → thesisagents → repo. Resolved lazily so the
-# import-time path lookup doesn't run when the package is imported by
-# the CLI only.
-_ICON_PATH = Path(__file__).resolve().parents[2] / "assets" / "icon.ico"
+# Package data, so it is found in a checkout, a pip install and the Nuitka
+# bundle alike. It used to sit in the repository's assets/ folder, which
+# neither of the last two contains, so their windows had no icon.
+_ICON_PATH = Path(__file__).resolve().parent / "icon.ico"
 
 
 def _configure_hidpi_env() -> None:
@@ -135,9 +134,8 @@ def main(argv: list[str] | None = None) -> int:
 def _load_app_icon() -> QIcon | None:
     """Return the bundled QIcon, or None when the .ico isn't reachable.
 
-    Soft-fails because the icon ships outside the importable package
-    tree; a future repackaging that flattens the layout could break
-    parents[2] and we'd rather show the default Qt icon than crash.
+    Soft-fails because a repackaging can leave package data out, and the
+    default Qt icon is better than a crash.
     """
     if not _ICON_PATH.is_file():
         return None

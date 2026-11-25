@@ -81,11 +81,15 @@ def is_available() -> bool:
 
 
 def should_use_webrunner(url: str) -> bool:
-    """True when the URL's host is a known paywalled publisher CDN."""
-    host = (urlparse(url).hostname or "").lower()
-    if not host:
-        return False
-    return any(host.endswith(suffix) for suffix in _PAYWALLED_SUFFIXES)
+    """True when the URL's host is a known paywalled publisher CDN.
+
+    The host must be a listed domain or a subdomain of one. A bare
+    ``endswith`` also matched ``evilieee.org``, and a PDF link comes from
+    third-party metadata, so such a host would have been opened in the user's
+    own Chrome profile.
+    """
+    host = (urlparse(url).hostname or "").lower().rstrip(".")
+    return any(host == domain or host.endswith(f".{domain}") for domain in _PAYWALLED_SUFFIXES)
 
 
 async def download_via_browser(url: str, target: Path) -> bool:

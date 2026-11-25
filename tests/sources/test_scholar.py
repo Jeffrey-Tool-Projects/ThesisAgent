@@ -207,25 +207,3 @@ def test_webrunner_is_available_respects_disable_env(monkeypatch):
 
     monkeypatch.setenv("THESISAGENTS_DISABLE_WEBRUNNER", "1")
     assert webrunner_backend.is_available() is False
-
-
-def test_chrome_args_always_visible_no_profile(monkeypatch):
-    """Always-visible policy: no --headless flag ever, profile only when set."""
-    from thesisagents.sources.scholar import webrunner_backend
-
-    monkeypatch.delenv("THESISAGENTS_CHROME_PROFILE_DIR", raising=False)
-    args = webrunner_backend._build_chrome_args()  # noqa: SLF001
-    assert "--headless=new" not in args
-    assert not any(a.startswith("--headless") for a in args)
-    assert "--disable-blink-features=AutomationControlled" in args
-    assert not any(a.startswith("--user-data-dir=") for a in args)
-
-
-def test_chrome_args_with_profile_dir_passes_user_data_dir(monkeypatch):
-    from thesisagents.sources.scholar import webrunner_backend
-
-    monkeypatch.setenv("THESISAGENTS_CHROME_PROFILE_DIR", "D:/scholar-profile")
-    args = webrunner_backend._build_chrome_args()  # noqa: SLF001
-    assert "--user-data-dir=D:/scholar-profile" in args
-    # Still no headless flag — visible is mandatory.
-    assert not any(a.startswith("--headless") for a in args)

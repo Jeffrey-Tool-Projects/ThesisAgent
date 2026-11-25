@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 from pathlib import Path
 
 import httpx
@@ -467,3 +468,40 @@ async def test_a_pdf_already_on_disk_reports_its_route(tmp_path: Path, monkeypat
     again = (await download_pdfs(_collection(_paper()), tmp_path))[0]
     assert first.route == pdf_download_module.ROUTE_DIRECT
     assert again.route == pdf_download_module.ROUTE_ON_DISK
+
+
+async def test_a_publisher_link_named_by_a_page_goes_through_the_browser(
+    tmp_path: Path, monkeypatch
+):
+    """The second hop (``citation_pdf_url``) skipped the routing of the first
+    and sent a paywalled publisher a direct request."""
+    page = f'<html><head><meta name="citation_pdf_url" content="{_PAYWALLED}"></head></html>'
+    transport = _CannedTransport(200, page.encode(), "text/html")
+    _install_transport(monkeypatch, transport)
+    visited = _browser(monkeypatch, available=True)
+    result = (await download_pdfs(_collection(_paper()), tmp_path))[0]
+    assert visited == [_PAYWALLED]
+    assert result.route == pdf_download_module.ROUTE_BROWSER
+    assert result.path is not None
+    assert len(transport.calls) == 1
+
+
+async def test_one_host_gets_at_most_two_downloads_at_once(tmp_path: Path, monkeypatch):
+    running = {"a.example": 0, "b.example": 0}
+    peak = dict(running)
+
+    async def fake_one(paper, pdf_dir):
+        host = paper.pdf_url.split("/")[2]
+        running[host] += 1
+        peak[host] = max(peak[host], running[host])
+        await asyncio.sleep(0.01)
+        running[host] -= 1
+        return pdf_download_module.PdfDownloadResult(paper.source_id, None, "x")
+
+    monkeypatch.setattr(pdf_download_module, "_download_one", fake_one)
+    papers = [
+        _paper(source_id=str(i), pdf_url=f"https://{'ab'[i % 2]}.example/{i}.pdf")
+        for i in range(12)
+    ]
+    await download_pdfs(_collection(*papers), tmp_path)
+    assert peak == {"a.example": 2, "b.example": 2}

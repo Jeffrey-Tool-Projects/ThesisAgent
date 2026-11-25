@@ -6,8 +6,6 @@ DEFAULT_PAGE_SIZE: int = 25
 MAX_RESULTS_PER_SOURCE: int = 200
 MAX_KEYWORD_LENGTH: int = 256
 HTTP_TIMEOUT_SECONDS: float = 30.0
-HTTP_MAX_RETRIES: int = 3
-HTTP_BACKOFF_BASE_SECONDS: float = 1.5
 
 # Pipeline-level retry on RateLimitError. Sources that report 429 get retried
 # this many times with exponential backoff before the source is reported as

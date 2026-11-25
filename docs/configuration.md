@@ -24,8 +24,8 @@ each value into `os.environ` before any fetcher initialises.
 
 | Variable | Default | Effect |
 |---|---|---|
-| `THESISAGENTS_S2_API_KEY` | unset | Higher rate limit on the Semantic Scholar plugin (1/s anonymous → 10/s with key). **Also used by the OA resolver's S2 `openAccessPdf` lookup step** — without the key the resolver's S2 calls hit the anonymous tier and rate-limit fast. Free key at <https://www.semanticscholar.org/product/api>. |
-| `THESISAGENTS_NCBI_API_KEY` | unset | Raises PubMed's anonymous limit from 3 req/s to 10 req/s. |
+| `THESISAGENTS_S2_API_KEY` | unset | Sent with every Semantic Scholar request, which is then served from your own quota instead of the one all anonymous users share. The plugin stays at 1 request per second either way. **Also used by the OA resolver's S2 `openAccessPdf` lookup step** — without the key the resolver's S2 calls hit the anonymous tier and rate-limit fast. Free key at <https://www.semanticscholar.org/product/api>. |
+| `THESISAGENTS_NCBI_API_KEY` | unset | Sent with every PubMed request. NCBI allows 10 req/s with a key, the plugin stays at 3. |
 | `THESISAGENTS_IEEE_API_KEY` | unset | Switches the IEEE plugin from the scrape fallback to the official Xplore API (`ieeexploreapi.ieee.org`). Surfaces `pdf_url` for papers in your subscription scope. Apply at <https://developer.ieee.org/>. |
 | `THESISAGENTS_DISABLE_IEEE_SCRAPING` | unset | **IEEE plugin is now default-ON.** Set `=1` to opt out of the scrape fallback. IEEE Xplore ToS are grey on automated traffic — set this if you don't want the scrape path running. |
 | `THESISAGENTS_SPRINGER_API_KEY` | unset | Free key from <https://dev.springernature.com/>. **Required** for the Springer plugin — it raises `ConfigError` at construction without a key, which the pipeline silently skips. |
@@ -34,7 +34,7 @@ each value into `os.environ` before any fetcher initialises.
 | `THESISAGENTS_DISABLE_WEBRUNNER` | unset | **Scholar + IEEE plugins + the PDF downloader for paywalled publisher CDNs all default to driving a real visible Chrome through Selenium** (`selenium` is a default dependency) — publisher bot-detection is far less aggressive on real browsers. PDF download host list includes `ieeexplore.ieee.org`, `dl.acm.org`, `link.springer.com`, `sciencedirect.com`, `onlinelibrary.wiley.com`, `tandfonline.com`, `academic.oup.com`, `nature.com`, `science.org`, plus a few engineering-society CDNs. Set `=1` to force the httpx paths instead (useful for CI / Docker without a Chrome binary). |
 | `THESISAGENTS_CHROME_PROFILE_DIR` | unset | When set, passes `--user-data-dir=<path>` to Chrome so cookies / login state survive across CLI invocations. Used by **both** Scholar (one-time Google sign-in suppresses Scholar captchas) and IEEE (institutional auth cookies surface paywalled metadata). |
 | `THESISAGENTS_CORE_API_KEY` | unset | Free key from <https://core.ac.uk/services/api>. Enables both the OA resolver's CORE.ac.uk lookup step (200M+ institutional / regional OA repository items) **and** the `core` search source. Skipped silently when unset — the `core` source drops out and the other OA strategies (Unpaywall, Semantic Scholar, arXiv) still run. |
-| `THESISAGENTS_CONTACT_EMAIL` | unset | Sent to Crossref / OpenAlex as the `mailto=` parameter (entry into their polite pool), to NCBI as `tool` / `email` headers, **and to Unpaywall as `email=`** for the post-dedup OA PDF resolver. Highly recommended — without it the resolver skips Unpaywall lookups entirely, which is the single biggest PDF coverage win for IEEE / ACM / Springer / Elsevier paywalled papers (typical lift 40-70%). |
+| `THESISAGENTS_CONTACT_EMAIL` | unset | Sent to Crossref / OpenAlex as the `mailto=` parameter (entry into their polite pool), to NCBI as the `tool` / `email` query parameters, **and to Unpaywall as `email=`** for the post-dedup OA PDF resolver. Highly recommended — without it the resolver skips Unpaywall lookups entirely, which is the single biggest PDF coverage win for IEEE / ACM / Springer / Elsevier paywalled papers (typical lift 40-70%). |
 
 ### PDF download
 
@@ -134,9 +134,9 @@ defaults match each upstream's published or observed soft limit:
 | Source | Rate | Jitter | Notes |
 |---|---|---|---|
 | `arxiv` | 1 req / 3 s | 0.5 s | Matches arXiv's API ToS. |
-| `semantic_scholar` | 1 req / s | 0.1 s | Anonymous limit; 10/s with API key. |
+| `semantic_scholar` | 1 req / s | 0.1 s | With and without an API key. |
 | `openalex` | 10 req / s | 0.1 s | Polite pool (with `THESISAGENTS_CONTACT_EMAIL`). |
-| `pubmed` | 3 req / s | 0.1 s | Anonymous; 10/s with `THESISAGENTS_NCBI_API_KEY`. |
+| `pubmed` | 3 req / s | 0.1 s | With and without `THESISAGENTS_NCBI_API_KEY`. |
 | `acm` (via crossref) | 50 req / s | 0.05 s | Crossref public; Plus token raises further. |
 | `dblp` | 1 req / 2 s | 0.5 s | Conservative — DBLP is single-server. |
 | `crossref` | 50 req / s | 0.05 s | Polite pool with `mailto`. |
