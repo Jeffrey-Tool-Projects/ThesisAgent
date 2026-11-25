@@ -48,6 +48,24 @@ def _configure_hidpi_env() -> None:
     )
 
 
+def _silence_font_probe_messages() -> None:
+    """Hide Qt's ``OpenType support missing for "X", script N`` lines.
+
+    Qt prints one for every family it tries before the one that can shape a
+    script. The language lists hold "हिन्दी", so a machine whose system font
+    has no Devanagari (Microsoft JhengHei on a zh-tw Windows) prints one on
+    every start although the text renders in Nirmala UI. Reordering the
+    families is no way out, since Nirmala UI first would also draw the Latin
+    text. The lines are logged at info level, so a ``.warning`` rule does not
+    reach them and the category's real warnings stay visible. Setting
+    ``QT_LOGGING_RULES="qt.text.font.db.info=true"`` brings them back,
+    because Qt applies that variable after these rules.
+    """
+    from PySide6.QtCore import QLoggingCategory
+
+    QLoggingCategory.setFilterRules("qt.text.font.db.info=false")
+
+
 def main(argv: list[str] | None = None) -> int:
     """Boot the PySide6 desktop UI.
 
@@ -55,6 +73,7 @@ def main(argv: list[str] | None = None) -> int:
     propagates a crash up to the caller.
     """
     _configure_hidpi_env()
+    _silence_font_probe_messages()
 
     # Import inside main so importing the package itself never pays
     # the PySide6 cost (~80 MB) when only the CLI is used.

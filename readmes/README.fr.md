@@ -583,8 +583,9 @@ La fenêtre a une barre latérale avec cinq pages : **Search**, **Library** (une
 la vérification des identifiants et le modèle de présentation se répercutent
 dans `ExportOptions`) et **Settings** (persiste les clés API via QSettings).
 Le zip de release Windows livre le bundle compilé par Nuitka
-avec PySide6 inclus, de sorte que `thesisagents.exe gui` fonctionne sans
-installation Python séparée.
+avec PySide6 inclus : `thesisagents.exe` ouvre l'application de bureau sans
+fenêtre de console et sans installation Python séparée, et
+`thesisagents-cli.exe`, dans le même dossier, est la ligne de commande.
 La page Search peut aussi suivre les citations des premiers résultats
 (boule de neige), conserver les résultats dans un fichier de
 bibliothèque et chercher dans cette bibliothèque sans réseau, et

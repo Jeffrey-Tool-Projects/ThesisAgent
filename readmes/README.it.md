@@ -575,8 +575,9 @@ La finestra ha una barra laterale con cinque pagine: **Search**, **Library** (un
 `collection_ready`), **Deck** (il toggle della modalità scura, il tetto di
 slide, il controllo degli identificatori e il modello del deck confluiscono in
 `ExportOptions`) e **Settings** (persiste le chiavi API via QSettings). Lo zip di release per Windows porta il bundle compilato con
-Nuitka con PySide6 incluso, così `thesisagents.exe gui` funziona senza una
-installazione separata di Python.
+Nuitka con PySide6 incluso: `thesisagents.exe` apre l'app desktop senza
+finestra della console e senza un'installazione separata di Python, e
+`thesisagents-cli.exe`, nella stessa cartella, è la riga di comando.
 La pagina Search può anche seguire le citazioni dei primi risultati
 (palla di neve), conservare i risultati in un file di biblioteca e
 cercare in quella biblioteca senza rete, e la pagina Deck può costruire

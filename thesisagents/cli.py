@@ -71,6 +71,7 @@ from thesisagents.fetchers.http import shutdown_clients
 from thesisagents.library import Library
 from thesisagents.utils.logging import get_logger
 from thesisagents.utils.path_safety import safe_filename
+from thesisagents.utils.windows_console import borrow_parent_console
 
 _LOG = get_logger(__name__)
 _DEFAULT_OUT_DIR = "./exports"
@@ -1036,6 +1037,9 @@ def main(argv: list[str] | None = None) -> int:
     if not raw_argv or raw_argv[0] == "gui":
         gui_extra_argv = raw_argv[1:] if raw_argv else []
         return _dispatch_gui(gui_extra_argv)
+    # The windowed Windows executable has no streams of its own: print to the
+    # terminal it was typed into, if any. No-op for every other way to run.
+    borrow_parent_console()
     # ``review`` audits an existing .pptx (overflow + colour contracts + section
     # completeness) and short-circuits before argparse for the same reason as the
     # gui shim: it takes file paths, not the query/paper/pdf mode mutex group.

@@ -462,8 +462,9 @@ thesisagents-gui                 # or: thesisagents gui
 `collection_ready` 信号驱动 LLM-as-agent / Python-pipeline 增强)、
 **Deck**(深色模式切换、幻灯片上限、标识符检查与幻灯片模板会流向
 `ExportOptions`),以及 **Settings**(经由 QSettings 保存 API 密钥)。
-Windows 发行版 zip 发货的是 Nuitka 编译的包,已含 PySide6,所以
-`thesisagents.exe gui` 不必另外装 Python 就能运作。
+Windows 发行版 zip 发货的是 Nuitka 编译的包,已含 PySide6。打开
+`thesisagents.exe` 就会启动桌面应用,不显示控制台窗口,也不必另外装 Python。
+同一文件夹里的 `thesisagents-cli.exe` 则是命令行程序。
 Search 页面还可以沿着引用关系扩充最前面的结果 (滚雪球)、把结果保存到文献库文件并在没有网络时搜索该文献库,Deck 页面则可以在你自己的 PowerPoint 模板上生成幻灯片。
 **UI 以全部 14 种语言发货**(English、繁體中文、简体中文、日本語、
 Español、Français、Deutsch、한국어、Português、Русский、Italiano、

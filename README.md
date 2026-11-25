@@ -558,8 +558,9 @@ the LLM-as-agent / Python-pipeline enrichment over a `collection_ready`
 signal), **Deck** (the Dark mode toggle, slide cap, identifier check and
 deck template flow through to `ExportOptions`) and **Settings** (persists
 API keys via QSettings). The Windows release zip ships the
-Nuitka-compiled bundle with PySide6 included, so `thesisagents.exe gui`
-works without a separate Python install.
+Nuitka-compiled bundle with PySide6 included: opening `thesisagents.exe`
+starts the desktop app with no console window and no separate Python
+install, and `thesisagents-cli.exe` beside it is the command line.
 The Search page can also follow citations from the top results
 (snowball), keep results in a library file and search that library with
 no network, and the Deck page can build the deck on your own PowerPoint

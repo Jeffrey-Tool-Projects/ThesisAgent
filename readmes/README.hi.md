@@ -399,7 +399,7 @@ pip install thesisagents[gui]
 thesisagents-gui                 # या: thesisagents gui
 ```
 
-विंडो में एक sidebar है जिसमें पाँच पेज हैं: **Search**, **Library** (library file का केवल-पढ़ने वाला दृश्य: सारांश, उसके शोध-पत्र उनके उद्धरण संबंधों और पहचानकर्ता जाँच के साथ, और वे खोजें जिन्होंने उसे भरा), **Enrich** (एक `collection_ready` सिग्नल पर LLM-as-agent / Python-pipeline समृद्धि चलाता है), **Deck** (Dark mode toggle, slide cap, identifier check और deck template `ExportOptions` तक प्रवाहित होते हैं), और **Settings** (QSettings के माध्यम से API keys बनाए रखता है)। Windows रिलीज़ zip में PySide6 सहित Nuitka-compiled बंडल आता है, इसलिए `thesisagents.exe gui` एक अलग Python इंस्टॉल के बिना काम करता है।
+विंडो में एक sidebar है जिसमें पाँच पेज हैं: **Search**, **Library** (library file का केवल-पढ़ने वाला दृश्य: सारांश, उसके शोध-पत्र उनके उद्धरण संबंधों और पहचानकर्ता जाँच के साथ, और वे खोजें जिन्होंने उसे भरा), **Enrich** (एक `collection_ready` सिग्नल पर LLM-as-agent / Python-pipeline समृद्धि चलाता है), **Deck** (Dark mode toggle, slide cap, identifier check और deck template `ExportOptions` तक प्रवाहित होते हैं), और **Settings** (QSettings के माध्यम से API keys बनाए रखता है)। Windows रिलीज़ zip में PySide6 सहित Nuitka-compiled बंडल आता है, इसलिए `thesisagents.exe` खोलने पर डेस्कटॉप ऐप बिना किसी कंसोल विंडो और बिना अलग Python इंस्टॉल के शुरू होता है, और उसी फ़ोल्डर में मौजूद `thesisagents-cli.exe` कमांड लाइन प्रोग्राम है।
 Search पेज शीर्ष परिणामों से citations का पीछा भी कर सकता है (snowball),
 results को एक library file में रख सकता है और बिना network के उस library
 में खोज सकता है, और Deck पेज आपके अपने PowerPoint template पर deck बना

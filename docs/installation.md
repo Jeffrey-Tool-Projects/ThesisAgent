@@ -175,18 +175,26 @@ buffer instead of an X server.
 Every release ships a self-contained Windows zip built with
 Nuitka. Download `thesisagents-windows-x86_64.zip` from the
 [GitHub Releases page](https://github.com/Integration-Automation/ThesisAgents/releases),
-unzip anywhere, and run `thesisagents.exe` directly. The bundle
+unzip anywhere, and open `thesisagents.exe` for the desktop app. The bundle
 includes Python, every dependency (including PySide6), and the 11
 source plugins — no separate Python install is needed.
 
-The bundle entry point is `python -m thesisagents`, so all the
-same CLI flags work:
+The zip holds the same program twice. `thesisagents.exe` is a windowed
+program, so the desktop app opens without a console window.
+`thesisagents-cli.exe` is the console program for a terminal. Its entry
+point is `python -m thesisagents`, so all the same CLI flags work:
 
 ```powershell
-.\thesisagents.exe --query "diffusion models" --max 10 --out .\exports\
-.\thesisagents.exe --paper "https://arxiv.org/abs/1706.03762" --out .\exports\
-.\thesisagents.exe gui     # opens the desktop UI
+.\thesisagents-cli.exe --query "diffusion models" --max 10 --out .\exports\
+.\thesisagents-cli.exe --paper "https://arxiv.org/abs/1706.03762" --out .\exports\
+.\thesisagents.exe         # opens the desktop UI
 ```
+
+Releases up to v0.1.26 had only `thesisagents.exe`, as a console program.
+A script that calls it with CLI flags should call `thesisagents-cli.exe`
+now: `thesisagents.exe` still runs the command and prints into the
+terminal it was typed into, but the shell does not wait for a windowed
+program, so its exit code and captured output are lost.
 
 A `.sha256` companion is attached to every release for integrity
 checking.

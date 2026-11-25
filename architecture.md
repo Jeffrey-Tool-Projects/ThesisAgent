@@ -38,9 +38,9 @@
 | `thesisagents/mcp/` | FastMCP server (`server.build_server()`, with the library tools in `library_tools.py`), `[mcp]` extra (held below mcp 2.0, which renamed FastMCP) |
 | `thesisagents/gui/` | PySide6 desktop app, `[gui]` extra: `app.py` (boot, HiDPI, theme), `main_window.py` (sidebar `widgets/nav_rail.py` + page stack + status bar), `pages/` (Search, Library (read-only view of a `thesisagents/library/` file, the GUI's only reader of it besides Search library), Enrich, Deck, Settings), `widgets/responsive.py` (size classes compact / medium / expanded that every page re-arranges for), `theme.py` (classic / Material 3 styles in light / dark / system and the app stylesheet), `icons.py` (painted icons), `workers.py` on `QThreadPool`, `i18n.py` |
 | `thesisagents/evaluation/` | Offline search-quality benchmark (`search_quality.py`; see `docs/search-quality.md`) |
-| `thesisagents/utils/` | Logging, path safety, and `async_helpers.run_blocking` (finish a coroutine from synchronous code, inside or outside a running loop) |
+| `thesisagents/utils/` | Logging, path safety, and `async_helpers.run_blocking` (finish a coroutine from synchronous code, inside or outside a running loop), `windows_console.py` (CLI output of the windowed release executable) |
 | `tests/` | pytest suite with recorded fixtures under `tests/fixtures/<source>/`; no live HTTP |
-| `scripts/` | Reproducible `regen_*.py` deck builds (hand-authored summaries) and one-off deck maintenance scripts |
+| `scripts/` | Reproducible `regen_*.py` deck builds (hand-authored summaries) and one-off deck maintenance scripts, plus `split_windows_exe.py`, a step of the release build |
 | `docs/`, `readmes/` | Sphinx docs with per-language index stubs; translated READMEs |
 | `assets/` | App icon and figures used by the regen scripts (`assets/figures/`) |
 | `exports/` | Default output area (git-ignored) |
@@ -92,6 +92,9 @@ An exporter never imports a fetcher; it only consumes a `PaperCollection`.
   The CI `test` job installs every dependency from `.github/requirements/ci.txt` (one
   universal hash lock for the whole matrix, generated from `pyproject.toml` and `ci.in`)
   and the project with `--no-deps --no-build-isolation`.
+  The Windows zip holds one Nuitka build as two programs, split by `scripts/split_windows_exe.py`:
+  `thesisagents.exe` is windowed (the GUI opens with no console) and `thesisagents-cli.exe` is the
+  console program for the CLI.
   Reference: `docs/releases.md`.
 
 ## 4. Main flows

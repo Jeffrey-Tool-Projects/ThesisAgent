@@ -563,8 +563,9 @@ khiển làm giàu LLM-as-agent / Python-pipeline qua một tín hiệu
 `collection_ready`), **Deck** (nút bật Dark mode, giới hạn slide, kiểm tra
 định danh và mẫu deck luồng vào `ExportOptions`), và **Settings** (duy trì
 API key qua QSettings). Bản release zip Windows đóng gói bundle được biên dịch
-bằng Nuitka kèm sẵn PySide6, nên `thesisagents.exe gui` chạy
-mà không cần cài Python riêng.
+bằng Nuitka kèm sẵn PySide6: mở `thesisagents.exe` là chạy ứng dụng desktop,
+không hiện cửa sổ console và không cần cài Python riêng, còn
+`thesisagents-cli.exe` trong cùng thư mục là bản dòng lệnh.
 Trang Search còn có thể lần theo trích dẫn từ các kết quả đứng đầu (lăn
 cầu tuyết), lưu kết quả vào một tệp thư viện và tìm trong thư viện đó
 khi không có mạng, còn trang Deck có thể dựng bộ trang chiếu trên mẫu

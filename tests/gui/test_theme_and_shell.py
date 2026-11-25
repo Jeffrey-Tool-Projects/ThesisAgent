@@ -6,7 +6,7 @@ from pathlib import Path
 
 import pytest
 from PySide6.QtCore import QUrl
-from PySide6.QtGui import QColor, QPalette
+from PySide6.QtGui import QColor, QFont, QPalette
 from PySide6.QtWidgets import QApplication
 
 from thesisagents.core.models import Paper, PaperCollection, Query
@@ -119,6 +119,30 @@ def test_text_contrasts_with_its_backgrounds(tokens):
     assert contrast(tokens.muted, tokens.surface) >= 4.5
     assert contrast(tokens.nav_text, tokens.nav) >= 4.5
     assert contrast(tokens.on_accent, tokens.accent) >= 4.5
+
+
+def test_apply_theme_leaves_no_class_font_over_the_application_font(qtbot):
+    # Qt rebuilds its per-class platform fonts during apply_theme, so lists
+    # and menus lost the per-script fallback families and the 10 pt minimum,
+    # and opening a language list printed eight "OpenType support missing"
+    # lines for the Hindi entry.
+    app = QApplication.instance()
+    saved = QFont(app.font())
+    families = ["Noto Sans", "Nirmala UI", "Arial"]
+    font = QFont(saved)
+    font.setFamilies(families)
+    font.setPointSize(13)
+    try:
+        app.setFont(font)
+        for choice, style in (("light", "classic"), ("dark", "material")):
+            app.setFont(QFont("Courier New", 7), "QAbstractItemView")
+            theme.apply_theme(app, choice, style)
+            for name in ("QAbstractItemView", "QMenu", "QStatusBar", "QMessageBox", "QLabel"):
+                applied = QApplication.font(name)
+                assert (applied.families(), applied.pointSize()) == (families, 13), name
+    finally:
+        app.setFont(saved)
+        theme.apply_theme(app, "light")
 
 
 def test_apply_theme_sets_palette_style_and_glyphs(qtbot):

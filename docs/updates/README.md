@@ -58,6 +58,7 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 
 | ID | Date | Title | Tags | Batch |
 |---|---|---|---|---|
+| U-20261125-01 | 2026-11-25 | The Windows app opens without a console, Qt font lines gone | #done #gui #release | [2026-11](2026-11.md) |
 | U-20261121-01 | 2026-11-21 | CI saves its pip cache from main only | #done #ci | [2026-11](2026-11.md) |
 | U-20261120-05 | 2026-11-20 | CI installs from a hash-locked lock, caches stop evicting the Nuitka cache | #done #ci #security | [2026-11](2026-11.md) |
 | U-20261120-04 | 2026-11-20 | SonarCloud new-code issues on main cleared | #done #quality #sonar | [2026-11](2026-11.md) |

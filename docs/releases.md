@@ -43,7 +43,7 @@ Push to main
 |---|---|---|
 | **`thesisagents-<version>.tar.gz`** (sdist, without the test suite) | PyPI | ~250 KB |
 | **`thesisagents-<version>-py3-none-any.whl`** | PyPI | ~280 KB |
-| **`thesisagents-windows-x86_64.zip`** | GitHub Release | ~250-350 MB (Nuitka bundle + PySide6) |
+| **`thesisagents-windows-x86_64.zip`** | GitHub Release | ~140 MB expected (Nuitka bundle + PySide6, v0.1.26 was 100 MB with one executable) |
 | **`thesisagents-windows-x86_64.zip.sha256`** | GitHub Release | 80 bytes |
 
 The PyPI artefacts work on Linux / macOS / Windows; the zip is
@@ -128,6 +128,33 @@ Reasons:
 
 The zip pattern is the standard for Qt apps on Windows (Krita,
 OBS, KeePass all ship this way).
+
+## Two executables: windowed app and console CLI
+
+The zip holds the same build twice. `thesisagents.exe` is a windowed
+program, so opening the desktop app shows no console window.
+`thesisagents-cli.exe` is the console program for a terminal. Up to
+v0.1.26 there was one console executable, and Windows opened a black
+console window, filled with Qt and log lines, behind the app.
+
+Windows decides from one field of the executable's header (the PE
+subsystem) whether a program gets a console, and a program that has to
+serve a terminal cannot also be windowed. `scripts/split_windows_exe.py`
+runs after the Nuitka build: it copies the executable and changes that
+field in the copy a user opens. Nuitka's own `--windows-console-mode`
+was tried and not used:
+
+| Mode | Why not |
+|---|---|
+| `disable` | One executable, and the CLI prints nothing. |
+| `attach` | PowerShell gets no exit code and no captured output. Without a console the standard input handle is invalid, so `subprocess.run(capture_output=True)` raises `OSError`. Selenium Manager is run that way, so Chrome could not start. |
+| `hide` | Still a console program: Windows creates the window and the program then hides it. |
+| Two builds | The mode is a compiler define, so the second build finds nothing in the compiler cache and adds about an hour. |
+
+The second executable adds about 41 MB to the zip and 123 MB unzipped
+(measured on the v0.1.26 executable). When CLI flags are typed after
+`thesisagents.exe`, `thesisagents/utils/windows_console.py` prints into
+that terminal, but the shell does not wait for a windowed program.
 
 ## Why Windows only
 

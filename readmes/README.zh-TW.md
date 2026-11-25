@@ -462,8 +462,9 @@ thesisagents-gui                 # or: thesisagents gui
 `collection_ready` 訊號驅動 LLM-as-agent / Python-pipeline 加值)、
 **Deck**(深色模式切換、投影片上限、識別碼檢查與投影片範本會流向
 `ExportOptions`),以及 **Settings**(透過 QSettings 保存 API 金鑰)。
-Windows 發行版 zip 出貨的是 Nuitka 編譯的套件,已含 PySide6,所以
-`thesisagents.exe gui` 不必另外裝 Python 就能運作。
+Windows 發行版 zip 出貨的是 Nuitka 編譯的套件,已含 PySide6。開啟
+`thesisagents.exe` 就會啟動桌面應用程式,不顯示主控台視窗,也不必另外裝 Python。
+同一個資料夾裡的 `thesisagents-cli.exe` 則是命令列程式。
 Search 頁面還可以沿著引用關係擴充最前面的結果 (滾雪球)、把結果保存到文獻庫檔案並在沒有網路時搜尋該文獻庫,Deck 頁面則可以在你自己的 PowerPoint 範本上產生投影片。
 **UI 以全部 14 種語言出貨**(English、繁體中文、简体中文、日本語、
 Español、Français、Deutsch、한국어、Português、Русский、Italiano、

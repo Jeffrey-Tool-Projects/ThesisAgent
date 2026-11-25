@@ -159,6 +159,20 @@ def test_nuitka_cache_step_saves_the_directory_nuitka_uses():
     assert re.search(rf"^\s*path:\s*{re.escape(env.group(1))}\s*$", cache_step, re.MULTILINE)
 
 
+def test_release_splits_the_executable_before_testing_and_zipping_it():
+    # Built as one console program, thesisagents.exe opened a console window
+    # behind the desktop app. The split must precede the smoke test, which
+    # runs both programs, and the zip, which ships them.
+    text = (_ROOT / ".github" / "workflows" / "release.yml").read_text(encoding="utf-8")
+    split = text.index("python scripts/split_windows_exe.py thesisagents.dist/thesisagents.exe")
+    console_test = text.index("./thesisagents.dist/thesisagents-cli.exe --help")
+    windowed_test = text.index("./thesisagents.dist/thesisagents.exe --help")
+    assert text.index("nuitka_build --jobs=2") < split < console_test < windowed_test
+    assert windowed_test < text.index("Compress-Archive -Path")
+    assert "--windows-console-mode=" not in text
+    assert "--disable-console" not in text
+
+
 _JOB_HEAD = re.compile(r"^  [A-Za-z0-9_-]+:\s*(#.*)?$")
 
 

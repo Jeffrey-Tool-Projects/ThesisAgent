@@ -372,12 +372,22 @@ jobs:
             nuitka_build --jobs=2
           }
 
-      - name: Smoke-test the built executable
+      - name: Split into the windowed app and the console CLI
+        # thesisagents.exe becomes a windowed program, so opening the
+        # desktop app shows no console window, and thesisagents-cli.exe is
+        # the same build kept as a console program. The script's docstring
+        # says why Nuitka's --windows-console-mode is not used.
+        run: python scripts/split_windows_exe.py thesisagents.dist/thesisagents.exe
+
+      - name: Smoke-test the built executables
         # If the binary fails to load any of its bundled plugins, this
         # surfaces it immediately rather than at the user's first run.
+        # Bash waits for a windowed program and the redirect gives it a
+        # stdout, so both can be run the same way here.
         shell: bash
         run: |
-          ./thesisagents.dist/thesisagents.exe --version || true
+          ./thesisagents.dist/thesisagents-cli.exe --version || true
+          ./thesisagents.dist/thesisagents-cli.exe --help > /dev/null
           ./thesisagents.dist/thesisagents.exe --help > /dev/null
 
       - name: Zip the dist folder

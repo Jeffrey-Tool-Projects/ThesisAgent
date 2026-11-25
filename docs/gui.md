@@ -30,9 +30,11 @@ thesisagents gui                    # CLI subcommand
 py -m thesisagents gui              # module entry, useful while developing
 ```
 
-The Windows release `.exe` also accepts `thesisagents.exe gui` —
-the bundle includes PySide6 and the source plugins so no extra
-install is needed.
+In the Windows release zip, opening `thesisagents.exe` (or running
+`thesisagents.exe gui`) starts the app without a console window. The
+bundle includes PySide6 and the source plugins, so no extra install is
+needed. `thesisagents-cli.exe gui` starts the same app from a terminal
+and shows its log there, which is the way to see why a start failed.
 
 ## Window layout
 

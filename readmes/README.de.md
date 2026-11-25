@@ -576,8 +576,9 @@ Das Fenster hat eine Seitenleiste mit fünf Seiten: **Search**, **Library** (ein
 Folienobergrenze, die Kennungsprüfung und die Foliensatz-Vorlage fließen in
 `ExportOptions` ein) und **Settings** (persistiert API-Schlüssel über
 QSettings). Das Windows-Release-Zip liefert das mit Nuitka kompilierte Bündel mit
-enthaltenem PySide6, sodass `thesisagents.exe gui` ohne separate
-Python-Installation funktioniert.
+enthaltenem PySide6: `thesisagents.exe` öffnet die Desktop-App ohne
+Konsolenfenster und ohne separate Python-Installation, und
+`thesisagents-cli.exe` daneben ist die Kommandozeile.
 Die Seite Search kann außerdem den Zitationen der obersten Ergebnisse
 folgen (Schneeball), Ergebnisse in einer Bibliotheksdatei aufbewahren
 und diese Bibliothek ohne Netzwerk durchsuchen, und die Seite Deck kann

@@ -709,11 +709,21 @@ def apply_theme(app: QApplication, choice: str, style: str = STYLE_CLASSIC) -> P
     most palette roles, so a dark palette on it gives dark text on dark
     buttons. Safe to call again at any time (Settings does on save, and the
     system-scheme listener does when the OS flips between light and dark).
+
+    ``setStyle`` and the first ``setStyleSheet`` also rebuild Qt's per-class
+    platform fonts, and those beat the application font: lists, tables, menus
+    and the status bar drop back to the bare system family, losing the
+    per-script fallback families (a Hindi label then makes Qt probe eight
+    fonts that cannot shape it) and the minimum point size set at start-up.
+    Setting the application font again clears them, so it comes last.
+    Example: without it ``QApplication.font("QAbstractItemView").families()``
+    is a single family after every theme switch.
     """
     tokens = resolve_theme(choice, system_prefers_dark(), style)
     app.setStyle("Fusion")
     app.setPalette(build_palette(tokens))
     app.setStyleSheet(build_stylesheet(tokens, write_theme_assets(tokens)))
+    app.setFont(app.font())
     app.setProperty("thesisagents_theme", tokens.name)
     return tokens
 

@@ -574,8 +574,9 @@ Jendela memiliki sidebar dengan lima halaman: **Search**, **Library** (tampilan 
 `collection_ready`), **Deck** (toggle Dark mode, batas slide, pemeriksaan
 identifier, dan templat deck mengalir ke `ExportOptions`), dan
 **Settings** (mempertahankan API key via QSettings). Zip rilis Windows memuat bundle terkompilasi-Nuitka
-dengan PySide6 disertakan, jadi `thesisagents.exe gui` bekerja tanpa
-instalasi Python terpisah.
+dengan PySide6 disertakan: `thesisagents.exe` membuka aplikasi desktop tanpa
+jendela konsol dan tanpa instalasi Python terpisah, dan
+`thesisagents-cli.exe` di folder yang sama adalah baris perintahnya.
 Halaman Search juga dapat mengikuti sitasi dari hasil teratas (bola salju),
 menyimpan hasil dalam file pustaka dan mencari di pustaka itu tanpa
 jaringan, dan halaman Deck dapat menyusun deck di atas templat PowerPoint

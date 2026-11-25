@@ -409,6 +409,26 @@ thesisagents gui
 These are also pinned by `app.py` if unset, but a host
 override of either to a wrong value can cause this symptom.
 
+### A console window opens behind the app (Windows release)
+
+Releases up to v0.1.26 shipped one console executable. Later ones open
+`thesisagents.exe` without a console. If the window still appears, you
+opened `thesisagents-cli.exe`, which is the command line. With pip,
+`thesisagents-gui` is a console script and keeps its terminal.
+
+### The app does not start and shows nothing (Windows release)
+
+`thesisagents.exe` has no console, so a failure at start-up has nowhere
+to print. Run `.\thesisagents-cli.exe gui` in a terminal to see the
+error.
+
+### `OpenType support missing for "...", script 11`
+
+Harmless: Qt tries each font before the one that can draw the Hindi
+entry of the language lists (script 11 is Devanagari) and prints a line
+per attempt. The app no longer prints them. To see them again, set
+`QT_LOGGING_RULES="qt.text.font.db.info=true"`.
+
 ### `tofu` boxes for some characters
 
 The font fallback chain didn't include a family with that
