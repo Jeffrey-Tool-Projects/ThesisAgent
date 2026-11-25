@@ -570,7 +570,7 @@ pip install thesisagents[gui]
 thesisagents-gui                 # atau: thesisagents gui
 ```
 
-Jendela memiliki sidebar dengan lima halaman: **Search**, **Library** (tampilan hanya-baca sebuah berkas pustaka: ikhtisar, makalahnya beserta tautan sitasi dan pemeriksaan pengenalnya, serta pencarian yang mengisinya), **Enrich**
+Jendela memiliki sidebar dengan lima halaman: **Search**, **Library** (sebuah berkas pustaka dengan tag, catatan, dan keputusan penyaringan Anda, impor BibTeX / RIS, penggabungan duplikat, pencarian tersimpan yang hanya menampilkan yang baru, grafik sitasi, dan alur PRISMA: ikhtisar, makalahnya beserta tautan sitasi dan pemeriksaan pengenalnya, serta pencarian yang mengisinya), **Enrich**
 (menggerakkan pengayaan LLM-as-agent / Python-pipeline lewat sinyal
 `collection_ready`), **Deck** (toggle Dark mode, batas slide, pemeriksaan
 identifier, dan templat deck mengalir ke `ExportOptions`), dan

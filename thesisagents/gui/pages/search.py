@@ -687,24 +687,26 @@ class SearchPage(QWidget):
         value = spin.value()
         return value if value >= _MIN_YEAR else None
 
-    def _on_search_clicked(self) -> None:
+    def current_query(self) -> Query | None:
+        """The search the form describes, None while it is incomplete."""
         keywords = self._query_input.text().strip()
-        if not keywords:
-            self._set_status(t("search.error_empty_query", self._ui_language))
-            return
         sources = self._sources_widget.selected()
-        if not sources:
-            self._set_status(t("search.error_empty_query", self._ui_language))
-            return
-        normalised = normalize_query(keywords)
-        query = Query(
-            keywords=normalised,
+        if not keywords or not sources:
+            return None
+        return Query(
+            keywords=normalize_query(keywords),
             sources=sources,
             max_results=self._max_spin.value(),
             year_from=self._year(self._year_from_spin),
             year_to=self._year(self._year_to_spin),
             top_tier_only=self._top_tier_check.isChecked(),
         )
+
+    def _on_search_clicked(self) -> None:
+        query = self.current_query()
+        if query is None:
+            self._set_status(t("search.error_empty_query", self._ui_language))
+            return
         direction = self._snowball_combo.currentData()
         bounds = self.snowball_bounds()
         library_path = self._library_path()

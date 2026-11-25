@@ -268,6 +268,7 @@ class MainWindow(QMainWindow):
         # The Library page follows the Search page's library file, and hands
         # its papers on to Enrich and Deck the same way a search does.
         self._search_page.library_path_changed.connect(self._library_page.set_library_path)
+        self._library_page.set_query_provider(self._search_page.current_query)
         self._library_page.collection_ready.connect(self._enrich_page.set_collection)
         self._library_page.collection_ready.connect(self._deck_page.set_collection)
         self._library_page.collection_ready.connect(self._on_search_collection)
@@ -395,6 +396,7 @@ class MainWindow(QMainWindow):
         if isinstance(app, QApplication):
             apply_theme(app, choice, saved_style())
         self._nav.refresh_icons()
+        self._library_page.graph().repaint_colours()
 
     def check_for_updates(self) -> None:
         """Look for a newer release (``app.py`` calls this once the window shows)."""

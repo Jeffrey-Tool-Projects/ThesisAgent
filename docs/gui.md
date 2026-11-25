@@ -208,12 +208,12 @@ Press **Export…**, pick an output directory, and the standard
 
 ### Library
 
-A read-only view of a literature library file, the SQLite file the
-Search page's **Library** field and the CLI `--library` flag fill. The
+The papers of a literature library file, with what you record about them.
+It is the SQLite file the Search page's **Library** field and the CLI `--library` flag fill. The
 path follows the Search page's library field, and **Browse…** picks
 another file. Press **Open library** (or Enter in either field) to read
-it. The file is opened read-only and is never created: a path with no
-library behind it reports `Could not open the library: …` instead of
+it. Opening never creates a file: a path with no library behind it
+reports `Could not open the library: …` instead of
 making an empty one.
 
 - The **find** box narrows the list the way **Search library** does
@@ -228,13 +228,37 @@ making an empty one.
   library papers it cites and that cite it, and its stored DOI / URL
   checks with their date. Every value there is shown as plain text, a
   title with markup in it is not rendered.
+- **Filter** narrows the list by tag, reading status and screening
+  decision. What is listed is also what **Send to Enrich and Deck** sends.
+- **My notes**, below the list, records tags (separated by commas), a
+  reading status, a note, and a screening decision with its reason at one
+  of two stages: title and abstract, or full text. With several papers
+  selected, tags are added to all of them and notes are left alone.
+  Searching again never changes any of it.
+- **Delete** and **Merge** act on the selected papers after asking. A merge
+  keeps the first paper's fields and fills its gaps from the others.
+- **Import…** reads a BibTeX or RIS file (Zotero, Mendeley, EndNote,
+  JabRef) and creates the library when there is none yet. **Find
+  duplicates** lists papers an import could not decide on, such as a
+  preprint and its journal version.
+- The **Saved searches** tab saves the search described on the Search page
+  under a name. **Run** repeats it, adds what it finds and selects the
+  papers the library did not hold before.
+- The **Citations** tab draws the citation links: papers in columns by
+  year, an arrow from each to what it cites, circles sized by citation
+  count. Click one to select it in the list. Dragging pans, `Ctrl` with
+  the wheel zooms.
+- The **Review** tab shows the PRISMA 2020 flow of the recorded decisions
+  and saves it as an SVG drawing in the interface language.
 - The **Searches** tab lists every import, newest first: date, kind,
   keywords and how many papers it brought.
 - **Send to Enrich and Deck** hands the listed papers (with the citation
   links between them) on, as a search result would be.
 
-The page never writes to the file. Adding papers stays on the Search
-page (**Add results to the library**), the CLI and MCP.
+Every change is made on a worker thread and in one transaction, so one
+that fails leaves the library as it was. The same actions are available as
+`thesisagents library` on the command line (`docs/cli.md`) and as MCP
+tools (`docs/mcp.md`).
 
 ### Settings
 
@@ -566,8 +590,6 @@ leaves that field at its default.
 
 ## Known limitations
 
-- The Library page only reads. Removing a paper from a library, or
-  editing one, is not possible from the GUI.
 - The Settings page does not validate keys against the live API —
   validation would leak the key into HTTP logs and slow down save.
   An invalid key surfaces later as a `ConfigError` / 401 from the

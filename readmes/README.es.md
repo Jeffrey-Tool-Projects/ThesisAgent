@@ -576,7 +576,7 @@ pip install thesisagents[gui]
 thesisagents-gui                 # or: thesisagents gui
 ```
 
-La ventana tiene una barra lateral con cinco páginas: **Search**, **Library** (una vista de solo lectura de un archivo de biblioteca: resumen, sus artículos con sus enlaces de citas y comprobaciones de identificadores, y las búsquedas que lo llenaron), **Enrich**
+La ventana tiene una barra lateral con cinco páginas: **Search**, **Library** (un archivo de biblioteca con sus etiquetas, notas y decisiones de cribado, importación de BibTeX / RIS, fusión de duplicados, búsquedas guardadas que muestran solo lo nuevo, un grafo de citas y el flujo PRISMA: resumen, sus artículos con sus enlaces de citas y comprobaciones de identificadores, y las búsquedas que lo llenaron), **Enrich**
 (dirige el enriquecimiento LLM-as-agent / pipeline Python sobre una señal
 `collection_ready`), **Deck** (el toggle de modo oscuro, el tope de
 diapositivas, la comprobación de identificadores y la plantilla de la

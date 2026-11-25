@@ -459,7 +459,7 @@ pip install thesisagents[gui]
 thesisagents-gui                 # or: thesisagents gui
 ```
 
-視窗有一個側邊欄,含五個頁面:**Search**、**Library**(文獻庫檔案的唯讀檢視：概況、收錄論文及其引用關係與識別碼檢查，以及累積它的歷次搜尋)、**Enrich**(透過一個
+視窗有一個側邊欄,含五個頁面:**Search**、**Library**(文獻庫檔案，可加標籤、筆記與篩選決定，匯入 BibTeX / RIS，合併重複論文，儲存只顯示新論文的搜尋，並有引用關係圖與 PRISMA 流程：概況、收錄論文及其引用關係與識別碼檢查，以及累積它的歷次搜尋)、**Enrich**(透過一個
 `collection_ready` 訊號驅動 LLM-as-agent / Python-pipeline 加值)、
 **Deck**(深色模式切換、投影片上限、識別碼檢查與投影片範本會流向
 `ExportOptions`),以及 **Settings**(API 金鑰與偏好設定)。

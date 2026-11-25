@@ -559,7 +559,7 @@ pip install thesisagents[gui]
 thesisagents-gui                 # hoặc: thesisagents gui
 ```
 
-Cửa sổ có một thanh bên với năm trang: **Search**, **Library** (chế độ xem chỉ đọc một tệp thư viện: tổng quan, các bài báo cùng liên kết trích dẫn và kết quả kiểm tra định danh, và các lần tìm kiếm đã bổ sung vào nó), **Enrich** (điều
+Cửa sổ có một thanh bên với năm trang: **Search**, **Library** (một tệp thư viện với thẻ, ghi chú và quyết định sàng lọc của bạn, nhập BibTeX / RIS, gộp bài trùng, tìm kiếm đã lưu chỉ hiện bài mới, đồ thị trích dẫn và sơ đồ PRISMA: tổng quan, các bài báo cùng liên kết trích dẫn và kết quả kiểm tra định danh, và các lần tìm kiếm đã bổ sung vào nó), **Enrich** (điều
 khiển làm giàu LLM-as-agent / Python-pipeline qua một tín hiệu
 `collection_ready`), **Deck** (nút bật Dark mode, giới hạn slide, kiểm tra
 định danh và mẫu deck luồng vào `ExportOptions`), và **Settings** (API key

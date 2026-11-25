@@ -8,6 +8,12 @@ worker here wraps one backend call, runs it on a worker thread (via
 Signals are typed as ``object`` because ``Signal`` doesn't accept
 ``PaperCollection`` / ``Path`` as parameter types directly; the
 receiving slot casts as needed.
+
+Connect the signals to methods of a ``QObject`` (a page), never to a lambda.
+A result is delivered through the event loop after the runnable has ended,
+and with it its signals object. A connection to a method belongs to the page
+and survives that. One to a lambda belongs to the signals object, so the
+result is sometimes lost and the page stays busy for ever.
 """
 
 from __future__ import annotations

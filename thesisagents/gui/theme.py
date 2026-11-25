@@ -630,9 +630,9 @@ QTabBar::tab:selected {{
     border-bottom: 2px solid {p.accent};
     font-weight: 600;
 }}
-QTextBrowser {{
+QTextBrowser, QPlainTextEdit, QGraphicsView {{
     background: {p.surface};
-    border: {card_border};
+    border: {card_border if card_border != "none" else f"1px solid {p.border}"};
     border-radius: {s.card_radius - 2}px;
     padding: 4px;
 }}

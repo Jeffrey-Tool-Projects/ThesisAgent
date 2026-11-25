@@ -523,7 +523,7 @@ pip install thesisagents[gui]
 thesisagents-gui                 # or: thesisagents gui
 ```
 
-창에는 사이드바와 다섯 개의 페이지가 있습니다: **Search**, **Library** (라이브러리 파일의 읽기 전용 보기: 개요, 논문과 그 인용 관계·식별자 검사, 라이브러리를 채운 검색 기록),
+창에는 사이드바와 다섯 개의 페이지가 있습니다: **Search**, **Library** (라이브러리 파일. 태그, 메모, 선별 결정, BibTeX / RIS 가져오기, 중복 병합, 새 논문만 보여 주는 저장된 검색, 인용 관계도, PRISMA 흐름을 지원: 개요, 논문과 그 인용 관계·식별자 검사, 라이브러리를 채운 검색 기록),
 **Enrich**(`collection_ready` 시그널을 통해 LLM-as-agent / Python
 파이프라인 보강을 구동), **Deck**(Dark mode 토글, 슬라이드 상한, 식별자
 검사, 덱 템플릿이 `ExportOptions` 로 흘러 들어감), 그리고
