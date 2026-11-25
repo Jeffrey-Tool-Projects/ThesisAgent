@@ -58,6 +58,7 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 
 | ID | Date | Title | Tags | Batch |
 |---|---|---|---|---|
+| U-20261126-13 | 2026-11-26 | Wording fixes in 11 languages, and GUI tests that cannot reach real settings | #done #gui #i18n #tests | [2026-11](2026-11.md) |
 | U-20261126-12 | 2026-11-26 | The two largest modules are split | #done #refactor #pptx #gui | [2026-11](2026-11.md) |
 | U-20261126-11 | 2026-11-26 | A tool for judging search results by hand | #done #evaluation | [2026-11](2026-11.md) |
 | U-20261126-10 | 2026-11-26 | Slide editor in the GUI, edits keep the look of the text | #done #gui #pptx #mcp #i18n | [2026-11](2026-11.md) |

@@ -1658,7 +1658,7 @@ _LABELS: Final[dict[str, dict[str, str]]] = {
         "zh-cn": "模型还不能用：{reason}。请到“设置 → AI 模型”。",
         "ja": "モデルを使えません: {reason}。「設定 → AI モデル」を確認してください。",
         "es": "El modelo no está listo: {reason}. Vea Ajustes → Modelo de IA.",
-        "fr": "Le modèle n'est pas prêt : {reason}. Voir Réglages → Modèle d'IA.",
+        "fr": "Le modèle n'est pas prêt : {reason}. Voir Paramètres → Modèle d'IA.",
         "de": "Das Modell ist nicht bereit: {reason}. Siehe Einstellungen → KI-Modell.",
         "ko": "모델을 사용할 수 없습니다: {reason}. 설정 → AI 모델을 확인하세요.",
         "pt": "O modelo não está pronto: {reason}. Veja Configurações → Modelo de IA.",
@@ -4436,8 +4436,8 @@ _LABELS: Final[dict[str, dict[str, str]]] = {
         "pt": "Incluir",
         "ru": "Включить",
         "it": "Includi",
-        "vi": "Chọn",
-        "hi": "शामिल",
+        "vi": "Đưa vào",
+        "hi": "शामिल करें",
         "id": "Sertakan",
     },
     "library.decision_maybe": {
@@ -4469,7 +4469,7 @@ _LABELS: Final[dict[str, dict[str, str]]] = {
         "ru": "Исключить",
         "it": "Escludi",
         "vi": "Loại",
-        "hi": "बाहर",
+        "hi": "बाहर करें",
         "id": "Keluarkan",
     },
     "library.decision_none": {
@@ -4690,7 +4690,7 @@ _LABELS: Final[dict[str, dict[str, str]]] = {
         "fr": "Supprimer",
         "de": "Löschen",
         "ko": "삭제",
-        "pt": "Excluir",
+        "pt": "Apagar",
         "ru": "Удалить",
         "it": "Elimina",
         "vi": "Xóa",
@@ -4735,15 +4735,15 @@ _LABELS: Final[dict[str, dict[str, str]]] = {
         ),
         "ko": "논문 {count}편을 태그, 메모와 함께 라이브러리에서 삭제할까요? 되돌릴 수 없습니다.",
         "pt": (
-            "Excluir {count} artigo(s) da biblioteca, com etiquetas e notas? Não é possível "
+            "Apagar {count} artigo(s) da biblioteca, com etiquetas e notas? Não é possível "
             "desfazer."
         ),
         "ru": (
-            "Удалить статей из библиотеки: {count}, вместе с тегами и заметками? Отменить "
+            "Удалить из библиотеки статьи ({count}) вместе с тегами и заметками? Отменить "
             "нельзя."
         ),
         "it": (
-            "Eliminare {count} articolo/i dalla libreria, con etichette e note? Non si può "
+            "Eliminare {count} articolo/i dalla biblioteca, con etichette e note? Non si può "
             "annullare."
         ),
         "vi": "Xóa {count} bài báo khỏi thư viện, cùng thẻ và ghi chú? Không thể hoàn tác.",
@@ -4802,7 +4802,7 @@ _LABELS: Final[dict[str, dict[str, str]]] = {
             "无法撤销。"
         ),
         "ja": (
-            "別の論文のチェックを外してください。最初にチェックした論文の項目が残り、足りない項"
+            "重複ではない論文のチェックを外してください。最初にチェックした論文の項目が残り、足りない項"
             "目はほかから補われます。統合は元に戻せません。"
         ),
         "es": (
@@ -4814,28 +4814,29 @@ _LABELS: Final[dict[str, dict[str, str]]] = {
             "complété par les autres. Action irréversible."
         ),
         "de": (
-            "Häkchen bei anderen Artikeln entfernen. Der erste markierte behält seine Felder "
-            "und wird aus den übrigen ergänzt. Das lässt sich nicht rückgängig machen."
+            "Häkchen bei Artikeln entfernen, die keine Duplikate sind. Der erste markierte "
+            "behält seine Felder und wird aus den übrigen ergänzt. Das lässt sich nicht "
+            "rückgängig machen."
         ),
         "ko": (
-            "다른 논문은 선택을 해제하세요. 첫 번째로 선택한 논문의 항목이 유지되고 나머지로 채"
-            "워집니다. 병합은 되돌릴 수 없습니다."
+            "중복이 아닌 논문은 선택을 해제하세요. 첫 번째로 선택한 논문의 항목이 유지되고 "
+            "나머지로 채워집니다. 병합은 되돌릴 수 없습니다."
         ),
         "pt": (
             "Desmarque o que for outro artigo. O primeiro marcado mantém seus campos e é "
             "completado pelos demais. Não é possível desfazer."
         ),
         "ru": (
-            "Снимите отметку с других статей. Первая отмеченная сохраняет свои поля и "
-            "дополняется из остальных. Отменить нельзя."
+            "Снимите отметку со статей, которые не являются дубликатами. Первая отмеченная "
+            "сохраняет свои поля и дополняется из остальных. Отменить нельзя."
         ),
         "it": (
             "Togli la spunta da ciò che è un altro articolo. Il primo spuntato mantiene i suoi "
             "campi e viene completato dagli altri. Non si può annullare."
         ),
         "vi": (
-            "Bỏ chọn những bài khác. Bài được chọn đầu tiên giữ các trường của nó và được bổ "
-            "sung từ các bài còn lại. Không thể hoàn tác."
+            "Bỏ chọn những bài không phải là bản trùng. Bài được chọn đầu tiên giữ các trường "
+            "của nó và được bổ sung từ các bài còn lại. Không thể hoàn tác."
         ),
         "hi": (
             "जो अलग शोध-पत्र है उसका चिह्न हटाएँ। पहला चुना हुआ अपने फ़ील्ड रखता है और बाकी से भरा "
@@ -4887,7 +4888,7 @@ _LABELS: Final[dict[str, dict[str, str]]] = {
         "fr": "{count} article(s) supprimé(s).",
         "de": "{count} Artikel gelöscht.",
         "ko": "논문 {count}편을 삭제했습니다.",
-        "pt": "{count} artigo(s) excluído(s).",
+        "pt": "{count} artigo(s) apagado(s).",
         "ru": "Удалено статей: {count}.",
         "it": "{count} articolo/i eliminato/i.",
         "vi": "Đã xóa {count} bài báo.",
@@ -4952,9 +4953,9 @@ _LABELS: Final[dict[str, dict[str, str]]] = {
         "de": "Review",
         "ko": "리뷰",
         "pt": "Revisão",
-        "ru": "Обзор",
+        "ru": "Схема PRISMA",
         "it": "Revisione",
-        "vi": "Tổng quan",
+        "vi": "Quy trình tổng quan",
         "hi": "समीक्षा",
         "id": "Tinjauan",
     },
@@ -5114,7 +5115,7 @@ _LABELS: Final[dict[str, dict[str, str]]] = {
             "kiếm (lăn cầu tuyết) để ghi lại."
         ),
         "hi": (
-            "सूचीबद्ध शोध-पत्रों के बीच कोई उद्धरण संबंध नहीं है। खोज में उद्धरणों का पीछा करें "
+            "सूचीबद्ध शोध-पत्रों के बीच कोई उद्धरण संबंध नहीं है। खोज में उद्धरणों का अनुसरण करें "
             "(snowball) ताकि वे दर्ज हों।"
         ),
         "id": (
@@ -5223,16 +5224,16 @@ _LABELS: Final[dict[str, dict[str, str]]] = {
         "zh-tw": "評估資格的全文",
         "zh-cn": "评估资格的全文",
         "ja": "適格性を評価した論文",
-        "es": "Informes evaluados",
+        "es": "Publicaciones evaluadas",
         "fr": "Textes évalués",
         "de": "Auf Eignung geprüfte Volltexte",
         "ko": "적격성 평가 대상 논문",
-        "pt": "Relatórios avaliados",
+        "pt": "Publicações avaliadas",
         "ru": "Оценённые полные тексты",
         "it": "Testi valutati per l'idoneità",
         "vi": "Toàn văn được đánh giá",
         "hi": "पात्रता हेतु आँके गए लेख",
-        "id": "Laporan dinilai kelayakannya",
+        "id": "Artikel dinilai kelayakannya",
     },
     "prisma.full_text_awaiting": {
         "en": "Awaiting assessment",
@@ -5255,16 +5256,16 @@ _LABELS: Final[dict[str, dict[str, str]]] = {
         "zh-tw": "排除的全文",
         "zh-cn": "排除的全文",
         "ja": "除外された論文",
-        "es": "Informes excluidos",
+        "es": "Publicaciones excluidas",
         "fr": "Textes exclus",
         "de": "Ausgeschlossene Volltexte",
         "ko": "제외된 논문",
-        "pt": "Relatórios excluídos",
+        "pt": "Publicações excluídas",
         "ru": "Исключённые полные тексты",
         "it": "Testi esclusi",
         "vi": "Toàn văn bị loại",
         "hi": "बाहर किए गए लेख",
-        "id": "Laporan dikeluarkan",
+        "id": "Artikel dikeluarkan",
     },
     "prisma.included": {
         "en": "Studies included in review",
@@ -5472,8 +5473,8 @@ _LABELS: Final[dict[str, dict[str, str]]] = {
             "programa antes."
         ),
         "ru": (
-            "Статьи обобщаются на этом компьютере, текст его не покидает. Сначала запустите "
-            "программу."
+            "Резюме статей составляются на этом компьютере, текст его не покидает. Сначала "
+            "запустите программу."
         ),
         "it": (
             "Gli articoli vengono riassunti su questo computer, nessun testo ne esce. Avvia "
@@ -5752,7 +5753,7 @@ _LABELS: Final[dict[str, dict[str, str]]] = {
         "de": "Kennzahlen (Name | Wert | Vergleich)",
         "ko": "핵심 수치 (항목 | 값 | 기준)",
         "pt": "Números-chave (rótulo | valor | referência)",
-        "ru": "Ключевые числа (название | значение | базовое)",
+        "ru": "Ключевые числа (название | значение | базовый уровень)",
         "it": "Numeri chiave (etichetta | valore | riferimento)",
         "vi": "Số liệu chính (nhãn | giá trị | mốc so sánh)",
         "hi": "मुख्य संख्याएँ (नाम | मान | आधार)",
@@ -5762,10 +5763,10 @@ _LABELS: Final[dict[str, dict[str, str]]] = {
         "en": "Core observation",
         "zh-tw": "核心觀察",
         "zh-cn": "核心观察",
-        "ja": "中心となる考察",
+        "ja": "核心観察",
         "es": "Observación central",
         "fr": "Observation centrale",
-        "de": "Kernaussage",
+        "de": "Kernbeobachtung",
         "ko": "핵심 관찰",
         "pt": "Observação central",
         "ru": "Главное наблюдение",
@@ -5811,11 +5812,11 @@ _LABELS: Final[dict[str, dict[str, str]]] = {
         "zh-tw": "重點",
         "zh-cn": "要点",
         "ja": "要点",
-        "es": "Conclusiones",
+        "es": "Conclusiones clave",
         "fr": "À retenir",
         "de": "Kernpunkte",
         "ko": "요점",
-        "pt": "Conclusões",
+        "pt": "Pontos-chave",
         "ru": "Главные выводы",
         "it": "Punti da ricordare",
         "vi": "Điểm chính",
@@ -6037,10 +6038,10 @@ _LABELS: Final[dict[str, dict[str, str]]] = {
         "ja": "# で始まる行は見出しで、続く行がその内容です。",
         "es": "Una línea que empieza con # es un título, las siguientes le pertenecen.",
         "fr": "Une ligne commençant par # est un titre, les suivantes en dépendent.",
-        "de": "Eine Zeile mit # ist eine Überschrift, die folgenden gehören dazu.",
+        "de": "Eine Zeile, die mit # beginnt, ist eine Überschrift, die folgenden gehören dazu.",
         "ko": "#로 시작하는 줄은 제목이고 그다음 줄이 내용입니다.",
         "pt": "Uma linha que começa com # é um título, as seguintes pertencem a ele.",
-        "ru": "Строка с # это заголовок, следующие относятся к нему.",
+        "ru": "Строка, начинающаяся с #, является заголовком, следующие относятся к нему.",
         "it": "Una riga che inizia con # è un titolo, le successive gli appartengono.",
         "vi": "Dòng bắt đầu bằng # là tiêu đề, các dòng sau thuộc về nó.",
         "hi": "# से शुरू पंक्ति शीर्षक है, उसके बाद की पंक्तियाँ उसकी हैं।",
@@ -6118,7 +6119,7 @@ _LABELS: Final[dict[str, dict[str, str]]] = {
         "es": "Plantilla de Word",
         "fr": "Modèle Word",
         "de": "Word-Vorlage",
-        "ko": "Word 서식 파일",
+        "ko": "Word 템플릿",
         "pt": "Modelo do Word",
         "ru": "Шаблон Word",
         "it": "Modello Word",
@@ -6135,9 +6136,9 @@ _LABELS: Final[dict[str, dict[str, str]]] = {
         "fr": "Facultatif : le .docx de votre école",
         "de": "Optional: die .docx Ihrer Hochschule",
         "ko": "선택: 학교의 .docx",
-        "pt": "Opcional: o .docx da sua escola",
+        "pt": "Opcional: o .docx da sua universidade",
         "ru": "Необязательно: .docx вашего вуза",
-        "it": "Facoltativo: il .docx della tua scuola",
+        "it": "Facoltativo: il .docx della tua università",
         "vi": "Tùy chọn: tệp .docx của trường",
         "hi": "वैकल्पिक: आपके संस्थान की .docx",
         "id": "Opsional: .docx kampus Anda",
@@ -6186,9 +6187,9 @@ _LABELS: Final[dict[str, dict[str, str]]] = {
         ),
         "fr": "Aperçu approximatif. Polices et sauts de ligne peuvent différer dans PowerPoint.",
         "de": "Ungefähre Vorschau. Schriften und Umbrüche können in PowerPoint abweichen.",
-        "ko": "대략적인 미리보기입니다. 글꼴과 줄바꿈은 PowerPoint 와 다를 수 있습니다.",
+        "ko": "대략적인 미리보기입니다. 글꼴과 줄바꿈은 PowerPoint와 다를 수 있습니다.",
         "pt": "Prévia aproximada. Fontes e quebras de linha podem variar no PowerPoint.",
-        "ru": "Приблизительный вид. Шрифты и переносы в PowerPoint могут отличаться.",
+        "ru": "Приблизительный вид. Шрифты и переносы строк в PowerPoint могут отличаться.",
         "it": "Anteprima approssimativa. Caratteri e a capo possono differire in PowerPoint.",
         "vi": "Bản xem trước gần đúng. Phông chữ và ngắt dòng có thể khác trong PowerPoint.",
         "hi": "अनुमानित पूर्वावलोकन। PowerPoint में फ़ॉन्ट और पंक्ति-विराम अलग हो सकते हैं।",
@@ -6295,11 +6296,11 @@ _LABELS: Final[dict[str, dict[str, str]]] = {
         "zh-tw": "無法儲存，簡報是否正在 PowerPoint 中開啟？{error}",
         "zh-cn": "无法保存，演示文稿是否正在 PowerPoint 中打开？{error}",
         "ja": "保存できません。PowerPoint で開いていませんか? {error}",
-        "es": "No se pudo guardar, ¿está abierta en PowerPoint? {error}",
+        "es": "No se pudo guardar, ¿está la presentación abierta en PowerPoint? {error}",
         "fr": "Enregistrement impossible, le fichier est-il ouvert dans PowerPoint ? {error}",
         "de": "Speichern nicht möglich, ist die Datei in PowerPoint geöffnet? {error}",
-        "ko": "저장하지 못했습니다. PowerPoint 에서 열려 있나요? {error}",
-        "pt": "Não foi possível salvar, está aberta no PowerPoint? {error}",
+        "ko": "저장하지 못했습니다. PowerPoint에서 열려 있나요? {error}",
+        "pt": "Não foi possível salvar, a apresentação está aberta no PowerPoint? {error}",
         "ru": "Не удалось сохранить, файл открыт в PowerPoint? {error}",
         "it": "Impossibile salvare, il file è aperto in PowerPoint? {error}",
         "vi": "Không lưu được, tệp có đang mở trong PowerPoint? {error}",

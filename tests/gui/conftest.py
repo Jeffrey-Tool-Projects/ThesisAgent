@@ -9,6 +9,8 @@ an in-memory credential store.
 
 from __future__ import annotations
 
+import tempfile
+
 import pytest
 
 pytest.importorskip("PySide6", reason="install thesisagents[gui]")
@@ -35,6 +37,17 @@ class MemoryCredentials:
         del self.saved[service, key]
 
 
+# Also in force without the fixtures below. pytest does not apply them to a
+# file named on the command line after one outside this folder, as in
+# ``pytest tests/gui/test_a.py tests/test_b.py tests/gui/test_c.py``, and such
+# a run would write to the registry and the credential store of the developer.
+credentials.STORE.replace(MemoryCredentials())
+QSettings.setDefaultFormat(QSettings.IniFormat)
+QSettings.setPath(
+    QSettings.IniFormat, QSettings.UserScope, tempfile.mkdtemp(prefix="thesisagents-gui-tests-")
+)
+
+
 @pytest.fixture(autouse=True)
 def _no_update_check(monkeypatch):
     async def no_news(_current):
@@ -48,7 +61,7 @@ def credential_store():
     store = MemoryCredentials()
     credentials.STORE.replace(store)
     yield store
-    credentials.STORE.replace(None)
+    credentials.STORE.replace(MemoryCredentials())
 
 
 @pytest.fixture(autouse=True)
