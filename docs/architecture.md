@@ -12,7 +12,7 @@ shared `Paper` record, deduplicates by DOI / arXiv-ID / fuzzy
 title, ranks by recency + citation count, optionally enriches
 each paper with a structured `PaperSummary`, and hands the
 resulting `PaperCollection` to one or more **Exporter** plugins
-(`.pptx`, `.xlsx`, `.bib`, `.md`, `.json`, `.ris`, `.csv`, `.csl.json`).
+(`.pptx`, `.xlsx`, `.bib`, `.md`, `.json`, `.ris`, `.csv`, `.csl.json`, `.docx`, `.tex`).
 All outbound HTTP
 goes through one HTTPS-only client per source, all per-source
 rate limits live in a token bucket, and every fetcher test uses
@@ -52,7 +52,7 @@ ThesisAgents/
 ├── thesisagents/                 # main package — core runtime
 │   ├── core/                       # domain (Paper, Query, dedup, rank, pipeline)
 │   ├── fetchers/                   # HTTPS-only http client + Fetcher base
-│   ├── exporters/                  # pptx / xlsx / bib / md / json / ris / csv / csl + pptx_edit + i18n
+│   ├── exporters/                  # pptx / xlsx / bib / md / json / ris / csv / csl / docx / tex + pptx_edit + i18n
 │   ├── intelligence/               # PDF + Anthropic summariser ([intelligence] extra)
 │   ├── library/                    # SQLite literature library kept across runs
 │   ├── evaluation/                 # offline search-quality benchmark (see docs/search-quality.md)

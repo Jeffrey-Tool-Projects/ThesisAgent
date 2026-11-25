@@ -567,6 +567,7 @@ def _register_export_tool(server: FastMCP) -> None:
         library: str | None = None,
         pptx_template: str | None = None,
         pptx_template_config: str | None = None,
+        docx_template: str | None = None,
     ) -> dict[str, Any]:
         """Export a list of papers (from search / fetch_paper) to disk.
 
@@ -584,6 +585,9 @@ def _register_export_tool(server: FastMCP) -> None:
         When given, the verdicts are kept there: a DOI or URL that verified in
         an earlier call is not checked again for 30 days. A failure is always
         checked again.
+
+        ``docx_template`` is a Word document (.docx) the ``docx`` literature
+        review draft is written into, such as a school's thesis template.
 
         ``pptx_template`` builds the deck on a PowerPoint template (.pptx /
         .potx) instead of the built-in navy-band deck, and
@@ -648,6 +652,7 @@ def _register_export_tool(server: FastMCP) -> None:
             verify_identifiers=verify_identifiers,
             pptx_template=pptx_template,
             pptx_template_config=pptx_template_config,
+            docx_template=docx_template,
         )
         store = Library(library) if library else None
         try:

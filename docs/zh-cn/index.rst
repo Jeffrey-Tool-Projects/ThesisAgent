@@ -168,7 +168,7 @@ CLI
 
    # 10 条结果,全部导出格式,自定义目录
    thesisagents --query "transformer attention" --source arxiv \
-                --max 10 --export pptx,xlsx,md,bib,json,ris,csv,csl \
+                --max 10 --export pptx,xlsx,md,bib,json,ris,csv,csl,docx,tex \
                 --out ./exports/
 
    # 限制在近年论文
@@ -388,7 +388,7 @@ Claude Desktop、Cursor …)都能驱动整套流程。
      - 把一组论文的 PDF 批量下载到 ``{out_dir}/pdfs/``\ 。返回以
        BibTeX key 为索引的逐篇结果。
    * - ``export``
-     - 论文列表 + 格式 → 写出 ``.pptx/.xlsx/.md/.bib/.json/.ris/.csv/.csl.json``\ 。每篇
+     - 论文列表 + 格式 → 写出 ``.pptx/.xlsx/.md/.bib/.json/.ris/.csv/.csl.json/.docx/.tex``\ 。每篇
        论文可附 ``summary``\ 字段走 thesis-style;支持 ``language``\
        走 i18n,以及 ``max_slides_per_paper``\ (默认 25;传 ``0``\
        代表不限)。

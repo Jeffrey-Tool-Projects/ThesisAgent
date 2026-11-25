@@ -293,7 +293,7 @@ py -m thesisagents --paper "https://arxiv.org/abs/1706.03762" `
 | `--source` / `-s` | 逗号分隔的来源清单。默认 `arxiv`。 |
 | `--max` / `-n` | 每来源最多结果数(1..200)。默认 25。 |
 | `--year-from` / `--year-to` | 含边界的年份筛选。 |
-| `--export` / `-e` | 格式:`pptx,xlsx,md,bib,json,ris,csv,csl` 之任意组合。默认依模式而定(见下)。 |
+| `--export` / `-e` | 格式:`pptx,xlsx,md,bib,json,ris,csv,csl,docx,tex` 之任意组合。默认依模式而定(见下)。 |
 | `--out` / `-o` | 输出目录。默认 `./exports`。 |
 | `--filename-stem` | 覆盖生成的文件名主干。 |
 | `--no-abstract` | 从导出中省略摘要内容。 |
@@ -391,7 +391,7 @@ claude mcp add thesisagents -- ".venv\Scripts\python.exe" -m thesisagents.mcp
 | `fetch_paper` | arXiv / DOI / PMID / IEEE 标识符 → 单篇论文。 |
 | `fetch_pdf_text` | 下载一份 PDF,返回提取出的正文文本。**这是「我读了论文」的 MCP 路径。** |
 | `download_pdfs` | 批量把一份论文清单的 PDF 下载到 `{out_dir}/pdfs/`。返回以 BibTeX 键为索引的每篇论文结果。 |
-| `export` | 论文清单 + 格式 → 写出 `.pptx/.xlsx/.md/.bib/.json/.ris/.csv/.csl.json`。每篇论文可接受一个 `summary` 字段,用于丰富论文答辩级 schema、`max_slides_per_paper`(默认 25)与 `dark_mode`(默认 `false` —— 项目默认是浅色深蓝带幻灯片,传 `true` 走深色 OLED / 低光后处理)。 写入前会验证每个 DOI / 网址 (`verify_identifiers`,默认 `true`): 标识符错误或无法连接时调用会失败并指出是哪篇论文,响应中附有 `verification` 报告。 `library` 指定用来保存标识符检查结果的文献库,先前调用已通过检查的标识符就不会再检查一次。 `pptx_template` (可搭配可选的 `pptx_template_config`) 会在你自己的 PowerPoint 模板上生成幻灯片。 |
+| `export` | 论文清单 + 格式 → 写出 `.pptx/.xlsx/.md/.bib/.json/.ris/.csv/.csl.json/.docx/.tex`。每篇论文可接受一个 `summary` 字段,用于丰富论文答辩级 schema、`max_slides_per_paper`(默认 25)与 `dark_mode`(默认 `false` —— 项目默认是浅色深蓝带幻灯片,传 `true` 走深色 OLED / 低光后处理)。 写入前会验证每个 DOI / 网址 (`verify_identifiers`,默认 `true`): 标识符错误或无法连接时调用会失败并指出是哪篇论文,响应中附有 `verification` 报告。 `library` 指定用来保存标识符检查结果的文献库,先前调用已通过检查的标识符就不会再检查一次。 `pptx_template` (可搭配可选的 `pptx_template_config`) 会在你自己的 PowerPoint 模板上生成幻灯片。 |
 | `pptx_validate_template` | 模板 → 它能否用于 `export(pptx_template=...)`: 每一种幻灯片将使用的版式,以及说明该改什么的错误与警告。不会生成任何幻灯片。 |
 | `pptx_inspect` | 读取既有幻灯片的 slide / shape 结构。 |
 | `pptx_review` | 一次调用审核一份幻灯片 —— 溢出 + 颜色契约 + `paper_rule` 章节完整度。自动检测幻灯片语言;也是 CLI `python -m thesisagents review <deck.pptx>`。 |
@@ -421,7 +421,7 @@ ThesisAgents/
 ├── thesisagents/                 # main package
 │   ├── core/                        # Paper / PaperSummary / RqResult / dedup / ranking / pipeline
 │   ├── fetchers/                    # HTTPS-only async client, token-bucket rate limit
-│   ├── exporters/                   # pptx (thesis-style) · xlsx · bib · md · json · ris · csv · csl · pptx_edit · i18n
+│   ├── exporters/                   # pptx (thesis-style) · xlsx · bib · md · json · ris · csv · csl · docx · tex · pptx_edit · i18n
 │   ├── intelligence/                # PDF fetch + Anthropic summariser  ([intelligence] extra)
 │   ├── library/                     # SQLite literature library kept across runs
 │   ├── evaluation/                  # offline search-quality benchmark (docs/search-quality.md)
@@ -477,7 +477,7 @@ Tiếng Việt、हिन्दी、Bahasa Indonesia)—— 首次运行会从
 结果旁边,中等宽度时放在结果上方,宽度低于 760 px 时侧边栏收起为图标,
 表单标签移到字段上方。窗口可以缩小到 640×480,并默认开启 HiDPI 缩放。
 **Settings → Theme** 可选浅色、深色或跟随系统,立即生效,且与幻灯片本身的
-深色模式无关。结果可以排序、筛选并勾选，只把勾选的论文交给 Enrich、Deck 与导出，滚雪球的范围可以调整，执行中的搜索或丰富化可以取消，表单内容在下次启动时会保留。Deck 页面可在导出前检查模板，也能审查任何完成的幻灯片。没有 API 密钥时，Enrich 页面会把论文以 JSON 文件交给 LLM 代理，再导入它写的摘要。Deck 页面也能下载 PDF，在 Settings 声明机构 / VPN 访问权限之前会跳过 IEEE，新的界面语言会立即生效并保留当前工作。同一个开关也会让搜索跳过 `ieee`。Search 页面也能像 CLI 的 `--pdf` 一样，把本地 PDF 读入结果。状态栏会显示经由 Chrome 下载的 PDF 数量，出版商 PDF 无法使用 Chrome 时也会发出警告。**Settings → Style** 可在经典海军蓝外观与 Material 3 之间切换。**Settings → Font size** 可立即把整个应用的文字大小调整为 8 到 24 pt，也可以用 `Ctrl++`、`Ctrl+-` 和 `Ctrl+0`(恢复默认)，布局会随之调整。状态栏的 **Log**(`Ctrl+L`)显示程序正在做什么，并有日志文件可附在错误报告中，Chrome 等你完成验证时上方会出现提示。API 密钥存放在系统的凭据管理器(Windows 凭据管理器、macOS 钥匙串、Secret Service)，不会写进设置文件。Windows 提供不需管理员权限的安装程序，有新版本时程序会提示(每天检查一次，可关闭)。**Settings → AI model** 可选择由谁撰写摘要：Anthropic、其他十一种服务，或你电脑上的模型(Ollama、LM Studio、llama.cpp、vLLM)，论文内容可以不外传。`Ctrl+1` … `Ctrl+5` 切换页面。
+深色模式无关。结果可以排序、筛选并勾选，只把勾选的论文交给 Enrich、Deck 与导出，滚雪球的范围可以调整，执行中的搜索或丰富化可以取消，表单内容在下次启动时会保留。Deck 页面可在导出前检查模板，也能审查任何完成的幻灯片。没有 API 密钥时，Enrich 页面会把论文以 JSON 文件交给 LLM 代理，再导入它写的摘要。Deck 页面也能下载 PDF，在 Settings 声明机构 / VPN 访问权限之前会跳过 IEEE，新的界面语言会立即生效并保留当前工作。同一个开关也会让搜索跳过 `ieee`。Search 页面也能像 CLI 的 `--pdf` 一样，把本地 PDF 读入结果。状态栏会显示经由 Chrome 下载的 PDF 数量，出版商 PDF 无法使用 Chrome 时也会发出警告。**Settings → Style** 可在经典海军蓝外观与 Material 3 之间切换。**Settings → Font size** 可立即把整个应用的文字大小调整为 8 到 24 pt，也可以用 `Ctrl++`、`Ctrl+-` 和 `Ctrl+0`(恢复默认)，布局会随之调整。状态栏的 **Log**(`Ctrl+L`)显示程序正在做什么，并有日志文件可附在错误报告中，Chrome 等你完成验证时上方会出现提示。API 密钥存放在系统的凭据管理器(Windows 凭据管理器、macOS 钥匙串、Secret Service)，不会写进设置文件。Windows 提供不需管理员权限的安装程序，有新版本时程序会提示(每天检查一次，可关闭)。**Settings → AI model** 可选择由谁撰写摘要：Anthropic、其他十一种服务，或你电脑上的模型(Ollama、LM Studio、llama.cpp、vLLM)，论文内容可以不外传。增强页与文献库页的 **Edit summary** 可手动编辑摘要，并指出论文七个章节中还没有内容的部分。**Word draft** 与 **LaTeX draft** 导出含 APA 引用、比较表与参考文献的文献综述草稿，也能写进学校的 Word 模板。`Ctrl+1` … `Ctrl+5` 切换页面。
 
 完整参考:[`docs/gui.md`](../docs/gui.md)。
 

@@ -48,7 +48,7 @@ thesisagents (--query KEYWORDS | --paper IDENTIFIER | --pdf PATH |
 | `--max` / `-n` | `25` | Range 1..200. |
 | `--year-from`, `--year-to` | — | Inclusive year filter. |
 | `--min-citations` | — | Drop papers below this citation count, enforced across **all** sources (not just Semantic Scholar). Papers whose source reports no count are kept. Omit for no minimum. |
-| `--export` / `-e` | mode-specific | Any of `pptx`, `xlsx`, `md`, `bib`, `json`, `ris`, `csv`, `csl`. **Default with `--query` is `pptx,xlsx,bib`; default with `--paper` is `pptx,bib`** (one-row Excel is busy work). Explicit `--export` always wins. `ris` (Zotero/Mendeley/EndNote), `csv` (flat table) and `csl` (CSL-JSON for Pandoc, written as `<stem>.csl.json`) are the interchange formats. |
+| `--export` / `-e` | mode-specific | Any of `pptx`, `xlsx`, `md`, `bib`, `json`, `ris`, `csv`, `csl`, `docx`, `tex`. **Default with `--query` is `pptx,xlsx,bib`; default with `--paper` is `pptx,bib`** (one-row Excel is busy work). Explicit `--export` always wins. `ris` (Zotero/Mendeley/EndNote), `csv` (flat table) and `csl` (CSL-JSON for Pandoc, written as `<stem>.csl.json`) are the interchange formats. |
 | `--list-sources`, `--list-exports` | — | Print the available search sources / export formats and exit (no query needed). |
 | `--out` / `-o` | `./exports` | Created if missing. |
 | `--filename-stem` | auto | `{first-32-chars-of-query}-{YYYYMMDD-HHMMSS}` by default. |
@@ -439,6 +439,28 @@ place when it is opened. A path that is not a library (a directory,
 another application's database, a text file) is refused and left
 untouched. `--library-search` and `--library-export` on a path that
 does not exist are an error, not an empty result.
+
+### Literature review drafts: `docx` and `tex`
+
+```powershell
+thesisagents --library thesis.db --library-export --export docx,tex --lang zh-tw
+thesisagents --library thesis.db --library-export --export docx --docx-template school.docx
+```
+
+Both formats write thesis section 2.3 (each paper in the words of its
+summary, or its abstract, and the comparison table), section 2.4 (the
+limitations and open questions the papers name) and the references. Nothing
+is added that is not in the papers' records: connecting the papers and
+naming the gap is yours to write, and every statement should be checked
+against the paper.
+
+- `docx` cites in APA 7. `--docx-template` writes into a copy of a Word
+  document, whose styles decide the look and whose content stays. Without
+  one, Traditional Chinese drafts follow the thesis handbook (14 pt 標楷體
+  with Times New Roman, bold 20 pt headings).
+- `tex` cites with `\citep` and writes its `.bib` beside it, with the keys
+  of the `bib` export. Compile with XeLaTeX or LuaLaTeX.
+- The `xlsx` export has the same comparison table on a sheet of its own.
 
 ### Editing a library: `thesisagents library`
 

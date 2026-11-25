@@ -561,6 +561,7 @@ async def _run_stages(args: argparse.Namespace, library: Library | None) -> int:
         dark_mode=args.dark_mode,
         verify_identifiers=args.verify_identifiers,
         pptx_template=args.pptx_template,
+        docx_template=args.docx_template,
         pptx_template_config=args.pptx_template_config,
     )
     # One cache for the whole run: the identifiers are checked once, right

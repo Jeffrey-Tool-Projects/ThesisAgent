@@ -168,7 +168,7 @@ CLI
 
    # 10 筆結果,全部匯出格式,自訂目錄
    thesisagents --query "transformer attention" --source arxiv \
-                --max 10 --export pptx,xlsx,md,bib,json,ris,csv,csl \
+                --max 10 --export pptx,xlsx,md,bib,json,ris,csv,csl,docx,tex \
                 --out ./exports/
 
    # 限制在近年論文
@@ -392,7 +392,7 @@ Claude Desktop、Cursor …)都能驅動整套流程。
      - 把一組論文的 PDF 批次下載到 ``{out_dir}/pdfs/``\ 。回傳以
        BibTeX key 為索引的逐篇結果。
    * - ``export``
-     - 論文列表 + 格式 → 寫出 ``.pptx/.xlsx/.md/.bib/.json/.ris/.csv/.csl.json``\ 。每篇
+     - 論文列表 + 格式 → 寫出 ``.pptx/.xlsx/.md/.bib/.json/.ris/.csv/.csl.json/.docx/.tex``\ 。每篇
        論文可附 ``summary``\ 欄位走 thesis-style;支援 ``language``\
        走 i18n,``max_slides_per_paper``\ (預設 25;傳 ``0``\
        代表不限),以及 ``dark_mode``\ (預設 ``false``\ ,即亮色

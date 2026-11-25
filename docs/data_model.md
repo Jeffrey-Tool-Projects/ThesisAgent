@@ -358,7 +358,8 @@ class ExportOptions:
 
 | Field | Notes |
 |---|---|
-| `formats` | Validated against `ALL_EXPORTS = ("bib", "md", "pptx", "xlsx", "pdf", "json", "ris", "csv", "csl")`. |
+| `docx_template` | A Word document the `docx` draft is written into, or `None`. |
+| `formats` | Validated against `ALL_EXPORTS = ("bib", "md", "pptx", "xlsx", "pdf", "json", "ris", "csv", "csl", "docx", "tex")`. |
 | `out_dir` | Created if missing. Path-traversal-safe (resolved via `utils.path_safety`). |
 | `filename_stem` | When `None`, the pipeline generates `{slug-of-query}-{YYYYMMDD-HHMMSS}`. Hand-authored regen scripts typically set this to the BibTeX key. |
 | `pptx_template` | A PowerPoint template whose layouts, background and logo the deck is built on. `None` is the built-in navy-band deck. Checked against the template contract before any slide is rendered, and a template that does not meet it raises `TemplateError` with every problem. See [Deck templates](pptx_templates.md). |

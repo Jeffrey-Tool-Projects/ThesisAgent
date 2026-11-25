@@ -54,6 +54,22 @@ _TABLE: dict[str, dict[str, str]] = {
         "label_caption": "Caption",
         "label_technique": "Technique",
         "label_technique_role": "Role in this paper",
+        "review_title": "Literature review: {topic}",
+        "review_survey": "Literature Survey",
+        "review_analysis": "Comparative Analysis",
+        "review_comparison": "Comparison of the reviewed papers",
+        "review_intro_range": (
+            "This section reviews {count} papers published between {first} and {last}."
+        ),
+        "review_intro_year": "This section reviews {count} papers published in {year}.",
+        "review_intro_plain": "This section reviews {count} papers.",
+        "review_gap_intro": (
+            "The papers themselves name these limitations and open questions:"
+        ),
+        "review_col_author": "Author",
+        "review_col_method": "Method",
+        "review_col_strengths": "Strengths",
+        "review_col_weaknesses": "Weaknesses",
         "label_authors": "Authors",
         "label_year": "Year",
         "label_venue": "Venue",
@@ -106,6 +122,21 @@ _TABLE: dict[str, dict[str, str]] = {
         "label_caption": "圖說",
         "label_technique": "技術",
         "label_technique_role": "於本研究之角色",
+        "review_title": "文獻探討：{topic}",
+        "review_survey": "文獻探討",
+        "review_analysis": "文獻比較分析",
+        "review_comparison": "文獻比較表",
+        "review_intro_range": (
+            "本節回顧 {first} 至 {last}"
+            " 年間發表的 {count} 篇文獻。"
+        ),
+        "review_intro_year": "本節回顧 {year} 年發表的 {count} 篇文獻。",
+        "review_intro_plain": "本節回顧 {count} 篇文獻。",
+        "review_gap_intro": "各文獻自述的限制與待解問題如下：",
+        "review_col_author": "作者",
+        "review_col_method": "方法",
+        "review_col_strengths": "優點",
+        "review_col_weaknesses": "缺點",
         "label_authors": "作者",
         "label_year": "年份",
         "label_venue": "出處",
@@ -158,6 +189,21 @@ _TABLE: dict[str, dict[str, str]] = {
         "label_caption": "图说",
         "label_technique": "技术",
         "label_technique_role": "在本研究中的作用",
+        "review_title": "文献综述：{topic}",
+        "review_survey": "文献综述",
+        "review_analysis": "文献比较分析",
+        "review_comparison": "文献比较表",
+        "review_intro_range": (
+            "本节回顾 {first} 至 {last}"
+            " 年间发表的 {count} 篇文献。"
+        ),
+        "review_intro_year": "本节回顾 {year} 年发表的 {count} 篇文献。",
+        "review_intro_plain": "本节回顾 {count} 篇文献。",
+        "review_gap_intro": "各文献自述的局限与待解问题如下：",
+        "review_col_author": "作者",
+        "review_col_method": "方法",
+        "review_col_strengths": "优点",
+        "review_col_weaknesses": "缺点",
         "label_authors": "作者",
         "label_year": "年份",
         "label_venue": "出处",
@@ -210,6 +256,21 @@ _TABLE: dict[str, dict[str, str]] = {
         "label_caption": "図説",
         "label_technique": "技術",
         "label_technique_role": "本研究での役割",
+        "review_title": "文献レビュー: {topic}",
+        "review_survey": "文献調査",
+        "review_analysis": "比較分析",
+        "review_comparison": "文献比較表",
+        "review_intro_range": (
+            "本節では {first} 年から {last} 年"
+            "に発表された {count} 件の文献を取り上げる。"
+        ),
+        "review_intro_year": "本節では {year} 年に発表された {count} 件の文献を取り上げる。",
+        "review_intro_plain": "本節では {count} 件の文献を取り上げる。",
+        "review_gap_intro": "各文献が自ら挙げる限界と未解決の課題は次のとおりである:",
+        "review_col_author": "著者",
+        "review_col_method": "手法",
+        "review_col_strengths": "長所",
+        "review_col_weaknesses": "短所",
         "label_authors": "著者",
         "label_year": "年",
         "label_venue": "出典",
@@ -262,6 +323,22 @@ _TABLE: dict[str, dict[str, str]] = {
         "label_caption": "Pie",
         "label_technique": "Técnica",
         "label_technique_role": "Papel en este trabajo",
+        "review_title": "Revisión de la literatura: {topic}",
+        "review_survey": "Estudio de la literatura",
+        "review_analysis": "Análisis comparativo",
+        "review_comparison": "Comparación de los artículos revisados",
+        "review_intro_range": (
+            "Esta sección revisa {count} artículos publicados entre {first} y {last}."
+        ),
+        "review_intro_year": "Esta sección revisa {count} artículos publicados en {year}.",
+        "review_intro_plain": "Esta sección revisa {count} artículos.",
+        "review_gap_intro": (
+            "Los propios artículos señalan estas limitaciones y cuestiones abiertas:"
+        ),
+        "review_col_author": "Autor",
+        "review_col_method": "Método",
+        "review_col_strengths": "Fortalezas",
+        "review_col_weaknesses": "Debilidades",
         "label_authors": "Autores",
         "label_year": "Año",
         "label_venue": "Publicado en",
@@ -314,6 +391,24 @@ _TABLE: dict[str, dict[str, str]] = {
         "label_caption": "Légende",
         "label_technique": "Technique",
         "label_technique_role": "Rôle dans cet article",
+        "review_title": "Revue de littérature : {topic}",
+        "review_survey": "Étude de la littérature",
+        "review_analysis": "Analyse comparative",
+        "review_comparison": "Comparaison des articles étudiés",
+        "review_intro_range": (
+            "Cette section passe en revue {count} articles publiés entre {first} et {last}."
+        ),
+        "review_intro_year": (
+            "Cette section passe en revue {count} articles publiés en {year}."
+        ),
+        "review_intro_plain": "Cette section passe en revue {count} articles.",
+        "review_gap_intro": (
+            "Les articles mentionnent eux-mêmes ces limites et questions ouvertes :"
+        ),
+        "review_col_author": "Auteur",
+        "review_col_method": "Méthode",
+        "review_col_strengths": "Points forts",
+        "review_col_weaknesses": "Points faibles",
         "label_authors": "Auteurs",
         "label_year": "Année",
         "label_venue": "Publié dans",
@@ -366,6 +461,25 @@ _TABLE: dict[str, dict[str, str]] = {
         "label_caption": "Beschriftung",
         "label_technique": "Technik",
         "label_technique_role": "Rolle in dieser Arbeit",
+        "review_title": "Literaturübersicht: {topic}",
+        "review_survey": "Literaturstand",
+        "review_analysis": "Vergleichende Analyse",
+        "review_comparison": "Vergleich der untersuchten Arbeiten",
+        "review_intro_range": (
+            "Dieser Abschnitt behandelt {count} "
+            "zwischen {first} und {last} erschienene Arbeiten."
+        ),
+        "review_intro_year": (
+            "Dieser Abschnitt behandelt {count} im Jahr {year} erschienene Arbeiten."
+        ),
+        "review_intro_plain": "Dieser Abschnitt behandelt {count} Arbeiten.",
+        "review_gap_intro": (
+            "Die Arbeiten nennen selbst diese Einschränkungen und offenen Fragen:"
+        ),
+        "review_col_author": "Autor",
+        "review_col_method": "Methode",
+        "review_col_strengths": "Stärken",
+        "review_col_weaknesses": "Schwächen",
         "label_authors": "Autoren",
         "label_year": "Jahr",
         "label_venue": "Veröffentlicht in",
@@ -418,6 +532,21 @@ _TABLE: dict[str, dict[str, str]] = {
         "label_caption": "설명",
         "label_technique": "기술",
         "label_technique_role": "본 연구에서의 역할",
+        "review_title": "문헌 검토: {topic}",
+        "review_survey": "문헌 조사",
+        "review_analysis": "비교 분석",
+        "review_comparison": "문헌 비교표",
+        "review_intro_range": (
+            "이 절에서는 {first}년부터 {last}년"
+            "까지 발표된 문헌 {count}편을 검토한다."
+        ),
+        "review_intro_year": "이 절에서는 {year}년에 발표된 문헌 {count}편을 검토한다.",
+        "review_intro_plain": "이 절에서는 문헌 {count}편을 검토한다.",
+        "review_gap_intro": "문헌들이 스스로 밝힌 한계와 미해결 문제는 다음과 같다:",
+        "review_col_author": "저자",
+        "review_col_method": "방법",
+        "review_col_strengths": "장점",
+        "review_col_weaknesses": "단점",
         "label_authors": "저자",
         "label_year": "연도",
         "label_venue": "출판처",
@@ -470,6 +599,22 @@ _TABLE: dict[str, dict[str, str]] = {
         "label_caption": "Legenda",
         "label_technique": "Técnica",
         "label_technique_role": "Papel neste trabalho",
+        "review_title": "Revisão da literatura: {topic}",
+        "review_survey": "Levantamento da literatura",
+        "review_analysis": "Análise comparativa",
+        "review_comparison": "Comparação dos artigos revisados",
+        "review_intro_range": (
+            "Esta seção revisa {count} artigos publicados entre {first} e {last}."
+        ),
+        "review_intro_year": "Esta seção revisa {count} artigos publicados em {year}.",
+        "review_intro_plain": "Esta seção revisa {count} artigos.",
+        "review_gap_intro": (
+            "Os próprios artigos apontam estas limitações e questões em aberto:"
+        ),
+        "review_col_author": "Autor",
+        "review_col_method": "Método",
+        "review_col_strengths": "Pontos fortes",
+        "review_col_weaknesses": "Pontos fracos",
         "label_authors": "Autores",
         "label_year": "Ano",
         "label_venue": "Publicado em",
@@ -522,6 +667,25 @@ _TABLE: dict[str, dict[str, str]] = {
         "label_caption": "Подпись",
         "label_technique": "Технология",
         "label_technique_role": "Роль в этой работе",
+        "review_title": "Обзор литературы: {topic}",
+        "review_survey": "Анализ литературы",
+        "review_analysis": "Сравнительный анализ",
+        "review_comparison": "Сравнение рассмотренных работ",
+        "review_intro_range": (
+            "В этом разделе рассматриваются работы "
+            "({count}), опубликованные с {first} по {last} год."
+        ),
+        "review_intro_year": (
+            "В этом разделе рассматриваются работы ({count}), опубликованные в {year} году."
+        ),
+        "review_intro_plain": "В этом разделе рассматриваются работы ({count}).",
+        "review_gap_intro": (
+            "Сами работы называют следующие ограничения и открытые вопросы:"
+        ),
+        "review_col_author": "Автор",
+        "review_col_method": "Метод",
+        "review_col_strengths": "Сильные стороны",
+        "review_col_weaknesses": "Слабые стороны",
         "label_authors": "Авторы",
         "label_year": "Год",
         "label_venue": "Издание",
@@ -574,6 +738,24 @@ _TABLE: dict[str, dict[str, str]] = {
         "label_caption": "Didascalia",
         "label_technique": "Tecnica",
         "label_technique_role": "Ruolo in questo lavoro",
+        "review_title": "Revisione della letteratura: {topic}",
+        "review_survey": "Rassegna della letteratura",
+        "review_analysis": "Analisi comparativa",
+        "review_comparison": "Confronto degli articoli esaminati",
+        "review_intro_range": (
+            "Questa sezione esamina {count} articoli pubblicati tra il {first} e il {last}."
+        ),
+        "review_intro_year": (
+            "Questa sezione esamina {count} articoli pubblicati nel {year}."
+        ),
+        "review_intro_plain": "Questa sezione esamina {count} articoli.",
+        "review_gap_intro": (
+            "Gli articoli stessi indicano questi limiti e questioni aperte:"
+        ),
+        "review_col_author": "Autore",
+        "review_col_method": "Metodo",
+        "review_col_strengths": "Punti di forza",
+        "review_col_weaknesses": "Punti deboli",
         "label_authors": "Autori",
         "label_year": "Anno",
         "label_venue": "Pubblicato in",
@@ -626,6 +808,20 @@ _TABLE: dict[str, dict[str, str]] = {
         "label_caption": "Chú thích",
         "label_technique": "Kỹ thuật",
         "label_technique_role": "Vai trò trong bài báo này",
+        "review_title": "Tổng quan tài liệu: {topic}",
+        "review_survey": "Khảo sát tài liệu",
+        "review_analysis": "Phân tích so sánh",
+        "review_comparison": "So sánh các bài báo",
+        "review_intro_range": (
+            "Phần này tổng quan {count} bài báo công bố từ {first} đến {last}."
+        ),
+        "review_intro_year": "Phần này tổng quan {count} bài báo công bố năm {year}.",
+        "review_intro_plain": "Phần này tổng quan {count} bài báo.",
+        "review_gap_intro": "Chính các bài báo nêu những hạn chế và câu hỏi mở sau:",
+        "review_col_author": "Tác giả",
+        "review_col_method": "Phương pháp",
+        "review_col_strengths": "Điểm mạnh",
+        "review_col_weaknesses": "Điểm yếu",
         "label_authors": "Tác giả",
         "label_year": "Năm",
         "label_venue": "Xuất bản tại",
@@ -678,6 +874,22 @@ _TABLE: dict[str, dict[str, str]] = {
         "label_caption": "शीर्षक",
         "label_technique": "तकनीक",
         "label_technique_role": "इस शोध-पत्र में भूमिका",
+        "review_title": "साहित्य समीक्षा: {topic}",
+        "review_survey": "साहित्य सर्वेक्षण",
+        "review_analysis": "तुलनात्मक विश्लेषण",
+        "review_comparison": "समीक्षित शोध-पत्रों की तुलना",
+        "review_intro_range": (
+            "यह खंड {first} से {last} के बीच प्रकाशित {count} शोध-पत्रों की समीक्षा करता है।"
+        ),
+        "review_intro_year": (
+            "यह खंड {year} में प्रकाशित {count} शोध-पत्रों की समीक्षा करता है।"
+        ),
+        "review_intro_plain": "यह खंड {count} शोध-पत्रों की समीक्षा करता है।",
+        "review_gap_intro": "शोध-पत्र स्वयं ये सीमाएँ और खुले प्रश्न बताते हैं:",
+        "review_col_author": "लेखक",
+        "review_col_method": "विधि",
+        "review_col_strengths": "खूबियाँ",
+        "review_col_weaknesses": "कमियाँ",
         "label_authors": "लेखक",
         "label_year": "वर्ष",
         "label_venue": "प्रकाशन स्थल",
@@ -730,6 +942,23 @@ _TABLE: dict[str, dict[str, str]] = {
         "label_caption": "Keterangan",
         "label_technique": "Teknik",
         "label_technique_role": "Peran dalam makalah ini",
+        "review_title": "Tinjauan pustaka: {topic}",
+        "review_survey": "Survei pustaka",
+        "review_analysis": "Analisis komparatif",
+        "review_comparison": "Perbandingan makalah yang ditinjau",
+        "review_intro_range": (
+            "Bagian ini meninjau {count} makalah yang terbit antara {first} dan {last}."
+        ),
+        "review_intro_year": "Bagian ini meninjau {count} makalah yang terbit pada {year}.",
+        "review_intro_plain": "Bagian ini meninjau {count} makalah.",
+        "review_gap_intro": (
+            "Makalah-makalah itu sendiri menyebutkan "
+            "keterbatasan dan pertanyaan terbuka berikut:"
+        ),
+        "review_col_author": "Penulis",
+        "review_col_method": "Metode",
+        "review_col_strengths": "Kelebihan",
+        "review_col_weaknesses": "Kekurangan",
         "label_authors": "Penulis",
         "label_year": "Tahun",
         "label_venue": "Terbit di",

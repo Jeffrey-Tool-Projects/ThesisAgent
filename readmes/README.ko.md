@@ -356,7 +356,7 @@ py -m thesisagents --paper "https://arxiv.org/abs/1706.03762" `
 | `--source` / `-s` | 쉼표로 구분된 소스 목록. 기본 `arxiv`. |
 | `--max` / `-n` | 소스당 최대 결과 수(1..200). 기본 25. |
 | `--year-from` / `--year-to` | 포함 연도 필터. |
-| `--export` / `-e` | 형식: `pptx,xlsx,md,bib,json,ris,csv,csl` 중 아무거나. 기본은 모드에 따라 다름(아래 참고). |
+| `--export` / `-e` | 형식: `pptx,xlsx,md,bib,json,ris,csv,csl,docx,tex` 중 아무거나. 기본은 모드에 따라 다름(아래 참고). |
 | `--out` / `-o` | 출력 디렉터리. 기본 `./exports`. |
 | `--filename-stem` | 생성되는 파일명 어간을 덮어씀. |
 | `--no-abstract` | 내보내기에서 초록 내용을 생략. |
@@ -455,7 +455,7 @@ claude mcp add thesisagents -- ".venv\Scripts\python.exe" -m thesisagents.mcp
 | `fetch_paper` | arXiv / DOI / PMID / IEEE 식별자 → 단일 논문. |
 | `fetch_pdf_text` | 하나의 PDF 를 다운로드하여 추출한 본문 텍스트를 반환. **"내가 논문을 읽었다"에 이르는 MCP 경로.** |
 | `download_pdfs` | 논문 목록의 PDF 를 `{out_dir}/pdfs/` 로 일괄 다운로드. BibTeX 키로 키가 지정된 논문별 결과를 반환. |
-| `export` | 논문 목록 + 형식 → `.pptx/.xlsx/.md/.bib/.json/.ris/.csv/.csl.json` 을 작성. 리치 논문 스타일 스키마를 위한 논문당 `summary` 필드, `max_slides_per_paper`(기본 25), `dark_mode`(기본 `false` — 프로젝트 기본은 라이트 네이비 밴드 덱, 어두운 OLED / 저조도 후처리에는 `true`)를 받음. 쓰기 전에 모든 DOI / URL 을 검증합니다 (`verify_identifiers`, 기본값 `true`). 잘못되었거나 연결할 수 없는 식별자가 있으면 호출이 실패하고 해당 논문을 알려 주며, 응답에 `verification` 보고서가 포함됩니다. `library` 에는 식별자 확인 결과를 보관할 문헌 라이브러리를 지정합니다. 이전 호출에서 확인된 식별자는 다시 확인하지 않습니다. `pptx_template` (선택적으로 `pptx_template_config`) 을 주면 사용자의 PowerPoint 템플릿 위에 슬라이드를 만듭니다. |
+| `export` | 논문 목록 + 형식 → `.pptx/.xlsx/.md/.bib/.json/.ris/.csv/.csl.json/.docx/.tex` 을 작성. 리치 논문 스타일 스키마를 위한 논문당 `summary` 필드, `max_slides_per_paper`(기본 25), `dark_mode`(기본 `false` — 프로젝트 기본은 라이트 네이비 밴드 덱, 어두운 OLED / 저조도 후처리에는 `true`)를 받음. 쓰기 전에 모든 DOI / URL 을 검증합니다 (`verify_identifiers`, 기본값 `true`). 잘못되었거나 연결할 수 없는 식별자가 있으면 호출이 실패하고 해당 논문을 알려 주며, 응답에 `verification` 보고서가 포함됩니다. `library` 에는 식별자 확인 결과를 보관할 문헌 라이브러리를 지정합니다. 이전 호출에서 확인된 식별자는 다시 확인하지 않습니다. `pptx_template` (선택적으로 `pptx_template_config`) 을 주면 사용자의 PowerPoint 템플릿 위에 슬라이드를 만듭니다. |
 | `pptx_validate_template` | 템플릿 → `export(pptx_template=...)` 에 쓸 수 있는지 여부. 슬라이드 종류별로 쓰일 레이아웃과, 무엇을 고쳐야 하는지 알려 주는 오류와 경고를 반환합니다. 슬라이드는 만들어지지 않습니다. |
 | `pptx_inspect` | 기존 덱의 슬라이드 / 셰이프 구조를 읽음. |
 | `pptx_review` | 한 번의 호출로 덱을 감사 — 오버플로 + 색상 계약 + `paper_rule` 섹션 완전성. 덱 언어를 자동 감지; CLI `python -m thesisagents review <deck.pptx>` 이기도 함. |
@@ -485,7 +485,7 @@ ThesisAgents/
 ├── thesisagents/                 # main package
 │   ├── core/                        # Paper / PaperSummary / RqResult / dedup / ranking / pipeline
 │   ├── fetchers/                    # HTTPS-only async client, token-bucket rate limit
-│   ├── exporters/                   # pptx (thesis-style) · xlsx · bib · md · json · ris · csv · csl · pptx_edit · i18n
+│   ├── exporters/                   # pptx (thesis-style) · xlsx · bib · md · json · ris · csv · csl · docx · tex · pptx_edit · i18n
 │   ├── intelligence/                # PDF fetch + Anthropic summariser  ([intelligence] extra)
 │   ├── library/                     # SQLite literature library kept across runs
 │   ├── evaluation/                  # offline search-quality benchmark (docs/search-quality.md)
@@ -544,7 +544,7 @@ Italiano, Tiếng Việt, हिन्दी, Bahasa Indonesia) — 첫 실행�
 사이드바가 아이콘으로 접히고 폼 레이블이 입력란 위로 옮겨집니다. 창은
 640×480 까지 줄어들며, HiDPI 스케일링이 기본으로 켜져 있습니다.
 **Settings → Theme** 에서 라이트, 다크, 시스템 따르기 중 하나를 고르면
-바로 적용되며, 덱 자체의 다크 모드와는 별개입니다. 결과를 정렬·필터링하고 체크해 일부 논문만 Enrich, Deck, Export 로 보낼 수 있고, 스노볼 범위를 조정할 수 있으며, 실행 중인 검색이나 보강은 취소할 수 있고, 폼 내용은 다음 실행 때도 유지됩니다. Deck 페이지에서는 내보내기 전에 템플릿을 검사하고 완성된 슬라이드를 검토할 수 있으며, API 키가 없으면 Enrich 페이지가 논문을 JSON 파일로 LLM 에이전트에게 넘기고 그 요약을 가져옵니다. Deck 페이지는 PDF도 다운로드할 수 있고, Settings 에서 기관 / VPN 접근을 선언하기 전까지 IEEE 는 제외하며, 새 인터페이스 언어는 작업을 유지한 채 바로 적용됩니다. 같은 스위치로 `ieee` 는 검색에서도 제외됩니다. Search 페이지는 CLI 의 `--pdf` 처럼 로컬 PDF를 결과로 읽어 올 수도 있습니다. 상태 줄은 Chrome 을 거쳐 받은 PDF 수를 알려 주고, 출판사 PDF가 Chrome 을 쓰지 못했을 때 경고합니다. **Settings → Style** 에서 클래식 네이비 스타일과 Material 3 를 전환합니다. **Settings → Font size** 에서 앱 전체의 글자 크기를 8~24 pt 범위로 바꾸면 바로 적용되고, `Ctrl++`, `Ctrl+-`, `Ctrl+0`(기본값 복원)으로도 바꿀 수 있으며, 레이아웃도 그에 맞춰집니다. 상태 표시줄의 **Log**(`Ctrl+L`)에서 앱이 하는 일을 볼 수 있고, 오류 보고에 첨부할 로그 파일도 남으며, Chrome 이 캡차 해결을 기다리면 배너로 알려 줍니다. API 키는 설정 파일이 아니라 시스템 자격 증명 저장소(Windows 자격 증명 관리자, macOS 키체인, Secret Service)에 보관됩니다. Windows 용으로 관리자 권한이 필요 없는 설치 프로그램이 있고, 새 버전이 나오면 앱이 알려 줍니다(하루 한 번, 끌 수 있음). **Settings → AI model** 에서 요약을 쓸 모델을 고를 수 있습니다. Anthropic, 다른 11개 서비스, 또는 내 컴퓨터의 모델(Ollama, LM Studio, llama.cpp, vLLM)로 본문을 밖으로 보내지 않아도 됩니다. `Ctrl+1` …
+바로 적용되며, 덱 자체의 다크 모드와는 별개입니다. 결과를 정렬·필터링하고 체크해 일부 논문만 Enrich, Deck, Export 로 보낼 수 있고, 스노볼 범위를 조정할 수 있으며, 실행 중인 검색이나 보강은 취소할 수 있고, 폼 내용은 다음 실행 때도 유지됩니다. Deck 페이지에서는 내보내기 전에 템플릿을 검사하고 완성된 슬라이드를 검토할 수 있으며, API 키가 없으면 Enrich 페이지가 논문을 JSON 파일로 LLM 에이전트에게 넘기고 그 요약을 가져옵니다. Deck 페이지는 PDF도 다운로드할 수 있고, Settings 에서 기관 / VPN 접근을 선언하기 전까지 IEEE 는 제외하며, 새 인터페이스 언어는 작업을 유지한 채 바로 적용됩니다. 같은 스위치로 `ieee` 는 검색에서도 제외됩니다. Search 페이지는 CLI 의 `--pdf` 처럼 로컬 PDF를 결과로 읽어 올 수도 있습니다. 상태 줄은 Chrome 을 거쳐 받은 PDF 수를 알려 주고, 출판사 PDF가 Chrome 을 쓰지 못했을 때 경고합니다. **Settings → Style** 에서 클래식 네이비 스타일과 Material 3 를 전환합니다. **Settings → Font size** 에서 앱 전체의 글자 크기를 8~24 pt 범위로 바꾸면 바로 적용되고, `Ctrl++`, `Ctrl+-`, `Ctrl+0`(기본값 복원)으로도 바꿀 수 있으며, 레이아웃도 그에 맞춰집니다. 상태 표시줄의 **Log**(`Ctrl+L`)에서 앱이 하는 일을 볼 수 있고, 오류 보고에 첨부할 로그 파일도 남으며, Chrome 이 캡차 해결을 기다리면 배너로 알려 줍니다. API 키는 설정 파일이 아니라 시스템 자격 증명 저장소(Windows 자격 증명 관리자, macOS 키체인, Secret Service)에 보관됩니다. Windows 용으로 관리자 권한이 필요 없는 설치 프로그램이 있고, 새 버전이 나오면 앱이 알려 줍니다(하루 한 번, 끌 수 있음). **Settings → AI model** 에서 요약을 쓸 모델을 고를 수 있습니다. Anthropic, 다른 11개 서비스, 또는 내 컴퓨터의 모델(Ollama, LM Studio, llama.cpp, vLLM)로 본문을 밖으로 보내지 않아도 됩니다. Enrich 와 Library 페이지의 **Edit summary** 에서 논문 요약을 직접 편집하고 논문 일곱 절 중 비어 있는 절을 확인할 수 있습니다. **Word draft** 와 **LaTeX draft** 는 APA 인용, 비교표, 참고문헌이 있는 문헌 검토 초안을 내보내며 학교의 Word 서식 파일에도 쓸 수 있습니다. `Ctrl+1` …
 `Ctrl+5` 로 페이지를 전환합니다.
 
 전체 레퍼런스: [`docs/gui.md`](../docs/gui.md).

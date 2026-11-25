@@ -75,6 +75,7 @@ from thesisagents.gui.widgets.responsive import (
     adapt_form_rows,
     make_card,
 )
+from thesisagents.gui.widgets.summary_editor import SummaryEditor
 from thesisagents.gui.workers import AsyncWorker, BlockingWorker
 from thesisagents.library import (
     DECISIONS,
@@ -383,11 +384,13 @@ class LibraryPage(QWidget):
         corner = QWidget(below)
         actions = QHBoxLayout(corner)
         actions.setContentsMargins(0, 0, 0, 4)
+        self._summary_button = QPushButton(t("summary.button", language), below)
+        self._summary_button.clicked.connect(self._on_edit_summary)
         self._merge_button = QPushButton(t("library.action_merge", language), below)
         self._merge_button.clicked.connect(self._on_merge)
         self._delete_button = QPushButton(t("library.action_delete", language), below)
         self._delete_button.clicked.connect(self._on_delete)
-        for button in (self._merge_button, self._delete_button):
+        for button in (self._summary_button, self._merge_button, self._delete_button):
             button.setObjectName("StatusButton")  # the compact look
             button.setEnabled(False)
             actions.addWidget(button)
@@ -648,6 +651,7 @@ class LibraryPage(QWidget):
 
     def _refresh_actions(self, allowed: bool) -> None:
         count = len(self.selected_entries())
+        self._summary_button.setEnabled(allowed and count == 1)
         self._delete_button.setEnabled(allowed and count > 0)
         self._merge_button.setEnabled(allowed and count > 1)
 
@@ -762,6 +766,22 @@ class LibraryPage(QWidget):
         """Carry out an :class:`EditRequest` of the editor."""
         if isinstance(request, EditRequest):
             self.run_edit(request.apply)
+
+    def _on_edit_summary(self) -> None:
+        entries = self.selected_entries()
+        if len(entries) != 1:
+            return
+        paper_id = entries[0].paper_id
+        self._summary_editor = SummaryEditor(entries[0].paper, self._ui_language, self)
+        self._summary_editor.saved.connect(
+            lambda paper: self.run_edit(
+                lambda library: library.set_summary(paper_id, paper.summary)
+            )
+        )
+        self._summary_editor.open()
+
+    def summary_editor(self) -> SummaryEditor:
+        return self._summary_editor
 
     def _on_delete(self) -> None:
         ids = [entry.paper_id for entry in self.selected_entries()]
@@ -926,6 +946,7 @@ class LibraryPage(QWidget):
         """``delete`` / ``merge`` / ``import`` / ``duplicates`` / ``send``."""
         return {
             "delete": self._delete_button, "merge": self._merge_button,
+            "summary": self._summary_button,
             "import": self._import_button, "duplicates": self._duplicates_button,
             "send": self._send_button,
         }[name]

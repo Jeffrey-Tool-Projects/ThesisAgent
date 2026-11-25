@@ -157,7 +157,7 @@ Returns (abridged):
 ```
 
 `aggregate: true` writes one file for the whole run (`xlsx`, `md`, `bib`,
-`json`, `ris`, `csv`, `csl`); `pptx` and `pdf` are emitted per paper.
+`json`, `ris`, `csv`, `csl`, `docx`, `tex`); `pptx` and `pdf` are emitted per paper.
 
 ### `search`
 

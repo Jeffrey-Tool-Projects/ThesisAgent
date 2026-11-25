@@ -54,6 +54,7 @@ from thesisagents.gui.widgets.responsive import (
     adapt_form_rows,
     make_card,
 )
+from thesisagents.gui.widgets.summary_editor import SummaryEditor
 from thesisagents.gui.workers import AsyncWorker
 from thesisagents.intelligence import providers
 
@@ -153,6 +154,17 @@ class EnrichPage(QWidget):
         header.setSectionResizeMode(1, QHeaderView.ResizeToContents)
         header.setSectionResizeMode(2, QHeaderView.ResizeToContents)
         results_layout.addWidget(self._table, stretch=1)
+        edit_row = QHBoxLayout()
+        edit_row.addStretch(1)
+        self._edit_button = QPushButton(t("summary.button", language), self)
+        self._edit_button.setEnabled(False)
+        self._edit_button.clicked.connect(self._on_edit_summary)
+        edit_row.addWidget(self._edit_button)
+        results_layout.addLayout(edit_row)
+        self._table.doubleClicked.connect(lambda _index: self._on_edit_summary())
+        self._table.selectionModel().selectionChanged.connect(
+            lambda *_: self._refresh_edit_button()
+        )
 
         self._status_label = QLabel(t("enrich.status_no_collection", language), self)
         self._status_label.setObjectName("Muted")
@@ -369,6 +381,42 @@ class EnrichPage(QWidget):
             ),
         )
         self._enrich_next()
+
+    def _selected_row(self) -> int:
+        rows = self._table.selectionModel().selectedRows()
+        return rows[0].row() if len(rows) == 1 else -1
+
+    def _refresh_edit_button(self) -> None:
+        self._edit_button.setEnabled(self._selected_row() >= 0 and not self._running)
+
+    def _on_edit_summary(self) -> None:
+        """Edit the selected paper's summary by hand, model or no model."""
+        collection = self.collection()
+        row = self._selected_row()
+        if self._running or collection is None or not 0 <= row < len(collection.papers):
+            return
+        self._summary_editor = SummaryEditor(collection.papers[row], self._ui_language, self)
+        self._summary_editor.saved.connect(lambda paper: self._on_summary_edited(row, paper))
+        self._summary_editor.open()
+
+    def summary_editor(self) -> SummaryEditor:
+        return self._summary_editor
+
+    def _on_summary_edited(self, row: int, paper: object) -> None:
+        collection = self.collection()
+        if not isinstance(paper, Paper) or collection is None:
+            return
+        papers = list(collection.papers)
+        papers[row] = paper
+        self._collection = replace(  # NOSONAR dataclasses.replace returns the same dataclass type
+            collection, papers=tuple(papers)
+        )
+        self._enriched_papers = []
+        self._set_row_status(
+            row, "enrich.row_done" if paper.summary is not None else "enrich.row_pending"
+        )
+        self._status_label.setText(t("library.status_saved", self._ui_language))
+        self.collection_ready.emit(self._collection)
 
     def _model_settings(self) -> providers.LlmSettings:
         """The model this run would use: the one typed here, else Settings'."""

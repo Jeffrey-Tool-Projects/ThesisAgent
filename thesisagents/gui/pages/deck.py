@@ -70,6 +70,8 @@ _FORMAT_CHOICES: tuple[tuple[str, str], ...] = (
     ("ris", "deck.format_ris"),
     ("csv", "deck.format_csv"),
     ("csl", "deck.format_csl"),
+    ("docx", "deck.format_docx"),
+    ("tex", "deck.format_tex"),
 )
 _DEFAULT_FORMATS: frozenset[str] = frozenset({"pptx", "xlsx", "bib"})
 _DEFAULT_MAX_SLIDES = 25
@@ -214,6 +216,11 @@ class DeckPage(QWidget):
             options_form, "deck.template_config_label", "deck.template_config_placeholder",
             "deck.template_config_dialog_title", "Config (*.toml *.json);;All files (*)",
         )
+        # The Word document the literature review draft is written into.
+        self._docx_template_input = self._file_row(
+            options_form, "deck.docx_template_label", "deck.docx_template_placeholder",
+            "deck.docx_template_label", "Word (*.docx);;All files (*)",
+        )
         check_row = QHBoxLayout()
         self._check_template_button = QPushButton(t("deck.check_template_button", language), self)
         self._check_template_button.clicked.connect(self._on_check_template_clicked)
@@ -354,6 +361,7 @@ class DeckPage(QWidget):
             "download_pdfs": self._download_pdfs_check.isChecked(),
             "template": self._template_input.text(),
             "template_config": self._template_config_input.text(),
+            "docx_template": self._docx_template_input.text(),
         }
         for key, value in values.items():
             store.setValue(f"{_FORM_GROUP}/{key}", value)
@@ -385,6 +393,7 @@ class DeckPage(QWidget):
             ("out_dir", self._out_dir_input),
             ("template", self._template_input),
             ("template_config", self._template_config_input),
+            ("docx_template", self._docx_template_input),
         ):
             text = _stored(store, key, str)
             if text is not None and (text or key != "out_dir"):
@@ -405,6 +414,9 @@ class DeckPage(QWidget):
             flag = _stored(store, key, bool)
             if flag is not None:
                 check.setChecked(bool(flag))
+
+    def set_docx_template_path(self, path: str) -> None:
+        self._docx_template_input.setText(path)
 
     def set_template_config_path(self, path: str) -> None:
         self._template_config_input.setText(path)
@@ -493,6 +505,7 @@ class DeckPage(QWidget):
             dark_mode=self._dark_mode_check.isChecked(),
             verify_identifiers=self._verify_identifiers_check.isChecked(),
             pptx_template=self._template_input.text().strip() or None,
+            docx_template=self._docx_template_input.text().strip() or None,
             pptx_template_config=self._template_config_input.text().strip() or None,
         )
 

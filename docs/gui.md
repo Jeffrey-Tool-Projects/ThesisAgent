@@ -408,6 +408,13 @@ or with a summary that cannot be read is refused with the reason on the
 status line, and nothing changes. Format: `thesisagents/gui/handoff.py`
 (`format: "thesisagents-agent-handoff"`, `version: 1`).
 
+**Edit summary** below the list (or a double click on a row) opens the
+summary as text, one tab per thesis section, whether or not a model wrote
+it. The line above the tabs names the sections that have nothing yet. Lists
+take one statement per line, `#` starts a heading, `|` separates columns.
+Figures and tables taken from the paper are kept as they are. The Library
+page has the same button and stores what you save in the library.
+
 ### Deck
 
 The pre-export deck-shaping controls, in three cards: **Output**

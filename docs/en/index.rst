@@ -224,7 +224,7 @@ Search mode
 
    # 10 results, every export format, custom dir
    thesisagents --query "transformer attention" --source arxiv \
-                --max 10 --export pptx,xlsx,md,bib,json,ris,csv,csl \
+                --max 10 --export pptx,xlsx,md,bib,json,ris,csv,csl,docx,tex \
                 --out ./exports/
 
    # Restrict to recent work
@@ -517,7 +517,7 @@ Tools at a glance:
      - Batch-download a papers list's PDFs into ``{out_dir}/pdfs/``.
        Returns per-paper results keyed by BibTeX key.
    * - ``export``
-     - Papers list + formats → writes ``.pptx/.xlsx/.md/.bib/.json/.ris/.csv/.csl.json``.
+     - Papers list + formats → writes ``.pptx/.xlsx/.md/.bib/.json/.ris/.csv/.csl.json/.docx/.tex``.
        Accepts a ``summary`` field per paper that can carry the
        full thesis-style schema; accepts ``language`` for i18n,
        ``max_slides_per_paper`` (default 25; pass ``0`` for unlimited),

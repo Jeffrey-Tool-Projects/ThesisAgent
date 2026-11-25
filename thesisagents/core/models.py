@@ -605,6 +605,9 @@ class ExportOptions:
     #: whether the exporter draws its own header band and cover panel. Only
     #: read together with ``pptx_template``.
     pptx_template_config: str | None = None
+    #: A Word document (.docx) the ``docx`` draft is written into, for example a
+    #: school's thesis template. Its styles decide the look, its content stays.
+    docx_template: str | None = None
     include_abstract: bool = True
     language: str = "en"
     #: Hard cap on slides per paper for the pptx exporter. Defaults to

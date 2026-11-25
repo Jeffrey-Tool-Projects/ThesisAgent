@@ -9,7 +9,9 @@ from thesisagents.core.constants import (
     EXPORT_BIBTEX,
     EXPORT_CSL,
     EXPORT_CSV,
+    EXPORT_DOCX,
     EXPORT_JSON,
+    EXPORT_LATEX,
     EXPORT_MARKDOWN,
     EXPORT_PPTX,
     EXPORT_RIS,
@@ -26,7 +28,9 @@ from thesisagents.exporters.base import Exporter
 from thesisagents.exporters.bibtex import BibtexExporter
 from thesisagents.exporters.csljson import CslJsonExporter
 from thesisagents.exporters.csv_export import CsvExporter
+from thesisagents.exporters.docx import DocxExporter
 from thesisagents.exporters.json_export import JsonExporter
+from thesisagents.exporters.latex import LatexExporter
 from thesisagents.exporters.markdown import MarkdownExporter
 from thesisagents.exporters.pptx import PptxExporter
 from thesisagents.exporters.ris import RisExporter
@@ -42,6 +46,8 @@ _REGISTRY: Mapping[str, type[Exporter]] = {
     EXPORT_RIS: RisExporter,
     EXPORT_CSV: CsvExporter,
     EXPORT_CSL: CslJsonExporter,
+    EXPORT_DOCX: DocxExporter,
+    EXPORT_LATEX: LatexExporter,
 }
 
 

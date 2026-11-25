@@ -25,12 +25,12 @@ import re
 import sqlite3
 import threading
 from collections.abc import Iterable, Mapping, Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from typing import Any, Final
 
 from thesisagents.core.dedup import merge_papers
 from thesisagents.core.exceptions import LibraryError
-from thesisagents.core.models import Paper
+from thesisagents.core.models import Paper, PaperSummary
 from thesisagents.library.schema import transaction
 
 READING_UNREAD: Final[str] = "unread"
@@ -240,6 +240,22 @@ class CurationMixin:
                         "VALUES (?, ?, ?, ?, ?)",
                         (paper_id, stage, decision, reason, self._stamp()),
                     )
+
+    def set_summary(self, paper_id: int, summary: PaperSummary | None) -> None:
+        """Replace the stored summary with one written or edited by hand.
+
+        Unlike an import, which keeps the richer of two summaries, this takes
+        what it is given: the user looked at the old one and changed it.
+        """
+        ids = self._existing([paper_id])
+        with self._lock, transaction(self._conn):
+            stored = replace(  # NOSONAR dataclasses.replace returns the same dataclass type
+                self._load(ids[0]), summary=summary
+            )
+            self._conn.execute(
+                "UPDATE papers SET record = ? WHERE id = ?",
+                (json.dumps(stored.to_dict(), ensure_ascii=False, sort_keys=True), ids[0]),
+            )
 
     # ---- deleting and merging --------------------------------------------------
 
