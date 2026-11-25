@@ -52,6 +52,17 @@ subtitle saying what it does.
   Settings.
 - `Ctrl++` (or `Ctrl+=`) makes the text larger, `Ctrl+-` smaller, and
   `Ctrl+0` puts it back to the default, see **Font size** under Settings.
+- **Log** in the status bar (`Ctrl+L`) opens the activity log, live, with
+  **Copy** and **Open log folder**. The same lines go to
+  `%LOCALAPPDATA%\ThesisAgents\logs\thesisagents.log` on Windows
+  (`~/.local/share` on Linux, `~/Library/Application Support` on macOS),
+  three files of 1 MB. API keys are replaced with `***` in both.
+- When a page in the visible Chrome window asks whether you are human, a
+  banner above the page says which site, counts down how long the search
+  waits, and flashes the taskbar entry. If time runs out, it says that this
+  source returned nothing.
+- An error nobody caught is shown in the status bar and logged. One during
+  start-up is shown in a dialog that names the log file.
 - While a search, an enrichment run or an export is working, the status
   bar at the bottom shows `Working…` and a moving progress bar. The page
   that started the work keeps its own detailed status line.

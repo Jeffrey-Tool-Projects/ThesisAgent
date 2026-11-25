@@ -86,5 +86,5 @@ def test_main_silences_the_probe_before_the_application_exists(monkeypatch, qtbo
 
     monkeypatch.setattr(gui_app, "_load_app_icon", stop)
     with pytest.raises(_StopError):
-        gui_app.main([])
+        gui_app._boot([])  # noqa: SLF001
     assert order == ["silence", "env", "icon"]

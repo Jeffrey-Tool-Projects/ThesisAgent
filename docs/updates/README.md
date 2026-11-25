@@ -58,6 +58,7 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 
 | ID | Date | Title | Tags | Batch |
 |---|---|---|---|---|
+| U-20261126-03 | 2026-11-26 | Log window, captcha banner and start-up errors in the GUI | #done #gui #i18n | [2026-11](2026-11.md) |
 | U-20261126-02 | 2026-11-26 | Code review findings closed, icon and technique header fixed | #done #security #gui #pptx | [2026-11](2026-11.md) |
 | U-20261126-01 | 2026-11-26 | The interface font size is adjustable | #done #gui #i18n | [2026-11](2026-11.md) |
 | U-20261125-01 | 2026-11-25 | The Windows app opens without a console, Qt font lines gone | #done #gui #release | [2026-11](2026-11.md) |

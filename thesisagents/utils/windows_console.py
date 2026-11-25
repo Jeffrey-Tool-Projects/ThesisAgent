@@ -36,6 +36,21 @@ def _attach_to_parent() -> bool:
     return bool(ctypes.windll.kernel32.AttachConsole(_ATTACH_PARENT_PROCESS))
 
 
+def show_error(title: str, message: str) -> bool:
+    """Show ``message`` in a dialog when there is no console to print it to.
+
+    For failures before the desktop app can show a window of its own. Returns
+    False where a console exists (print there instead) and off Windows.
+    """
+    if sys.platform != "win32" or not _is_missing(sys.stderr):
+        return False
+    import ctypes
+
+    icon_error = 0x10
+    ctypes.windll.user32.MessageBoxW(None, message, title, icon_error)
+    return True
+
+
 def borrow_parent_console() -> bool:
     """Point missing stdout / stderr at the terminal this program was run from.
 

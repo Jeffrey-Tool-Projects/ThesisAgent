@@ -666,6 +666,18 @@ QStatusBar {{
     border-top: 1px solid {p.border};
     color: {p.muted};
 }}
+#StatusButton {{
+    padding: 1px 10px;
+    min-height: 16px;
+}}
+#NoticeBanner {{
+    background: {p.accent};
+}}
+#NoticeBanner QLabel#NoticeText {{
+    background: transparent;
+    color: {p.on_accent};
+    font-weight: 600;
+}}
 QProgressBar {{
     background: {p.border};
     border: none;

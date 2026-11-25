@@ -30,6 +30,7 @@ from PySide6.QtWidgets import (
     QLabel,
     QMainWindow,
     QProgressBar,
+    QPushButton,
     QScrollArea,
     QStackedWidget,
     QStatusBar,
@@ -39,6 +40,7 @@ from PySide6.QtWidgets import (
 )
 
 from thesisagents.core.models import PaperCollection
+from thesisagents.gui.activity import activity
 from thesisagents.gui.font_size import (
     current_font_size,
     layout_scale,
@@ -58,8 +60,11 @@ from thesisagents.gui.pages.settings import (
     settings_store,
 )
 from thesisagents.gui.theme import THEME_SYSTEM, apply_theme
+from thesisagents.gui.widgets.log_dialog import LogDialog
 from thesisagents.gui.widgets.nav_rail import NavRail
+from thesisagents.gui.widgets.notice_banner import NoticeBanner
 from thesisagents.gui.widgets.responsive import Breakpoint, breakpoint_for_width
+from thesisagents.utils.notices import CAPTCHA_WAITING, Notice
 
 # The floor fits a 1366 x 768 laptop at 125 % scaling with room to spare:
 # the compact layout (icon sidebar, stacked panes, wrapped form rows) is
@@ -144,7 +149,14 @@ class MainWindow(QMainWindow):
         row.setContentsMargins(0, 0, 0, 0)
         row.setSpacing(0)
         row.addWidget(self._nav)
-        row.addWidget(self._stack, stretch=1)
+        content = QWidget(central)
+        column = QVBoxLayout(content)
+        column.setContentsMargins(0, 0, 0, 0)
+        column.setSpacing(0)
+        self._banner = NoticeBanner(ui_language, content)
+        column.addWidget(self._banner)
+        column.addWidget(self._stack, stretch=1)
+        row.addWidget(content, stretch=1)
         self.setCentralWidget(central)
 
         self._build_status_bar()
@@ -207,6 +219,15 @@ class MainWindow(QMainWindow):
         self._busy_bar.setTextVisible(False)
         self._busy_bar.setVisible(False)
         bar.addPermanentWidget(self._busy_bar)
+        self._log_dialog: LogDialog | None = None
+        log_button = QPushButton(t("log.button", self._ui_language), bar)
+        log_button.setObjectName("StatusButton")
+        log_button.setToolTip(t("log.title", self._ui_language) + " (Ctrl+L)")
+        log_button.clicked.connect(self.show_log)
+        bar.addPermanentWidget(log_button)
+        QShortcut(QKeySequence("Ctrl+L"), self).activated.connect(self.show_log)
+        activity().notice.connect(self._on_notice)
+        activity().unexpected_error.connect(self._on_unexpected_error)
         self.setStatusBar(bar)
 
     def _build_font_size_controls(self) -> None:
@@ -363,6 +384,30 @@ class MainWindow(QMainWindow):
         if isinstance(app, QApplication):
             apply_theme(app, choice, saved_style())
         self._nav.refresh_icons()
+
+    def show_log(self) -> LogDialog:
+        """Open the log window, or bring the open one to the front."""
+        if self._log_dialog is None:
+            self._log_dialog = LogDialog(self._ui_language, self)
+        self._log_dialog.show()
+        self._log_dialog.raise_()
+        return self._log_dialog
+
+    def _on_notice(self, notice: object) -> None:
+        if not isinstance(notice, Notice):
+            return
+        self._banner.show_notice(notice)
+        if notice.kind == CAPTCHA_WAITING:
+            # Flash the taskbar entry: the user is likely in another window.
+            QApplication.alert(self)
+
+    def _on_unexpected_error(self, error: str) -> None:
+        self.statusBar().showMessage(
+            t("error.unexpected", self._ui_language, error=error), 15000
+        )
+
+    def notice_banner(self) -> NoticeBanner:
+        return self._banner
 
     def _on_font_size_changed(self, points: int) -> None:
         """Say the new size at once and apply it when the steps stop coming."""

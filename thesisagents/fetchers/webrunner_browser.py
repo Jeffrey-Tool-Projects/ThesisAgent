@@ -23,7 +23,9 @@ import os
 import sys
 import time
 from typing import Any
+from urllib.parse import urlparse
 
+from thesisagents.utils import notices
 from thesisagents.utils.logging import get_logger
 
 _LOG = get_logger(__name__)
@@ -155,11 +157,17 @@ def wait_for_captcha_solved(
         "the visible Chrome window — waiting up to %.0fs.",
         starting_url, max_wait_seconds,
     )
+    site = urlparse(starting_url).hostname or ""
+    notices.publish(
+        notices.Notice(notices.CAPTCHA_WAITING, site=site, seconds=max_wait_seconds)
+    )
     deadline = time.monotonic() + max_wait_seconds
     while time.monotonic() < deadline:
         time.sleep(poll_interval)
         if not is_captcha_page(driver):
             _LOG.info("Captcha cleared — continuing.")
+            notices.publish(notices.Notice(notices.CAPTCHA_CLEARED, site=site))
             return True
     _LOG.warning("Captcha not solved within timeout; giving up on this source.")
+    notices.publish(notices.Notice(notices.CAPTCHA_TIMED_OUT, site=site))
     return False

@@ -458,7 +458,7 @@ def test_boot_applies_the_saved_size_over_the_default(monkeypatch, qtbot):
         patch.setattr(theme, "apply_theme", stop)
         patch.setattr(gui_app, "_silence_font_probe_messages", lambda: None)
         with pytest.raises(_StopError):
-            gui_app.main([])
+            gui_app._boot([])  # noqa: SLF001
     assert font_size.default_font_size() == font_size.SMALLEST_DEFAULT_PT
     assert font_size.current_font_size() == 19
     assert "Nirmala UI" in app.font().families()

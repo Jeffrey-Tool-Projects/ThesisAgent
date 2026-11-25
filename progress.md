@@ -21,7 +21,6 @@ The rebuilt window (sidebar, light / dark / system theme, layouts that adapt to 
 
 The owner asked for all of the items below and decided: the app is for other people to use, API keys go to the system credential store (`keyring` becomes a dependency of the `gui` extra), both Word and LaTeX export, as many model providers as possible including local ones, and no paid code-signing certificate. Suggested order: #39 to #44 and #57 first (what other users meet first), then the library (#45 to #49), then the paper output (#50 to #54), then the rest.
 
-- **#39** The GUI shows no log. A captcha that has to be solved in the visible Chrome window is announced only in the log (`webrunner_browser.wait_for_captcha_solved`), and since U-20261125-01 the released app has no console, so the user sees nothing until the 5 minute timeout. Add a status line for it, a log window, a log file, and a dialog when start-up fails.
 - **#44** API keys are stored in plain text (the registry on Windows). Move them to the system credential store with `keyring`, migrate saved ones, and keep working where no store exists.
 - **#45** The Library page is read-only. Add tags, notes, a reading status, deleting and merging duplicates, in the store, the CLI, MCP and the GUI.
 - **#46** Import BibTeX and RIS files (only export exists), so a Zotero or EndNote library can be taken over.

@@ -16,10 +16,13 @@ from thesisagents.gui.pages.settings import (
     saved_theme,
     saved_ui_language,
 )
+from thesisagents.utils.logging import get_logger
 
 if TYPE_CHECKING:
     from PySide6.QtGui import QFont, QIcon
 
+
+_LOG = get_logger(__name__)
 
 # Package data, so it is found in a checkout, a pip install and the Nuitka
 # bundle alike. It used to sit in the repository's assets/ folder, which
@@ -67,6 +70,37 @@ def _silence_font_probe_messages() -> None:
 
 
 def main(argv: list[str] | None = None) -> int:
+    """Run the desktop app and return its exit code.
+
+    A failure before the window exists is logged and shown in a dialog. The
+    released app is a windowed program, so a traceback printed to the console
+    would be seen by nobody and the app would just not open.
+    """
+    try:
+        return _boot(argv)
+    except Exception as err:  # noqa: BLE001 - the last place that can report it
+        _report_startup_failure(err)
+        return 1
+
+
+def _report_startup_failure(err: Exception) -> None:
+    """Log ``err`` and show it, with the place of the log file."""
+    from PySide6.QtWidgets import QApplication, QMessageBox
+
+    from thesisagents.gui.activity import log_file, redact
+    from thesisagents.gui.i18n import t
+
+    _LOG.error("the desktop app could not start", exc_info=err)
+    if QApplication.instance() is None:
+        return
+    language = saved_ui_language()
+    text = t("error.startup", language, error=redact(f"{type(err).__name__}: {err}"))
+    QMessageBox.critical(
+        None, t("app.title", language), f"{text}\n\n{log_file()}"
+    )
+
+
+def _boot(argv: list[str] | None = None) -> int:
     """Boot the PySide6 desktop UI.
 
     Returns the Qt event-loop exit code so a non-zero shell exit
@@ -80,6 +114,7 @@ def main(argv: list[str] | None = None) -> int:
     from PySide6.QtCore import QLocale
     from PySide6.QtWidgets import QApplication
 
+    from thesisagents.gui.activity import install as install_activity_log
     from thesisagents.gui.font_size import (
         SMALLEST_DEFAULT_PT,
         remember_default_size,
@@ -97,6 +132,7 @@ def main(argv: list[str] | None = None) -> int:
 
     app_argv = list(sys.argv if argv is None else [sys.argv[0], *argv])
     app = QApplication.instance() or QApplication(app_argv)
+    install_activity_log()
 
     # Window / taskbar / Alt-Tab icon. Setting on QApplication first
     # propagates to every top-level window automatically.

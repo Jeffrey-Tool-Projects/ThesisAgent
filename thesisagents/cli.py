@@ -71,7 +71,7 @@ from thesisagents.fetchers.http import shutdown_clients
 from thesisagents.library import Library
 from thesisagents.utils.logging import get_logger
 from thesisagents.utils.path_safety import safe_filename
-from thesisagents.utils.windows_console import borrow_parent_console
+from thesisagents.utils.windows_console import borrow_parent_console, show_error
 
 _LOG = get_logger(__name__)
 _DEFAULT_OUT_DIR = "./exports"
@@ -992,12 +992,14 @@ def _dispatch_gui(gui_argv: list[str]) -> int:
     try:
         from thesisagents.gui.app import main as gui_main
     except ImportError as err:
-        print(
+        message = (
             "error: GUI extras not installed. Run "
             "`pip install thesisagents[gui]`.\n"
-            f"(import error: {err})",
-            file=sys.stderr,
+            f"(import error: {err})"
         )
+        # The windowed executable has nowhere to print it.
+        if not show_error("ThesisAgents", message):
+            print(message, file=sys.stderr)
         return 2
     return gui_main(gui_argv)
 

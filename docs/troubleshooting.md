@@ -418,9 +418,15 @@ opened `thesisagents-cli.exe`, which is the command line. With pip,
 
 ### The app does not start and shows nothing (Windows release)
 
-`thesisagents.exe` has no console, so a failure at start-up has nowhere
-to print. Run `.\thesisagents-cli.exe gui` in a terminal to see the
-error.
+A failure at start-up is shown in a dialog and written to
+`%LOCALAPPDATA%\ThesisAgents\logs\thesisagents.log`. If not even that
+appears, run `.\thesisagents-cli.exe gui` in a terminal to see the error.
+
+### A search hangs for minutes, then a source returns nothing
+
+Google Scholar or IEEE asked for a captcha in the Chrome window. The banner
+above the page says so and counts down. Solve it in Chrome and the search
+goes on.
 
 ### `OpenType support missing for "...", script 11`
 

@@ -3973,6 +3973,216 @@ _LABELS: Final[dict[str, dict[str, str]]] = {
         "id": "Pemeriksaan gagal: {error}",
     },
     # Stage D: PDF stage with the access switch, language switch ----------
+    # Log, notices, unexpected errors -----------------------------------
+    "log.button": {
+        "en": "Log",
+        "zh-tw": "紀錄",
+        "zh-cn": "日志",
+        "ja": "ログ",
+        "es": "Registro",
+        "fr": "Journal",
+        "de": "Protokoll",
+        "ko": "로그",
+        "pt": "Registro",
+        "ru": "Журнал",
+        "it": "Registro",
+        "vi": "Nhật ký",
+        "hi": "लॉग",
+        "id": "Log",
+    },
+    "log.title": {
+        "en": "Activity log",
+        "zh-tw": "執行紀錄",
+        "zh-cn": "运行日志",
+        "ja": "動作ログ",
+        "es": "Registro de actividad",
+        "fr": "Journal d'activité",
+        "de": "Aktivitätsprotokoll",
+        "ko": "활동 로그",
+        "pt": "Registro de atividades",
+        "ru": "Журнал работы",
+        "it": "Registro attività",
+        "vi": "Nhật ký hoạt động",
+        "hi": "गतिविधि लॉग",
+        "id": "Log aktivitas",
+    },
+    "log.open_folder": {
+        "en": "Open log folder",
+        "zh-tw": "開啟紀錄資料夾",
+        "zh-cn": "打开日志文件夹",
+        "ja": "ログのフォルダーを開く",
+        "es": "Abrir carpeta del registro",
+        "fr": "Ouvrir le dossier du journal",
+        "de": "Protokollordner öffnen",
+        "ko": "로그 폴더 열기",
+        "pt": "Abrir pasta do registro",
+        "ru": "Открыть папку журнала",
+        "it": "Apri cartella del registro",
+        "vi": "Mở thư mục nhật ký",
+        "hi": "लॉग फ़ोल्डर खोलें",
+        "id": "Buka folder log",
+    },
+    "notice.captcha_waiting": {
+        "en": (
+            "{site} asks whether you are human. Solve the check in the Chrome window, the "
+            "search waits for {time}."
+        ),
+        "zh-tw": "{site} 要求驗證你不是機器人。請到 Chrome 視窗完成驗證，搜尋會再等 {time}。",
+        "zh-cn": "{site} 要求验证你不是机器人。请到 Chrome 窗口完成验证，搜索会再等 {time}。",
+        "ja": (
+            "{site} が人間かどうかの確認を求めています。Chrome のウィンドウで確認を済ませてくだ"
+            "さい。検索はあと {time} 待ちます。"
+        ),
+        "es": (
+            "{site} pide comprobar que eres una persona. Resuelve la verificación en la "
+            "ventana de Chrome, la búsqueda espera {time}."
+        ),
+        "fr": (
+            "{site} demande si vous êtes humain. Répondez dans la fenêtre Chrome, la recherche "
+            "attend encore {time}."
+        ),
+        "de": (
+            "{site} fragt, ob Sie ein Mensch sind. Bitte im Chrome-Fenster bestätigen, die "
+            "Suche wartet noch {time}."
+        ),
+        "ko": (
+            "{site} 에서 사람인지 확인을 요청합니다. Chrome 창에서 확인을 마치세요. 검색은 "
+            "{time} 동안 기다립니다."
+        ),
+        "pt": (
+            "{site} pede a confirmação de que você é humano. Resolva a verificação na janela "
+            "do Chrome, a pesquisa espera {time}."
+        ),
+        "ru": (
+            "{site} просит подтвердить, что вы человек. Пройдите проверку в окне Chrome, поиск "
+            "подождёт ещё {time}."
+        ),
+        "it": (
+            "{site} chiede di verificare che sei una persona. Completa la verifica nella "
+            "finestra di Chrome, la ricerca attende ancora {time}."
+        ),
+        "vi": (
+            "{site} yêu cầu xác minh bạn là người. Hãy hoàn tất xác minh trong cửa sổ Chrome, "
+            "việc tìm kiếm sẽ chờ thêm {time}."
+        ),
+        "hi": (
+            "{site} पूछ रहा है कि क्या आप मनुष्य हैं। Chrome विंडो में जाँच पूरी करें, खोज {time}"
+            " तक प्रतीक्षा करेगी।"
+        ),
+        "id": (
+            "{site} meminta verifikasi bahwa Anda manusia. Selesaikan di jendela Chrome, "
+            "pencarian menunggu {time} lagi."
+        ),
+    },
+    "notice.captcha_cleared": {
+        "en": "Verified, the search goes on.",
+        "zh-tw": "驗證完成，搜尋繼續進行。",
+        "zh-cn": "验证完成，搜索继续进行。",
+        "ja": "確認できました。検索を続けます。",
+        "es": "Verificado, la búsqueda continúa.",
+        "fr": "Vérification réussie, la recherche continue.",
+        "de": "Bestätigt, die Suche läuft weiter.",
+        "ko": "확인되었습니다. 검색을 계속합니다.",
+        "pt": "Verificado, a pesquisa continua.",
+        "ru": "Проверка пройдена, поиск продолжается.",
+        "it": "Verificato, la ricerca continua.",
+        "vi": "Đã xác minh, việc tìm kiếm tiếp tục.",
+        "hi": "सत्यापित हुआ, खोज जारी है।",
+        "id": "Terverifikasi, pencarian dilanjutkan.",
+    },
+    "notice.captcha_timed_out": {
+        "en": (
+            "The check on {site} was not solved in time, so this source returned nothing. "
+            "Search again to retry."
+        ),
+        "zh-tw": "{site} 的驗證沒有在時限內完成，因此這個來源沒有結果。重新搜尋可再試一次。",
+        "zh-cn": "{site} 的验证没有在时限内完成，因此这个来源没有结果。重新搜索可再试一次。",
+        "ja": (
+            "{site} の確認が時間内に終わらなかったため、このソースの結果はありません。もう一度"
+            "検索すると再試行できます。"
+        ),
+        "es": (
+            "La verificación de {site} no se resolvió a tiempo, así que esta fuente no "
+            "devolvió nada. Busca de nuevo para reintentar."
+        ),
+        "fr": (
+            "La vérification de {site} n'a pas été faite à temps, cette source n'a donc rien "
+            "renvoyé. Relancez la recherche pour réessayer."
+        ),
+        "de": (
+            "Die Prüfung auf {site} wurde nicht rechtzeitig gelöst, diese Quelle lieferte "
+            "daher nichts. Zum Wiederholen erneut suchen."
+        ),
+        "ko": (
+            "{site} 확인이 제시간에 끝나지 않아 이 출처의 결과가 없습니다. 다시 검색하면 재시도"
+            "합니다."
+        ),
+        "pt": (
+            "A verificação em {site} não foi resolvida a tempo, então esta fonte não retornou "
+            "nada. Pesquise de novo para tentar outra vez."
+        ),
+        "ru": (
+            "Проверка на {site} не была пройдена вовремя, поэтому этот источник ничего не "
+            "вернул. Повторите поиск, чтобы попробовать снова."
+        ),
+        "it": (
+            "La verifica su {site} non è stata completata in tempo, quindi questa fonte non ha "
+            "restituito nulla. Ripeti la ricerca per riprovare."
+        ),
+        "vi": (
+            "Xác minh trên {site} không hoàn tất kịp, nên nguồn này không có kết quả. Hãy tìm "
+            "lại để thử lần nữa."
+        ),
+        "hi": (
+            "{site} की जाँच समय पर पूरी नहीं हुई, इसलिए इस स्रोत से कुछ नहीं मिला। फिर से कोशिश "
+            "करने के लिए दोबारा खोजें।"
+        ),
+        "id": (
+            "Verifikasi di {site} tidak selesai tepat waktu, jadi sumber ini tidak memberi "
+            "hasil. Cari lagi untuk mencoba ulang."
+        ),
+    },
+    "error.unexpected": {
+        "en": "An unexpected error occurred ({error}). Details are in the log.",
+        "zh-tw": "發生未預期的錯誤（{error}），詳細內容請看紀錄。",
+        "zh-cn": "发生意外错误（{error}），详细内容请看日志。",
+        "ja": "予期しないエラーが発生しました ({error})。詳細はログにあります。",
+        "es": "Se produjo un error inesperado ({error}). Los detalles están en el registro.",
+        "fr": "Une erreur inattendue s'est produite ({error}). Les détails sont dans le journal.",
+        "de": "Ein unerwarteter Fehler ist aufgetreten ({error}). Details stehen im Protokoll.",
+        "ko": "예기치 않은 오류가 발생했습니다 ({error}). 자세한 내용은 로그에 있습니다.",
+        "pt": "Ocorreu um erro inesperado ({error}). Os detalhes estão no registro.",
+        "ru": "Произошла непредвиденная ошибка ({error}). Подробности в журнале.",
+        "it": "Si è verificato un errore imprevisto ({error}). I dettagli sono nel registro.",
+        "vi": "Đã xảy ra lỗi ngoài dự kiến ({error}). Chi tiết có trong nhật ký.",
+        "hi": "एक अप्रत्याशित त्रुटि हुई ({error})। विवरण लॉग में है।",
+        "id": "Terjadi kesalahan tak terduga ({error}). Rinciannya ada di log.",
+    },
+    "error.startup": {
+        "en": "ThesisAgents could not start.\n{error}\nThe log file has the details:",
+        "zh-tw": "ThesisAgents 無法啟動。\n{error}\n詳細內容在紀錄檔：",
+        "zh-cn": "ThesisAgents 无法启动。\n{error}\n详细内容在日志文件：",
+        "ja": "ThesisAgents を起動できませんでした。\n{error}\n詳細はログファイルにあります:",
+        "es": (
+            "ThesisAgents no pudo iniciarse.\n{error}\nEl archivo de registro tiene los "
+            "detalles:"
+        ),
+        "fr": (
+            "ThesisAgents n'a pas pu démarrer.\n{error}\nLe fichier journal contient les "
+            "détails :"
+        ),
+        "de": "ThesisAgents konnte nicht starten.\n{error}\nDetails stehen in der Protokolldatei:",
+        "ko": "ThesisAgents 를 시작하지 못했습니다.\n{error}\n자세한 내용은 로그 파일에 있습니다:",
+        "pt": "O ThesisAgents não pôde iniciar.\n{error}\nO arquivo de registro tem os detalhes:",
+        "ru": "Не удалось запустить ThesisAgents.\n{error}\nПодробности в файле журнала:",
+        "it": (
+            "Impossibile avviare ThesisAgents.\n{error}\nIl file di registro contiene i "
+            "dettagli:"
+        ),
+        "vi": "ThesisAgents không khởi động được.\n{error}\nChi tiết có trong tệp nhật ký:",
+        "hi": "ThesisAgents शुरू नहीं हो सका।\n{error}\nविवरण लॉग फ़ाइल में है:",
+        "id": "ThesisAgents tidak dapat dimulai.\n{error}\nRinciannya ada di berkas log:",
+    },
     "settings.vpn_access": {
         "en": "I have institutional / VPN access (download IEEE PDFs)",
         "zh-tw": "我有學校或機構的 VPN 存取權(可下載 IEEE PDF)",
