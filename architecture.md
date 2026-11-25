@@ -94,7 +94,8 @@ An exporter never imports a fetcher; it only consumes a `PaperCollection`.
   and the project with `--no-deps --no-build-isolation`.
   The Windows zip holds one Nuitka build as two programs, split by `scripts/split_windows_exe.py`:
   `thesisagents.exe` is windowed (the GUI opens with no console) and `thesisagents-cli.exe` is the
-  console program for the CLI.
+  console program for the CLI. `packaging/windows/thesisagents.iss` makes the installer from the same folder.
+  `thesisagents.__version__` is read from the package metadata, which `release.yml` bundles.
   Reference: `docs/releases.md`.
 
 ## 4. Main flows

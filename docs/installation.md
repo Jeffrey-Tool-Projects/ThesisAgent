@@ -108,7 +108,7 @@ doesn't pollute the system Python:
 ### Windows (PowerShell)
 
 ```powershell
-git clone https://github.com/Integration-Automation/ThesisAgents.git
+git clone https://github.com/Jeffrey-Tool-Projects/ThesisAgent.git
 cd ThesisAgents
 
 py -3.12 -m venv .venv
@@ -124,7 +124,7 @@ python -m pytest tests/
 ### macOS / Linux (bash / zsh)
 
 ```bash
-git clone https://github.com/Integration-Automation/ThesisAgents.git
+git clone https://github.com/Jeffrey-Tool-Projects/ThesisAgent.git
 cd ThesisAgents
 
 python3.12 -m venv .venv
@@ -170,11 +170,18 @@ On a headless Linux box (CI, server) the GUI still imports if you
 set `QT_QPA_PLATFORM=offscreen` — Qt renders into an in-memory
 buffer instead of an X server.
 
-## Windows: prebuilt `.exe`
+## Windows: installer or zip
 
-Every release ships a self-contained Windows zip built with
-Nuitka. Download `thesisagents-windows-x86_64.zip` from the
-[GitHub Releases page](https://github.com/Integration-Automation/ThesisAgents/releases),
+Every release ships a Windows build made with Nuitka, as an installer
+and as a zip. `thesisagents-setup-windows-x86_64.exe` installs for the
+current user, needs no administrator rights, adds a start menu entry, and
+can put `thesisagents-cli` on `PATH`. A newer installer replaces the
+installed version. It is not signed, so SmartScreen warns the first time:
+choose **More info**, then **Run anyway**, after checking the download
+against its `.sha256` file.
+
+For the zip, download `thesisagents-windows-x86_64.zip` from the
+[GitHub Releases page](https://github.com/Jeffrey-Tool-Projects/ThesisAgent/releases),
 unzip anywhere, and open `thesisagents.exe` for the desktop app. The bundle
 includes Python, every dependency (including PySide6), and the 11
 source plugins — no separate Python install is needed.
@@ -203,7 +210,7 @@ checking.
 
 ```bash
 # From a Git ref directly
-pip install "git+https://github.com/Integration-Automation/ThesisAgents@dev"
+pip install "git+https://github.com/Jeffrey-Tool-Projects/ThesisAgent@dev"
 
 # From a local clone (editable — picks up your changes live)
 pip install -e .

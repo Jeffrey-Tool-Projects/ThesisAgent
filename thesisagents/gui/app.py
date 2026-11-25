@@ -164,6 +164,7 @@ def _boot(argv: list[str] | None = None) -> int:
     language = saved_ui_language(default=normalise_language(QLocale().name()))
     window = MainWindow(ui_language=language)
     window.show()
+    window.check_for_updates()
     return app.exec()
 
 

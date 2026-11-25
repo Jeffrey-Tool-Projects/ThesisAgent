@@ -243,6 +243,7 @@ jobs:
     timeout-minutes: 180
     env:
       ASSET_NAME: thesisagents-windows-x86_64.zip
+      INSTALLER_NAME: thesisagents-setup-windows-x86_64.exe
       # Nuitka keeps its compiler cache (clcache on MSVC) and downloads
       # under this directory. Unset, it defaults to
       # %LOCALAPPDATA%\Nuitka\Nuitka\Cache on Windows, a path the cache
@@ -353,6 +354,8 @@ jobs:
             --output-filename=thesisagents.exe \
             --windows-icon-from-ico=thesisagents/gui/icon.ico \
             --include-package=thesisagents \
+            --include-distribution-metadata=thesisagents \
+            --include-package=keyring.backends \
             --enable-plugin=pyside6 \
             --nofollow-import-to=pymupdf \
             --nofollow-import-to=uvicorn \
@@ -403,11 +406,43 @@ jobs:
                            -DestinationPath $env:ASSET_NAME `
                            -CompressionLevel Optimal
 
-      - name: Compute SHA-256 checksum
-        # Attach the checksum file alongside the zip so users can
+      - name: Build the installer
+        # Inno Setup comes as a NuGet package: pinned, checked against its
+        # hash, and only unpacked, so nothing is installed on the runner.
+        # Its compiler is signed by the vendor, which is checked too. The
+        # zip is the release's main file, so a failing installer does not
+        # stop it.
+        continue-on-error: true
+        shell: pwsh
+        env:
+          INNO_VERSION: "6.7.3"
+          INNO_SHA256: f780898e402ff80612cc8d9fcb8c6e02932bd1cb4c900ffdaa31f9341cfb49f4
+          APP_VERSION: ${{ needs.bump-version.outputs.version }}
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $package = Join-Path $env:RUNNER_TEMP 'inno.zip'
+          $url = "https://api.nuget.org/v3-flatcontainer/tools.innosetup/$env:INNO_VERSION/tools.innosetup.$env:INNO_VERSION.nupkg"
+          Invoke-WebRequest -Uri $url -OutFile $package
+          if ((Get-FileHash $package -Algorithm SHA256).Hash -ne $env:INNO_SHA256) {
+            throw 'Inno Setup package does not match its pinned hash'
+          }
+          $inno = Join-Path $env:RUNNER_TEMP 'inno'
+          Expand-Archive -Path $package -DestinationPath $inno
+          $iscc = Join-Path $inno 'tools/ISCC.exe'
+          if ((Get-AuthenticodeSignature $iscc).Status -ne 'Valid') {
+            throw 'ISCC.exe is not validly signed'
+          }
+          & $iscc /Qp "/DAppVersion=$env:APP_VERSION" "/DSourceDir=$PWD\thesisagents.dist" "/DOutputDir=$PWD" packaging/windows/thesisagents.iss
+          if ($LASTEXITCODE -ne 0) { throw "ISCC failed with $LASTEXITCODE" }
+
+      - name: Compute SHA-256 checksums
+        # Attach the checksum files alongside the downloads so users can
         # verify what they downloaded matches what CI built.
         shell: bash
-        run: sha256sum "$ASSET_NAME" > "$ASSET_NAME.sha256"
+        run: |
+          for file in "$ASSET_NAME" "$INSTALLER_NAME"; do
+            if [ -f "$file" ]; then sha256sum "$file" > "$file.sha256"; fi
+          done
 
       - name: Attach binary + checksum to release
         uses: softprops/action-gh-release@efb35369e0ad2afab669f228072c1b0d510eae64  # v3.0.3
@@ -416,6 +451,8 @@ jobs:
           files: |
             ${{ env.ASSET_NAME }}
             ${{ env.ASSET_NAME }}.sha256
+            ${{ env.INSTALLER_NAME }}
+            ${{ env.INSTALLER_NAME }}.sha256
           # The release was created as a draft above; uploading does
           # not unmark it.
           draft: true

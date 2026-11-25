@@ -297,6 +297,11 @@ Both styles are drawn by the app's own stylesheet
 palette is tested for WCAG AA contrast (4.5:1) on body, secondary,
 sidebar and button text.
 
+**Check for a new version once a day** (on by default, QSettings key
+`updates/check`) asks PyPI for the latest version number and nothing else.
+A newer release shows as a button in the status bar that opens the download
+page. The app downloads and installs nothing itself.
+
 **Font size** sets the text of the whole app, from 8 to 24 pt (QSettings
 key `ui/font_size`). It is applied as you change it and needs no
 **Save**, since the right size is found by looking at it. **Reset**

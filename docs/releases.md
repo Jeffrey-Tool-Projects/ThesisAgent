@@ -45,6 +45,7 @@ Push to main
 | **`thesisagents-<version>-py3-none-any.whl`** | PyPI | ~280 KB |
 | **`thesisagents-windows-x86_64.zip`** | GitHub Release | ~140 MB expected (Nuitka bundle + PySide6, v0.1.26 was 100 MB with one executable) |
 | **`thesisagents-windows-x86_64.zip.sha256`** | GitHub Release | 80 bytes |
+| **`thesisagents-setup-windows-x86_64.exe`** and its `.sha256` | GitHub Release | Installer for the same build (`packaging/windows/thesisagents.iss`, Inno Setup, unsigned). When this step fails, the release ships without it. |
 
 The PyPI artefacts work on Linux / macOS / Windows; the zip is
 the standalone Windows bundle for users who don't want a Python

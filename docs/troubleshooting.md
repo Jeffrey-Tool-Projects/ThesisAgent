@@ -548,6 +548,6 @@ If none of the above matches:
 2. Copy the **smallest** reproducer (CLI command, MCP tool call
    sequence, or Python snippet) and the **complete** stack trace.
 3. Open an issue at
-   <https://github.com/Integration-Automation/ThesisAgents/issues>
+   <https://github.com/Jeffrey-Tool-Projects/ThesisAgent/issues>
    with the above + `python --version` + `pip freeze | grep -E
    "thesisagents|httpx|python-pptx|PySide6"`.

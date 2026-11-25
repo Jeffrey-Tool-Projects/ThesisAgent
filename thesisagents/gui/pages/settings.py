@@ -106,6 +106,8 @@ _STYLE_KEY: Final[str] = "ui/style"
 #: Interface font size in points. Absent means the default size, so a
 #: user who never picked one keeps following the system's.
 _FONT_SIZE_KEY: Final[str] = "ui/font_size"
+#: Whether the app asks PyPI once a day for a newer release.
+_UPDATES_KEY: Final[str] = "updates/check"
 #: Whether the user has institutional / VPN access to paywalled publishers.
 #: The PDF stage (``gui/pdf_stage.py``) leaves IEEE PDFs out while it is off.
 _VPN_KEY: Final[str] = "access/vpn"
@@ -197,6 +199,11 @@ def saved_font_size() -> int:
         return clamp_font_size(int(value))
     except (TypeError, ValueError):
         return default_font_size()
+
+
+def saved_update_check() -> bool:
+    """Whether the app may look for a newer release (on by default)."""
+    return bool(settings_store().value(_UPDATES_KEY, True, type=bool))
 
 
 def saved_vpn_access() -> bool:
@@ -292,6 +299,8 @@ class SettingsPage(QWidget):
             self._style_combo.addItem(t(f"settings.style_{choice}", language), choice)
         ui_form.addRow(t("settings.style_label", language), self._style_combo)
         self._add_font_size_rows(ui_form)
+        self._updates_check = QCheckBox(t("settings.check_updates", language), self)
+        ui_form.addRow(self._updates_check)
         adapt_form_rows(ui_card, ui_form)
         left.addWidget(ui_card)
 
@@ -423,6 +432,9 @@ class SettingsPage(QWidget):
     def theme_combo(self) -> QComboBox:
         return self._theme_combo
 
+    def updates_checkbox(self) -> QCheckBox:
+        return self._updates_check
+
     def vpn_checkbox(self) -> QCheckBox:
         return self._vpn_check
 
@@ -493,6 +505,7 @@ class SettingsPage(QWidget):
         store.setValue(_THEME_KEY, theme)
         store.setValue(_STYLE_KEY, self._style_combo.currentData() or STYLE_CLASSIC)
         store.setValue(_VPN_KEY, self._vpn_check.isChecked())
+        store.setValue(_UPDATES_KEY, self._updates_check.isChecked())
         store.sync()
         self.theme_changed.emit(theme)
         self.access_changed.emit(self._vpn_check.isChecked())
@@ -518,6 +531,7 @@ class SettingsPage(QWidget):
         theme_index = self._theme_combo.findData(saved_theme())
         self._theme_combo.setCurrentIndex(max(0, theme_index))
         self._vpn_check.setChecked(saved_vpn_access())
+        self._updates_check.setChecked(saved_update_check())
         style_index = self._style_combo.findData(saved_style())
         self._style_combo.setCurrentIndex(max(0, style_index))
 

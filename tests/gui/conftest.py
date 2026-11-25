@@ -36,6 +36,14 @@ class MemoryCredentials:
 
 
 @pytest.fixture(autouse=True)
+def _no_update_check(monkeypatch):
+    async def no_news(_current):
+        return None
+
+    monkeypatch.setattr("thesisagents.gui.update_check.newer_version", no_news)
+
+
+@pytest.fixture(autouse=True)
 def credential_store():
     store = MemoryCredentials()
     credentials.STORE.replace(store)

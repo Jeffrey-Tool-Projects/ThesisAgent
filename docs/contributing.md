@@ -6,7 +6,7 @@ the project's invariants.
 ## Quick start
 
 ```bash
-git clone https://github.com/Integration-Automation/ThesisAgents.git
+git clone https://github.com/Jeffrey-Tool-Projects/ThesisAgent.git
 cd ThesisAgents
 python -m venv .venv
 .\.venv\Scripts\Activate.ps1            # Windows PowerShell
@@ -298,6 +298,6 @@ See [Releases](releases.md) for the auto-bump flow, the
 ## Asking for help
 
 Open an issue at
-<https://github.com/Integration-Automation/ThesisAgents/issues>
+<https://github.com/Jeffrey-Tool-Projects/ThesisAgent/issues>
 or a draft PR with a question label. The maintainers are happy
 to weigh in on design questions before you write the code.

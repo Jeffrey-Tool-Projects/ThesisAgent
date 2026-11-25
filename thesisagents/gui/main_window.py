@@ -60,6 +60,7 @@ from thesisagents.gui.pages.settings import (
     settings_store,
 )
 from thesisagents.gui.theme import THEME_SYSTEM, apply_theme
+from thesisagents.gui.update_check import UpdateCheck, open_download_page
 from thesisagents.gui.widgets.log_dialog import LogDialog
 from thesisagents.gui.widgets.nav_rail import NavRail
 from thesisagents.gui.widgets.notice_banner import NoticeBanner
@@ -219,6 +220,14 @@ class MainWindow(QMainWindow):
         self._busy_bar.setTextVisible(False)
         self._busy_bar.setVisible(False)
         bar.addPermanentWidget(self._busy_bar)
+        self._update_button = QPushButton("", bar)
+        self._update_button.setObjectName("StatusButton")
+        self._update_button.setProperty("primary", True)
+        self._update_button.clicked.connect(open_download_page)
+        self._update_button.setVisible(False)
+        bar.addPermanentWidget(self._update_button)
+        self._update_check = UpdateCheck(self)
+        self._update_check.found.connect(self.show_update)
         self._log_dialog: LogDialog | None = None
         log_button = QPushButton(t("log.button", self._ui_language), bar)
         log_button.setObjectName("StatusButton")
@@ -353,6 +362,8 @@ class MainWindow(QMainWindow):
         self.save_forms(store)
         replacement = MainWindow(ui_language=language)
         replacement.adopt_work(self)
+        # Repeats today's answer in the new window, without asking again.
+        replacement.check_for_updates()
         replacement.statusBar().showMessage(t("settings.saved_message", language), 8000)
         _REPLACEMENTS.append(replacement)
         replacement.destroyed.connect(
@@ -384,6 +395,21 @@ class MainWindow(QMainWindow):
         if isinstance(app, QApplication):
             apply_theme(app, choice, saved_style())
         self._nav.refresh_icons()
+
+    def check_for_updates(self) -> None:
+        """Look for a newer release (``app.py`` calls this once the window shows)."""
+        self._update_check.start()
+
+    def show_update(self, version: str) -> None:
+        """Offer the download page of ``version`` in the status bar."""
+        self._update_button.setText(
+            t("updates.available", self._ui_language, version=version)
+        )
+        self._update_button.setToolTip(t("updates.open", self._ui_language))
+        self._update_button.setVisible(True)
+
+    def update_button(self) -> QPushButton:
+        return self._update_button
 
     def show_log(self) -> LogDialog:
         """Open the log window, or bring the open one to the front."""

@@ -1,10 +1,10 @@
 # ThesisAgents
 
-[![CI](https://github.com/Integration-Automation/ThesisAgents/actions/workflows/ci.yml/badge.svg)](https://github.com/Integration-Automation/ThesisAgents/actions/workflows/ci.yml)
-[![Release](https://github.com/Integration-Automation/ThesisAgents/actions/workflows/release.yml/badge.svg?branch=main)](https://github.com/Integration-Automation/ThesisAgents/actions/workflows/release.yml)
+[![CI](https://github.com/Jeffrey-Tool-Projects/ThesisAgent/actions/workflows/ci.yml/badge.svg)](https://github.com/Jeffrey-Tool-Projects/ThesisAgent/actions/workflows/ci.yml)
+[![Release](https://github.com/Jeffrey-Tool-Projects/ThesisAgent/actions/workflows/release.yml/badge.svg?branch=main)](https://github.com/Jeffrey-Tool-Projects/ThesisAgent/actions/workflows/release.yml)
 [![PyPI](https://img.shields.io/pypi/v/thesisagents.svg)](https://pypi.org/project/thesisagents/)
 [![Python](https://img.shields.io/pypi/pyversions/thesisagents.svg)](https://pypi.org/project/thesisagents/)
-[![License: MIT](https://img.shields.io/github/license/Integration-Automation/ThesisAgents.svg)](https://github.com/Integration-Automation/ThesisAgents/blob/main/LICENSE)
+[![License: MIT](https://img.shields.io/github/license/Jeffrey-Tool-Projects/ThesisAgent.svg)](https://github.com/Jeffrey-Tool-Projects/ThesisAgent/blob/main/LICENSE)
 [![Docs](https://readthedocs.org/projects/thesisagents/badge/?version=latest)](https://thesisagents.readthedocs.io/en/latest/)
 
 > **語言**: [English](../README.md) · **繁體中文** · [简体中文](README.zh-CN.md) · [日本語](README.ja.md) · [Español](README.es.md) · [Français](README.fr.md) · [Deutsch](README.de.md) · [한국어](README.ko.md) · [Português](README.pt.md) · [Русский](README.ru.md) · [Italiano](README.it.md) · [Tiếng Việt](README.vi.md) · [हिन्दी](README.hi.md) · [Bahasa Indonesia](README.id.md)
@@ -475,7 +475,7 @@ Tiếng Việt、हिन्दी、Bahasa Indonesia)—— 首次執行會從
 結果旁邊,中等寬度時放在結果上方,寬度低於 760 px 時側邊欄收合成圖示,
 表單標籤移到欄位上方。視窗可以縮小到 640×480,並預設開啟 HiDPI 縮放。
 **Settings → Theme** 可選淺色、深色或跟隨系統,立即套用,且與投影片本身的
-深色模式無關。結果可以排序、篩選並勾選，只把勾選的論文交給 Enrich、Deck 與匯出，滾雪球的範圍可以調整，執行中的搜尋或豐富化可以取消，表單內容在下次啟動時會保留。Deck 頁面可在匯出前檢查範本，也能審查任何完成的投影片。沒有 API 金鑰時，Enrich 頁面會把論文以 JSON 檔交給 LLM 代理，再匯入它寫的摘要。Deck 頁面也能下載 PDF，在 Settings 宣告機構 / VPN 存取權之前會跳過 IEEE，新的介面語言會立即套用並保留目前的工作。同一個開關也會讓搜尋跳過 `ieee`。Search 頁面也能像 CLI 的 `--pdf` 一樣，把本機 PDF 讀入結果。狀態列會顯示經由 Chrome 下載的 PDF 數量，出版商 PDF 無法使用 Chrome 時也會發出警告。**Settings → Style** 可在經典海軍藍外觀與 Material 3 之間切換。**Settings → Font size** 可立即把整個應用程式的文字大小調整為 8 到 24 pt，也可以用 `Ctrl++`、`Ctrl+-` 和 `Ctrl+0`(還原預設)，版面會隨之調整。狀態列的 **Log**(`Ctrl+L`)顯示程式正在做什麼，並有紀錄檔可附在錯誤回報中，Chrome 等你完成驗證時上方會出現提示。API 金鑰存放在系統的憑證管理員(Windows 認證管理員、macOS 鑰匙圈、Secret Service)，不會寫進設定檔。`Ctrl+1` … `Ctrl+5` 切換頁面。
+深色模式無關。結果可以排序、篩選並勾選，只把勾選的論文交給 Enrich、Deck 與匯出，滾雪球的範圍可以調整，執行中的搜尋或豐富化可以取消，表單內容在下次啟動時會保留。Deck 頁面可在匯出前檢查範本，也能審查任何完成的投影片。沒有 API 金鑰時，Enrich 頁面會把論文以 JSON 檔交給 LLM 代理，再匯入它寫的摘要。Deck 頁面也能下載 PDF，在 Settings 宣告機構 / VPN 存取權之前會跳過 IEEE，新的介面語言會立即套用並保留目前的工作。同一個開關也會讓搜尋跳過 `ieee`。Search 頁面也能像 CLI 的 `--pdf` 一樣，把本機 PDF 讀入結果。狀態列會顯示經由 Chrome 下載的 PDF 數量，出版商 PDF 無法使用 Chrome 時也會發出警告。**Settings → Style** 可在經典海軍藍外觀與 Material 3 之間切換。**Settings → Font size** 可立即把整個應用程式的文字大小調整為 8 到 24 pt，也可以用 `Ctrl++`、`Ctrl+-` 和 `Ctrl+0`(還原預設)，版面會隨之調整。狀態列的 **Log**(`Ctrl+L`)顯示程式正在做什麼，並有紀錄檔可附在錯誤回報中，Chrome 等你完成驗證時上方會出現提示。API 金鑰存放在系統的憑證管理員(Windows 認證管理員、macOS 鑰匙圈、Secret Service)，不會寫進設定檔。Windows 提供不需系統管理員權限的安裝程式，有新版本時程式會提示(每天檢查一次，可關閉)。`Ctrl+1` … `Ctrl+5` 切換頁面。
 
 完整參考:[`docs/gui.md`](../docs/gui.md)。
 
