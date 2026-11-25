@@ -149,6 +149,9 @@ class DeckEditor(QDialog):
 
     def _reload(self, current: int) -> None:
         """Read the working copy again and show slide ``current``."""
+        # The form belongs to the deck as it was. Selecting a row below would
+        # write it once more, to whichever slide stands at the old position now.
+        self._boxes = []
         presentation = pptx_edit._open(self._work)  # noqa: SLF001 - same package family
         size = (presentation.slide_width, presentation.slide_height)
         self._views = pptx_edit.inspect(self._work)
@@ -176,9 +179,10 @@ class DeckEditor(QDialog):
         if row != self._shown and self._pending():
             changes, shown = self._pending(), self._shown
             self._boxes = []
-            self._edit(
+            if not self._edit(
                 lambda: pptx_edit.update_slide(self._work, shown, shape_updates=changes), row
-            )
+            ):
+                self._show_slide(row)
             return
         self._show_slide(row)
 
@@ -201,7 +205,9 @@ class DeckEditor(QDialog):
                 box.setFixedHeight(min(220, 28 + lines * (box.fontMetrics().height() + 2)))
                 layout.addWidget(label)
                 layout.addWidget(box)
-                self._boxes.append((shape.index, shape.text, box))
+                # What the box holds, not the shape's text: Qt turns a no-break
+                # space into a space, which is not an edit.
+                self._boxes.append((shape.index, box.toPlainText(), box))
                 box.textChanged.connect(self._refresh_buttons)
         layout.addStretch(1)
         self._form_scroll.setWidget(form)
@@ -213,7 +219,7 @@ class DeckEditor(QDialog):
         self._buttons["delete"].setEnabled(count > 1)
         self._buttons["up"].setEnabled(row > 0)
         self._buttons["down"].setEnabled(0 <= row < count - 1)
-        self._buttons["undo"].setEnabled(bool(self._undo))
+        self._buttons["undo"].setEnabled(bool(self._undo) or self._pending() != {})
         self._buttons["apply"].setEnabled(bool(self._boxes))
         self._buttons["save"].setEnabled(self._dirty or self._pending() != {})
 
@@ -252,9 +258,15 @@ class DeckEditor(QDialog):
             lambda: pptx_edit.update_slide(self._work, row, shape_updates=changes), row
         )
 
+    def _texts_applied(self) -> bool:
+        """Write what was typed. False when that failed, so nothing builds on it."""
+        self.apply_texts()
+        return not self._pending()
+
     def add_slide(self) -> None:
         """A new slide after the selected one, in the deck's own look."""
-        self.apply_texts()
+        if not self._texts_applied():
+            return
         position = self._list.currentRow() + 1
         title = t("slides.new_title", self._language)
         body = t("slides.new_body", self._language)
@@ -270,7 +282,8 @@ class DeckEditor(QDialog):
 
     def move_slide(self, step: int) -> None:
         """Move the selected slide up (-1) or down (1)."""
-        self.apply_texts()
+        if not self._texts_applied():
+            return
         row = self._list.currentRow()
         target = row + step
         if not 0 <= target < self._list.count():
@@ -285,13 +298,24 @@ class DeckEditor(QDialog):
             self._list.item(row).data(Qt.ItemDataRole.UserRole)
             for row in range(self._list.count())
         ]
-        if order != sorted(order):
-            self._edit(
-                lambda: pptx_edit.reorder_slides(self._work, order), self._list.currentRow()
-            )
+        if order == sorted(order):
+            return
+        # Typed on the slide shown before the drag, at its old position.
+        changes, shown = self._pending(), self._shown
+
+        def change() -> None:
+            if changes:
+                pptx_edit.update_slide(self._work, shown, shape_updates=changes)
+            pptx_edit.reorder_slides(self._work, order)
+
+        if not self._edit(change, self._list.currentRow()):
+            self._reload(shown)  # the thumbnails back in the deck's order
 
     def undo(self) -> None:
-        """Take the last step back."""
+        """Take the last step back. What was typed and not applied is one."""
+        if self._pending():
+            self._show_slide(self._shown)
+            return
         if not self._undo:
             return
         self._work.write_bytes(self._undo.pop())
@@ -305,7 +329,8 @@ class DeckEditor(QDialog):
 
     def save_to(self, path: str) -> bool:
         """Write the deck to ``path``, whole or not at all."""
-        self.apply_texts()
+        if not self._texts_applied():
+            return False
         target = Path(path)
         temporary = target.with_name(f".{target.name}.saving")
         try:

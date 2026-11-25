@@ -13,6 +13,7 @@ Example::
 
 from __future__ import annotations
 
+from collections import Counter
 from collections.abc import Mapping
 from dataclasses import dataclass, field
 from html import escape
@@ -32,7 +33,10 @@ class PrismaFlow:
     """The numbers of the diagram.
 
     ``identified`` counts records per source over all runs, so a paper two
-    sources returned counts twice there and once in ``unique``. ``awaiting``
+    sources returned counts twice there and once in ``unique``.
+    ``removed_other`` are records a search returned and did not keep (a
+    filter, the result limit) or that were deleted by hand, which is not the
+    same as a duplicate. ``awaiting``
     are papers without a title and abstract decision (or with "maybe"), and
     ``full_text_awaiting`` those that passed it and have no full-text one.
     """
@@ -48,12 +52,14 @@ class PrismaFlow:
     included: int
     reasons_abstract: Mapping[str, int] = field(default_factory=dict)
     reasons_full_text: Mapping[str, int] = field(default_factory=dict)
+    removed_other: int = 0
 
     def to_dict(self) -> dict[str, Any]:
         return {
             "identified": dict(self.identified),
             "identified_total": sum(self.identified.values()),
             "duplicates_removed": self.duplicates_removed,
+            "removed_other": self.removed_other,
             "unique": self.unique,
             "awaiting": self.awaiting,
             "excluded_abstract": self.excluded_abstract,
@@ -69,7 +75,7 @@ class PrismaFlow:
 def prisma_flow(library: Any) -> PrismaFlow:
     """Count the flow of ``library`` (a ``Library``)."""
     unique = len(library)
-    identified = _identified(library)
+    identified, removed_other = _identified(library)
     annotations = library.annotations()
     first = [a.decision(STAGE_ABSTRACT) for a in annotations.values()]
     second = [
@@ -81,9 +87,10 @@ def prisma_flow(library: Any) -> PrismaFlow:
     full_text = first.count(DECISION_INCLUDE)
     return PrismaFlow(
         identified=identified,
-        # An import that names no source counts each paper once, so the sum
-        # can only fall short when papers were deleted by hand.
-        duplicates_removed=max(0, sum(identified.values()) - unique),
+        # What is left of the records once the ones not kept are taken off:
+        # duplicates within a search, and papers that several runs found.
+        duplicates_removed=max(0, sum(identified.values()) - removed_other - unique),
+        removed_other=removed_other,
         unique=unique,
         awaiting=unique - excluded_abstract - full_text,
         excluded_abstract=excluded_abstract,
@@ -105,27 +112,46 @@ def prisma_flow(library: Any) -> PrismaFlow:
     )
 
 
-def _identified(library: Any) -> dict[str, int]:
-    """Records per source over all runs, from the runs' own statistics.
+#: Name under which papers found along citation links are counted.
+_SNOWBALL: Final[str] = "snowball"
 
-    A run without them (an import, an MCP ``library_add``) counts the papers
-    it brought, under its kind.
+
+def _identified(library: Any) -> tuple[dict[str, int], int]:
+    """Records per source over all runs, and how many of them were not kept.
+
+    The counts come from the runs' own statistics. A run without them (an
+    import, an MCP ``library_add``) counts the papers it brought, under its
+    kind.
+
+    A run keeps fewer papers than its sources found when a filter or the
+    result limit cut some off, or when papers were deleted since. It holds
+    more when a citation snowball added to it. Example: 40 records, 30
+    distinct, 25 kept gives 10 duplicates and 5 not kept.
     """
-    counts: dict[str, int] = {}
+    counts: Counter[str] = Counter()
+    not_kept = 0
     for run in library.runs():
-        if run.source_stats:
-            for stat in run.source_stats:
-                name = str(stat.get("source", ""))
-                counts[name] = counts.get(name, 0) + int(stat.get("returned") or 0)
+        if not run.source_stats:
+            counts[run.kind] += run.papers
+            continue
+        distinct = 0
+        for stat in run.source_stats:
+            returned = int(stat.get("returned") or 0)
+            counts[str(stat.get("source", ""))] += returned
+            # Statistics stored without the number say nothing about duplicates.
+            distinct += int(stat.get("after_dedup", returned) or 0)
+        if run.papers > distinct:
+            counts[_SNOWBALL] += run.papers - distinct
         else:
-            counts[run.kind] = counts.get(run.kind, 0) + run.papers
-    return {name: counts[name] for name in sorted(counts) if counts[name]}
+            not_kept += distinct - run.papers
+    return {name: counts[name] for name in sorted(counts) if counts[name]}, not_kept
 
 
 #: The wording of PRISMA 2020. A translation passes its own.
 DEFAULT_LABELS: Final[Mapping[str, str]] = {
     "identified": "Records identified",
     "duplicates": "Duplicate records removed",
+    "removed_other": "Records removed for other reasons",
     "screened": "Records screened",
     "awaiting": "Awaiting screening",
     "excluded": "Records excluded",
@@ -159,7 +185,11 @@ def prisma_svg(flow: PrismaFlow, labels: Mapping[str, str] = DEFAULT_LABELS) -> 
     if flow.full_text_awaiting:
         left[2].append(f"{labels['full_text_awaiting']} (n = {flow.full_text_awaiting})")
     right = [
-        [f"{labels['duplicates']} (n = {flow.duplicates_removed})"],
+        [f"{labels['duplicates']} (n = {flow.duplicates_removed})"]
+        + (
+            [f"{labels['removed_other']} (n = {flow.removed_other})"]
+            if flow.removed_other else []
+        ),
         [f"{labels['excluded']} (n = {flow.excluded_abstract})"]
         + _reason_lines(flow.reasons_abstract, labels),
         [f"{labels['excluded_full_text']} (n = {flow.excluded_full_text})"]

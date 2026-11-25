@@ -58,17 +58,28 @@ def _row(paper: Paper) -> ComparisonRow:
 def _method(summary: PaperSummary) -> tuple[str, ...]:
     """The named techniques, else the method headings, else the method bullets."""
     if summary.technique_table:
-        return tuple(name for name, _role in summary.technique_table[:_PER_CELL])
+        return tuple(row[0] for row in summary.technique_table[:_PER_CELL] if row)
     if summary.method_sections:
         return tuple(heading for heading, _bullets in summary.method_sections[:_PER_CELL])
     return summary.method[:_PER_CELL]
 
 
+def metric_statements(summary: PaperSummary) -> tuple[str, ...]:
+    """The headline metrics as text: ``"F1: 0.91 (0.85)"``.
+
+    The boundary this guards: a summary written by hand or by an agent,
+    where a metric without a baseline is often a pair. Unpacking three
+    values from it would fail the whole spreadsheet or draft.
+    """
+    padded = ((*metric, "", "", "")[:3] for metric in summary.headline_metrics)
+    return tuple(
+        f"{label}: {value}" + (f" ({baseline})" if baseline else "")
+        for label, value, baseline in padded
+    )
+
+
 def _strengths(summary: PaperSummary) -> tuple[str, ...]:
     """Measured results first, then contributions."""
-    measured = tuple(
-        f"{label}: {value}" + (f" ({baseline})" if baseline else "")
-        for label, value, baseline in summary.headline_metrics[:_PER_CELL]
-    )
-    claimed = tuple(heading for heading, _text in summary.contributions_detailed)
+    measured = metric_statements(summary)[:_PER_CELL]
+    claimed = tuple(row[0] for row in summary.contributions_detailed if row)
     return (measured + (claimed or summary.contributions or summary.results))[:_PER_CELL]

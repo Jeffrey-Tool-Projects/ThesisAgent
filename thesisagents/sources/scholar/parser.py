@@ -44,6 +44,9 @@ def parse_serp(html_text: str) -> list[Paper]:
 
 
 def _parse_one(block) -> Paper | None:
+    # "[CITATION]" and "[PDF]" marks, which a result without a link has in its title.
+    for mark in block.select("h3.gs_rt .gs_ctu, h3.gs_rt .gs_ctc"):
+        mark.decompose()
     title_node = block.select_one("h3.gs_rt a") or block.select_one("h3.gs_rt")
     if title_node is None:
         return None
@@ -94,7 +97,9 @@ def _parse_meta(meta_text: str) -> tuple[tuple[str, ...], int | None, str | None
     parts = _META_SPLIT_RE.split(meta_text)
     author_part = parts[0] if parts else ""
     middle = parts[1] if len(parts) > 1 else ""
-    authors = tuple(name.strip() for name in author_part.split(",") if name.strip())
+    # A list that was cut ends with "…", which is not part of the last name.
+    names = (name.strip().rstrip("…").strip() for name in author_part.split(","))
+    authors = tuple(name for name in names if name)
     year_match = _YEAR_RE.search(middle)
     year = int(year_match.group(0)) if year_match else None
     venue = middle

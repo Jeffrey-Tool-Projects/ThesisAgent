@@ -14,13 +14,23 @@ from thesisagents.core.constants import (
 )
 from thesisagents.core.diagnostics import SearchDiagnostics
 from thesisagents.core.exceptions import ThesisAgentsError
+from thesisagents.core.identifiers import canonical_doi
 
-_TITLE_NOISE_RE = re.compile(r"[^a-z0-9]+")
+#: What a canonical title drops: everything but letters and digits, and the
+#: accented Latin, Greek and mathematical letters, which sources spell in
+#: different ways. Letters of other scripts are kept. Dropping them too (the
+#: old ``[^a-z0-9]+``) left every Chinese, Japanese, Korean or Cyrillic title
+#: empty, so two papers of one author and year shared a key, and importing
+#: the same file again stored each of them once more.
+_TITLE_NOISE_RE = re.compile(
+    r"[\W_\u0080-\u03ff\u1e00-\u1fff\u2100-\u214f\U0001d400-\U0001d7ff]+"
+)
 
 
 def _canon_title(title: str) -> str:
     """Canonical title form for dedup hashing: lowercase with every
-    non-alphanumeric run (punctuation, whitespace) stripped.
+    non-alphanumeric run (punctuation, whitespace) stripped. Titles in
+    other scripts keep their letters, see ``_TITLE_NOISE_RE``.
 
     ``"Attention Is All You Need"``, ``"Attention is all you need."`` and
     ``"Attention—Is All You Need"`` all map to ``"attentionisallyouneed"``,
@@ -195,8 +205,13 @@ class Paper:
     raw: dict[str, Any] = field(default_factory=dict, compare=False, hash=False)
 
     def doi_key(self) -> str | None:
-        """Normalised DOI identity key, or ``None`` when the paper has no DOI."""
-        return f"doi:{self.doi.lower().strip()}" if self.doi else None
+        """Normalised DOI identity key, or ``None`` when the paper has no DOI.
+
+        ``10.1/x``, ``doi:10.1/x`` and ``https://doi.org/10.1/x`` are one DOI.
+        """
+        if not self.doi:
+            return None
+        return f"doi:{canonical_doi(self.doi) or self.doi.lower().strip()}"
 
     def arxiv_key(self) -> str | None:
         """Normalised arXiv identity key, or ``None`` when there is no arXiv ID.
@@ -276,7 +291,8 @@ class Paper:
         """
         first_author_last = "anon"
         if self.authors:
-            surname_tokens = self.authors[0].split()
+            # "Lovelace, Ada" names the surname first.
+            surname_tokens = self.authors[0].partition(",")[0].split()
             if surname_tokens:
                 first_author_last = surname_tokens[-1].lower()
         year_part = str(self.year) if self.year else "nd"
@@ -422,20 +438,36 @@ def _strings(data: dict[str, Any], key: str) -> tuple[Any, ...]:
     """Read one flat list field of a serialised summary as a tuple.
 
     Guards the JSON round trip: a field that is missing or stored as
-    ``null`` reads as an empty tuple instead of raising ``TypeError``.
+    ``null`` reads as an empty tuple instead of raising ``TypeError``. An
+    agent that wrote one sentence instead of a list means one bullet, not
+    one bullet per character.
     Example: ``_strings({"method": ["a"]}, "method") == ("a",)``.
     """
-    return tuple(data.get(key) or ())
+    return _as_tuple(data.get(key))
 
 
-def _rows(data: dict[str, Any], key: str) -> tuple[tuple[Any, ...], ...]:
+def _as_tuple(value: Any) -> tuple[Any, ...]:
+    """``value`` as a tuple. A lone string is one entry, ``None`` is none.
+
+    Example: ``_as_tuple("one sentence") == ("one sentence",)``.
+    """
+    if isinstance(value, str):
+        return (value,) if value.strip() else ()
+    return tuple(value or ())
+
+
+def _rows(data: dict[str, Any], key: str, width: int = 0) -> tuple[tuple[Any, ...], ...]:
     """Read a list-of-lists field (pairs, triples, table rows) as nested tuples.
 
     JSON has no tuples, so each row comes back as a list, and the frozen
     ``PaperSummary`` needs hashable tuples. A missing or ``null`` field
-    reads as no rows. Example: ``_rows({"t": [["a", "b"]]}, "t") == (("a", "b"),)``.
+    reads as no rows. A row shorter than ``width`` is filled up with empty
+    cells, because a metric without a baseline is commonly written as a pair
+    and the exporters read three values.
+    Example: ``_rows({"t": [["a", "b"]]}, "t", 3) == (("a", "b", ""),)``.
     """
-    return tuple(tuple(row) for row in data.get(key) or ())
+    rows = (_as_tuple(row) for row in data.get(key) or ())
+    return tuple(row + ("",) * (width - len(row)) for row in rows)
 
 
 def _sections(data: dict[str, Any], key: str) -> tuple[tuple[Any, tuple[Any, ...]], ...]:
@@ -445,7 +477,7 @@ def _sections(data: dict[str, Any], key: str) -> tuple[tuple[Any, tuple[Any, ...
     A missing or ``null`` field reads as no sections. Example:
     ``_sections({"s": [["H", ["b"]]]}, "s") == (("H", ("b",)),)``.
     """
-    return tuple((heading, tuple(bullets)) for heading, bullets in data.get(key) or ())
+    return tuple((heading, _as_tuple(bullets)) for heading, bullets in data.get(key) or ())
 
 
 def _rq_result_from_dict(raw: dict[str, Any]) -> RqResult:
@@ -481,23 +513,23 @@ def _summary_from_dict(data: dict[str, Any] | None) -> PaperSummary | None:
         takeaways=_strings(data, "takeaways"),
         pain_points=_sections(data, "pain_points"),
         research_question=data.get("research_question") or "",
-        contributions_detailed=_rows(data, "contributions_detailed"),
-        headline_metrics=_rows(data, "headline_metrics"),
-        technique_table=_rows(data, "technique_table"),
+        contributions_detailed=_rows(data, "contributions_detailed", 2),
+        headline_metrics=_rows(data, "headline_metrics", 3),
+        technique_table=_rows(data, "technique_table", 2),
         literature_table=_rows(data, "literature_table"),
         method_sections=_sections(data, "method_sections"),
         evaluation_sections=_sections(data, "evaluation_sections"),
         system_flow=_strings(data, "system_flow"),
-        research_questions=_rows(data, "research_questions"),
+        research_questions=_rows(data, "research_questions", 2),
         rq_results=tuple(_rq_result_from_dict(r) for r in data.get("rq_results") or ()),
         core_observation=data.get("core_observation") or "",
         future_work=_strings(data, "future_work"),
         figures=tuple(
-            (cap, path, tuple(bullets))
+            (cap, path, _as_tuple(bullets))
             for cap, path, bullets in data.get("figures") or ()
         ),
         paper_tables=tuple(
-            (cap, tuple(tuple(row) for row in rows), tuple(analysis))
+            (cap, tuple(tuple(row) for row in rows), _as_tuple(analysis))
             for cap, rows, analysis in data.get("paper_tables") or ()
         ),
         raw_text_chars=data.get("raw_text_chars") or 0,

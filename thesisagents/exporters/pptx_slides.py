@@ -55,6 +55,7 @@ from thesisagents.exporters.pptx_style import (
     _HEADER_TITLE_FG,
     _MARGIN_X,
     _METHOD_SECTIONS_PER_SLIDE,
+    _REFERENCES_PER_SLIDE,
     _SECTION_TITLE_PT,
     _SUBHEAD_PT,
     _BuildContext,
@@ -176,14 +177,62 @@ def _add_cover_slide(
 def _add_agenda_slide(
     prs: Presentation, layout, collection: PaperCollection, ctx: _BuildContext
 ) -> None:
-    slide = _new_section_slide(prs, layout, t(ctx.language, "agenda"))
     bullets = [_agenda_line(i + 1, p, ctx) for i, p in enumerate(collection.papers)]
-    _add_bullet_box(
-        slide, name="body", bullets=bullets,
-        left=_MARGIN_X, top=_BODY_TOP,
-        width=_BODY_WIDTH, height=_BODY_HEIGHT,
-        font_pt=_BODY_PT,
+    _add_list_slides(
+        prs, layout, title=t(ctx.language, "agenda"), bullets=bullets, font_pt=_BODY_PT,
     )
+
+
+def _add_list_slides(
+    prs: Presentation, layout, *, title: str, bullets: list[str], font_pt: int,
+    role: str = ROLE_CONTENT, max_count: int | None = None, footer: str = "",
+) -> None:
+    """A list on as many slides as it needs, the title numbered "(1/3)".
+
+    The boundary this guards: a list as long as the collection. A 25-paper
+    deck wrote its agenda and its references far below the slide's edge.
+    """
+    pages = _bullet_pages(bullets, font_pt=font_pt, max_count=max_count)
+    for number, page in enumerate(pages, 1):
+        page_title = f"{title} ({number}/{len(pages)})" if len(pages) > 1 else title
+        slide = _new_section_slide(prs, layout, page_title, role=role)
+        _add_bullet_box(
+            slide, name="body", bullets=page,
+            left=_MARGIN_X, top=_BODY_TOP,
+            width=_BODY_WIDTH, height=_BODY_HEIGHT,
+            font_pt=font_pt,
+        )
+        if footer:
+            _add_footer(slide, footer)
+
+
+def _bullet_pages(
+    bullets: list[str], *, font_pt: int, max_count: int | None = None
+) -> list[list[str]]:
+    """``bullets`` in groups that fit the body box, by the overflow check's estimate.
+
+    Example: thirty one-line bullets at 19 pt come back as three groups.
+    """
+    room = Emu(_BODY_HEIGHT).inches - _LIST_BOX_MARGINS_IN
+    pages: list[list[str]] = [[]]
+    used = 0.0
+    for bullet in bullets:
+        lines = _estimate_wrapped_lines(
+            _strip_math_markup(f"• {bullet}"), width_in=Emu(_BODY_WIDTH).inches,
+            font_pt=font_pt,
+        )
+        height = lines * font_pt * 1.2 / 72
+        full = max_count is not None and len(pages[-1]) >= max_count
+        if pages[-1] and (full or used + height > room):
+            pages.append([])
+            used = 0.0
+        pages[-1].append(bullet)
+        used += height
+    return pages
+
+
+#: Upper and lower inner margin of the body box together.
+_LIST_BOX_MARGINS_IN = 0.1
 
 
 def _add_section_divider(
@@ -263,17 +312,12 @@ def _add_references_slide(
     cited = [p for p in collection.papers if not _is_own_thesis(p)]
     if not cited:
         return
-    slide = _new_section_slide(
-        prs, layout, t(ctx.language, "references"), role=ROLE_REFERENCES
-    )
     bullets = [_reference_line(i + 1, p, ctx) for i, p in enumerate(cited)]
-    _add_bullet_box(
-        slide, name="body", bullets=bullets,
-        left=_MARGIN_X, top=_BODY_TOP,
-        width=_BODY_WIDTH, height=_BODY_HEIGHT,
-        font_pt=_BODY_PT - 2,
+    _add_list_slides(
+        prs, layout, title=t(ctx.language, "references"), bullets=bullets,
+        font_pt=_BODY_PT - 2, role=ROLE_REFERENCES,
+        max_count=_REFERENCES_PER_SLIDE, footer=t(ctx.language, "footer_references"),
     )
-    _add_footer(slide, t(ctx.language, "footer_references"))
 
 
 def _add_qa_slide(prs: Presentation, layout, paper: Paper, ctx: _BuildContext) -> None:
@@ -751,25 +795,27 @@ def _add_figure_image(
     from pathlib import Path as PathT
 
     path = PathT(image_path)
-    if not path.is_file():
-        _add_textbox(
-            slide, name="body",
-            text=f"[figure unavailable: {path.name}]",
-            left=left, top=top, width=max_width, height=Inches(0.5),
-            # Muted grey for a placeholder/error state — not a headline.
-            # Was red, then briefly navy; settled on grey because this
-            # surface is contextual chrome, not "this stands out".
-            font_pt=_BODY_PT, colour=_BRAND_GREY,
-        )
-        return
     # python-pptx scales by aspect ratio if we pass only height (or
     # width), but we don't know the image's intrinsic size up-front.
     # Strategy: insert with max_height; if the resulting width overflows
     # the body, re-insert with max_width instead. PIL would let us
     # compute aspect ratio first but we avoid the extra dep.
-    pic = slide.shapes.add_picture(
-        str(path), left, top, height=max_height,
-    )
+    try:
+        pic = slide.shapes.add_picture(
+            str(path), left, top, height=max_height,
+        )
+    except (OSError, ValueError):
+        # Missing, damaged, or a format PowerPoint cannot show (an SVG).
+        _add_textbox(
+            slide, name="body",
+            text=f"[figure unavailable: {path.name}]",
+            left=left, top=top, width=max_width, height=Inches(0.5),
+            # Muted grey for a placeholder/error state, not a headline.
+            # Was red, then briefly navy. Settled on grey because this
+            # surface is contextual chrome, not "this stands out".
+            font_pt=_BODY_PT, colour=_BRAND_GREY,
+        )
+        return
     if pic.width > max_width:
         # Drop + reinsert constrained by width.
         sp = pic._element  # noqa: SLF001  # python-pptx needs raw XML access
@@ -1045,7 +1091,8 @@ def _reference_line(index: int, paper: Paper, ctx: _BuildContext) -> str:
     year = paper.year or t(ctx.language, "year_no_date")
     ident = paper.doi or paper.arxiv_id or paper.url
     title = _clean(paper.title)
-    return f"{index:>2}. {authors_short} ({year}). {title} — {ident}"
+    # A full stop, as in a bibliography: no dash breaks a clause in a deliverable.
+    return f"{index:>2}. {authors_short} ({year}). {title.rstrip('.')}. {ident}".rstrip()
 
 
 def _overview_meta(paper: Paper, ctx: _BuildContext) -> str:

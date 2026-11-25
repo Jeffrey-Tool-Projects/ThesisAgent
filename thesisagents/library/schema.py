@@ -34,19 +34,25 @@ Added in version 2 (what the reader records, see ``curation.py``)
 ``tags``           the tags of a paper, one row each, compared without case.
 ``screening``      the decision of a systematic review per paper and stage.
 ``saved_searches`` named queries that can be run again (``saved.py``).
+
+Version 3 adds no table. It stores the identity keys of every paper once
+more, because the way they are formed changed: titles in other scripts keep
+their letters, and a DOI is one whether or not it is written as a link.
 """
 
 from __future__ import annotations
 
+import json
 import sqlite3
 from collections.abc import Callable, Iterator
 from contextlib import contextmanager
 
-from thesisagents.core.exceptions import LibraryError
+from thesisagents.core.exceptions import LibraryError, ThesisAgentsError
+from thesisagents.core.models import Paper
 
 #: "THAG" in ASCII. Lets a library be told from any other SQLite file.
 APPLICATION_ID: int = 0x54484147
-SCHEMA_VERSION: int = 2
+SCHEMA_VERSION: int = 3
 
 
 @contextmanager
@@ -68,7 +74,13 @@ def transaction(conn: sqlite3.Connection) -> Iterator[sqlite3.Connection]:
         with transaction(conn):
             conn.execute("INSERT INTO runs ...")
             conn.execute("INSERT INTO observations ...")
+
+    Inside another transaction it joins that one, so several edits can be
+    made one (``Library.together``).
     """
+    if conn.in_transaction:
+        yield conn
+        return
     conn.execute("BEGIN IMMEDIATE")
     body_finished = False
     try:
@@ -200,10 +212,30 @@ def _add_version_2(conn: sqlite3.Connection) -> None:
         conn.execute(statement)
 
 
+def _add_version_3(conn: sqlite3.Connection) -> None:
+    """Give every paper the identity keys it would get today, beside the old ones.
+
+    The failure this prevents: a paper with a Chinese title and no DOI was
+    stored under a key made of the title's ASCII letters. Importing the same
+    file again would store it once more. A key another paper owns is left
+    with its owner, and a record that cannot be read keeps its old keys.
+    """
+    for paper_id, record in conn.execute("SELECT id, record FROM papers").fetchall():
+        try:
+            keys = Paper.from_dict(json.loads(record)).identity_keys()
+        except (ThesisAgentsError, ValueError, KeyError, TypeError, AttributeError):
+            continue
+        conn.executemany(
+            "INSERT OR IGNORE INTO identity_keys (key, paper_id) VALUES (?, ?)",
+            [(key, paper_id) for key in keys],
+        )
+
+
 #: ``MIGRATIONS[n]`` upgrades a database from version ``n`` to ``n + 1``.
 MIGRATIONS: tuple[Callable[[sqlite3.Connection], None], ...] = (
     _create_version_1,
     _add_version_2,
+    _add_version_3,
 )
 
 
@@ -220,7 +252,7 @@ def prepare(conn: sqlite3.Connection, path: str) -> int:
     upgrade that fails halfway leaves the previous version intact. ``conn``
     must be in autocommit mode (``isolation_level=None``).
 
-    Example: a fresh file ends at version 1. A file that says version 3 raises
+    Example: a fresh file ends at version 3. A file that says version 9 raises
     ``LibraryError`` naming both numbers.
     """
     try:
@@ -253,9 +285,14 @@ def prepare(conn: sqlite3.Connection, path: str) -> int:
             "--library at another file."
         )
     while version < SCHEMA_VERSION:
-        migrate = MIGRATIONS[version]
         with transaction(conn):
-            migrate(conn)
+            # Read again under the write lock: another process may have
+            # upgraded the file while this one waited, and creating the
+            # same tables twice fails.
+            version = conn.execute("PRAGMA user_version").fetchone()[0]
+            if version >= SCHEMA_VERSION:
+                break
+            MIGRATIONS[version](conn)
             version += 1
             # PRAGMA values cannot be bound as parameters. Both are integers
             # defined in this module, never user input.

@@ -27,7 +27,8 @@ from __future__ import annotations
 import json
 import sqlite3
 import threading
-from collections.abc import Callable, Iterable, Mapping, Sequence
+from collections.abc import Callable, Iterable, Iterator, Mapping, Sequence
+from contextlib import contextmanager
 from dataclasses import dataclass, replace
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
@@ -436,7 +437,12 @@ class Library(CurationMixin, SavedSearchMixin):
         paper_id = min(matches)
         stored = self._load(paper_id)
         for absorbed in sorted(matches - {paper_id}):
-            stored = merge_papers(stored, self._load(absorbed))
+            other = self._load(absorbed)
+            stored = _with_latest_citations(merge_papers(stored, other), other)
+            # Only a richer one: of two summaries of one tier neither is newer
+            # on purpose, so the surviving row keeps its own.
+            if _summary_tier(other.summary) > _summary_tier(stored.summary):
+                stored = _with_better_summary(stored, other)
             self._absorb(absorbed, paper_id)
         stored = _with_latest_citations(merge_papers(stored, paper), paper)
         stored = _with_better_summary(stored, paper)
@@ -472,6 +478,37 @@ class Library(CurationMixin, SavedSearchMixin):
         with self._lock:
             return bool(self._matches(paper))
 
+    @contextmanager
+    def together(self) -> Iterator[None]:
+        """Make the edits inside one change: all of them or none.
+
+        The failure this prevents: an edit made of several steps, whose third
+        is refused, with the first two already stored.
+
+        Example::
+
+            with library.together():
+                library.add_tags([1], ["chapter 2"])
+                library.set_reading_status([1], "raed")   # refused, no tag either
+        """
+        with self._lock, transaction(self._conn):
+            yield
+
+    def ids_of(self, papers: Iterable[Paper]) -> list[int]:
+        """The ids under which ``papers`` are stored, without repeats.
+
+        Matches like an import does, so a paper that was merged into one
+        with another DOI or title is found too. Comparing identity keys of
+        the stored records misses those, because the merged record keeps
+        its own identifiers.
+
+        Example: tag what was just imported with
+        ``library.add_tags(library.ids_of(papers), ["chapter 2"])``.
+        """
+        with self._lock:
+            found = [paper_id for paper in papers for paper_id in self._matches(paper)]
+        return list(dict.fromkeys(found))
+
     def _claim_keys(self, paper_id: int, paper: Paper) -> None:
         # OR IGNORE: a key already owned by another paper was refused by the
         # conflict guard, so it stays with its owner.
@@ -483,6 +520,7 @@ class Library(CurationMixin, SavedSearchMixin):
     def _absorb(self, absorbed: int, survivor: int) -> None:
         """Fold the row ``absorbed`` into ``survivor``: keys, sightings, links."""
         conn = self._conn
+        self._count_as_duplicate(absorbed, survivor)
         conn.execute(
             "UPDATE identity_keys SET paper_id = ? WHERE paper_id = ?", (survivor, absorbed)
         )
@@ -512,6 +550,30 @@ class Library(CurationMixin, SavedSearchMixin):
         self._move_annotations(absorbed, survivor)
         # Cascades to what is left of the absorbed row's sightings and links.
         conn.execute("DELETE FROM papers WHERE id = ?", (absorbed,))
+
+    def _count_as_duplicate(self, absorbed: int, survivor: int) -> None:
+        """Correct the statistics of the runs that returned both papers.
+
+        ``after_dedup`` says how many distinct papers a source contributed. A
+        run that holds both records counted one paper twice, and the PRISMA
+        flow takes its duplicates from that number.
+        """
+        rows = self._conn.execute(
+            "SELECT r.id, r.source_stats, a.source FROM observations a "
+            "JOIN observations b ON b.run_id = a.run_id AND b.paper_id = ? "
+            "JOIN runs r ON r.id = a.run_id WHERE a.paper_id = ?",
+            (survivor, absorbed),
+        ).fetchall()
+        for run_id, stored, source in rows:
+            stats = json.loads(stored)
+            counted = [stat for stat in stats if int(stat.get("after_dedup") or 0) > 0]
+            if not counted:
+                continue
+            credited = next((s for s in counted if s.get("source") == source), counted[0])
+            credited["after_dedup"] = int(credited["after_dedup"]) - 1
+            self._conn.execute(
+                "UPDATE runs SET source_stats = ? WHERE id = ?", (_dump(stats), run_id)
+            )
 
     def _store_relations(
         self,

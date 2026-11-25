@@ -46,15 +46,18 @@ class EditRequest:
     stage: str = field(default=STAGES[0])
 
     def apply(self, library: Library) -> None:
-        """Make the change. Blocking, for a worker thread."""
-        library.remove_tags(self.paper_ids, self.remove_tags)
-        library.add_tags(self.paper_ids, self.add_tags)
-        if self.status is not None:
-            library.set_reading_status(self.paper_ids, self.status)
-        if self.note is not None:
-            library.set_note(self.paper_ids[0], self.note)
-        if self.decision is not None:
-            library.screen(self.paper_ids, self.decision, reason=self.reason, stage=self.stage)
+        """Make the change, all of it or nothing. Blocking, for a worker thread."""
+        with library.together():
+            library.remove_tags(self.paper_ids, self.remove_tags)
+            library.add_tags(self.paper_ids, self.add_tags)
+            if self.status is not None:
+                library.set_reading_status(self.paper_ids, self.status)
+            if self.note is not None:
+                library.set_note(self.paper_ids[0], self.note)
+            if self.decision is not None:
+                library.screen(
+                    self.paper_ids, self.decision, reason=self.reason, stage=self.stage
+                )
 
 
 def split_tags(text: str) -> tuple[str, ...]:
@@ -77,6 +80,7 @@ class PaperEditor(QWidget):
         super().__init__(parent)
         self._language = language
         self._entries: tuple[LibraryEntry, ...] = ()
+        self._shown_reason = ""
         layout = QVBoxLayout(self)
         layout.setContentsMargins(0, 6, 0, 0)
         self._heading = QLabel("", self)
@@ -113,6 +117,7 @@ class PaperEditor(QWidget):
         self._reason = QLineEdit(self)
         self._reason.setPlaceholderText(t("library.edit_reason_placeholder", language))
         self._reason.setAccessibleName(t("library.edit_reason_placeholder", language))
+        self._stage.currentIndexChanged.connect(lambda _index: self._show_reason())
         row.addWidget(self._stage)
         row.addWidget(self._reason, stretch=1)
         layout.addLayout(row)
@@ -151,10 +156,24 @@ class PaperEditor(QWidget):
         self._note.setPlainText(single.note if single else "")
         self._tags.setText(", ".join(single.tags) if single else "")
         status = single.status if single else self._common_status()
-        self._status.setCurrentIndex(max(-1, self._status.findData(status)))
+        self._status.setCurrentIndex(self._status.findData(status))
         self._reason.clear()
-        if single and single.screening:
-            self._reason.setText(single.screening[-1].reason)
+        self._shown = (self._tags.text(), self._status.currentData(), self._note.toPlainText())
+        self._shown_reason = self._reason.text()
+        self._show_reason()
+
+    def _show_reason(self) -> None:
+        """The reason recorded at the chosen stage, unless one is being typed.
+
+        Without the stage, the reason of a full-text exclusion was recorded
+        again by a title and abstract decision.
+        """
+        if self._reason.text() != self._shown_reason:
+            return
+        stage = self._stage.currentData()
+        recorded = self._entries[0].screening if len(self._entries) == 1 else ()
+        self._reason.setText(next((s.reason for s in recorded if s.stage == stage), ""))
+        self._shown_reason = self._reason.text()
 
     def _common_status(self) -> str:
         """The status all selected papers share, empty when they differ."""
@@ -164,31 +183,42 @@ class PaperEditor(QWidget):
     def _ids(self) -> tuple[int, ...]:
         return tuple(entry.paper_id for entry in self._entries)
 
+    def _removed_tags(self, wanted: tuple[str, ...]) -> tuple[str, ...]:
+        """Tags taken off. With several papers what is typed is only added."""
+        if len(self._entries) != 1:
+            return ()
+        kept = {tag.casefold() for tag in wanted}
+        return tuple(tag for tag in self._entries[0].tags if tag.casefold() not in kept)
+
     def _save(self) -> None:
         if not self._entries:
             return
         wanted = split_tags(self._tags.text())
-        single = self._entries[0] if len(self._entries) == 1 else None
-        kept = {tag.casefold() for tag in wanted}
         self.requested.emit(
             EditRequest(
                 self._ids(),
                 add_tags=wanted,
-                # Several papers: what is typed is added, nothing is taken off.
-                remove_tags=tuple(
-                    tag for tag in (single.tags if single else ()) if tag.casefold() not in kept
-                ),
+                remove_tags=self._removed_tags(wanted),
                 status=self._status.currentData(),
-                note=self._note.toPlainText() if single else None,
+                note=self._note.toPlainText() if len(self._entries) == 1 else None,
             )
         )
 
     def _decide(self, decision: str) -> None:
         if not self._entries:
             return
+        # The form is filled again after the decision, so what was typed in it
+        # and not saved goes along.
+        tags, status, note = self._shown
+        wanted = split_tags(self._tags.text()) if self._tags.text() != tags else None
+        chosen, written = self._status.currentData(), self._note.toPlainText()
         self.requested.emit(
             EditRequest(
                 self._ids(),
+                add_tags=wanted or (),
+                remove_tags=self._removed_tags(wanted) if wanted is not None else (),
+                status=chosen if chosen != status else None,
+                note=written if len(self._entries) == 1 and written != note else None,
                 decision=decision,
                 reason=self._reason.text().strip(),
                 stage=self._stage.currentData(),

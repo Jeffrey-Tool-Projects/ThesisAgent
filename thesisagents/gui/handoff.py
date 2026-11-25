@@ -118,7 +118,8 @@ def _load_document(target: Path) -> dict[str, Any]:
     if target.stat().st_size > MAX_HANDOFF_BYTES:
         raise HandoffError(f"{target.name} is larger than {MAX_HANDOFF_BYTES // 2**20} MB")
     try:
-        document = json.loads(target.read_text(encoding="utf-8"))
+        # "-sig": an editor on Windows may have put a byte order mark in front.
+        document = json.loads(target.read_text(encoding="utf-8-sig"))
     except (UnicodeDecodeError, json.JSONDecodeError) as err:
         raise HandoffError(f"{target.name} is not a JSON file: {err}") from err
     except RecursionError as err:

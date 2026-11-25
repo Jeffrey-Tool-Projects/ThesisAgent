@@ -281,7 +281,10 @@ def _add_horizontal_rule(slide, *, top) -> None:
 # ---------------------------------------------------------------------------
 _SUBSCRIPT_BASELINE = -25000
 _SUPERSCRIPT_BASELINE = 30000
-_MATH_DELIM = re.compile(r"\$([^$]+)\$")
+#: Pandoc's rule for what is math: no space inside the dollars, and no digit
+#: behind the closing one. An abstract that says "from $5 to $10" was read as
+#: the formula "5 to" and lost both signs.
+_MATH_DELIM = re.compile(r"\$(?=\S)([^$]+)(?<=\S)\$(?!\d)")
 
 
 def _set_run_baseline(run, baseline: int) -> None:

@@ -34,7 +34,8 @@ def evaluate_query(
     """
     if cutoff < 1:
         raise ValueError("cutoff must be at least 1")
-    ranked = list(retrieved[:cutoff])
+    # A paper listed twice is one hit, or recall could pass 1.
+    ranked = list(dict.fromkeys(retrieved))[:cutoff]
     relevant = {paper_id for paper_id, grade in relevance.items() if grade > 0}
     hits = sum(paper_id in relevant for paper_id in ranked)
     precision = hits / cutoff

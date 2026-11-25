@@ -1,8 +1,9 @@
 """OpenAIRE Graph fetcher.
 
 Endpoint:
-- Search: GET https://api.openaire.eu/graph/v1/researchProducts
-    ?search=KEY&pageSize=N&sortBy=publicationDate,desc
+- Search: GET https://api.openaire.eu/graph/v2/researchProducts
+    ?search=KEY&pageSize=N&sortBy=relevance DESC
+  (``v1`` was switched off: in November 2026 it answered 405 to everything.)
 
 OpenAIRE is the EU-backed open scholarly graph. It harvests metadata from
 thousands of repositories and publishers, so it's particularly strong for
@@ -29,7 +30,7 @@ from .parser import parse_product
 
 _LOG = get_logger(__name__)
 _SOURCE_NAME = "openaire"
-_SEARCH_ENDPOINT = "https://api.openaire.eu/graph/v1/researchProducts"
+_SEARCH_ENDPOINT = "https://api.openaire.eu/graph/v2/researchProducts"
 _MAX_PAGE_SIZE = 100
 
 
@@ -62,8 +63,10 @@ class OpenAireFetcher(Fetcher):
             "search": query.keywords,
             "pageSize": str(page_size),
             # OpenAIRE expects "<field> <ASC|DESC>" (space-separated). The
-            # comma-separated form returns HTTP 400.
-            "sortBy": "publicationDate DESC",
+            # comma-separated form returns HTTP 400. By relevance: sorted by
+            # date, a page held the newest records that share a word with
+            # the query, and the ranking had nothing better to choose from.
+            "sortBy": "relevance DESC",
             # Articles only — exclude datasets, software, "other research products".
             "type": "publication",
         }

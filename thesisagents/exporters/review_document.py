@@ -17,7 +17,7 @@ from __future__ import annotations
 from collections.abc import Sequence
 from dataclasses import dataclass
 
-from thesisagents.core.comparison import comparison_rows
+from thesisagents.core.comparison import comparison_rows, metric_statements
 from thesisagents.core.models import Paper, PaperCollection, PaperSummary
 from thesisagents.exporters.apa import CitationLabel, citation_labels
 from thesisagents.exporters.i18n import normalise_language, t
@@ -127,10 +127,7 @@ def _statements(summary: PaperSummary) -> list[tuple[str, ...]]:
     how = summary.method or tuple(
         bullet for _heading, bullets in summary.method_sections for bullet in bullets
     )
-    results = summary.results or tuple(
-        f"{label}: {value}" + (f" ({baseline})" if baseline else "")
-        for label, value, baseline in summary.headline_metrics
-    )
+    results = summary.results or metric_statements(summary)
     return [
         group
         for group in (why + question, how, results, summary.limitations)

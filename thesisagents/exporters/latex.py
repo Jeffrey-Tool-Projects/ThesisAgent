@@ -73,7 +73,7 @@ class LatexExporter(Exporter):
             elif isinstance(block, Paragraph):
                 body.append(_inline(block.content, keys))
             elif isinstance(block, Bullets):
-                items = "\n".join(f"  \\item {_inline(item, keys)}" for item in block.items)
+                items = "\n".join(f"  \\item {_item(item, keys)}" for item in block.items)
                 body.append(f"\\begin{{itemize}}\n{items}\n\\end{{itemize}}")
             elif isinstance(block, Table):
                 body.append(_table(block, keys))
@@ -87,6 +87,12 @@ def _inline(content: Inline, keys: list[str]) -> str:
         f"\\citep{{{keys[piece.index]}}}" if isinstance(piece, Cite) else escape(piece)
         for piece in content
     ).strip()
+
+
+def _item(content: Inline, keys: list[str]) -> str:
+    r"""The text of an ``\item``, which takes a leading ``[`` for its label."""
+    text = _inline(content, keys)
+    return "{}" + text if text.startswith("[") else text
 
 
 def _table(block: Table, keys: list[str]) -> str:
@@ -117,9 +123,12 @@ def _document(body: str, language: str) -> str:
     if language in _CJK:
         fonts += "\\usepackage{xeCJK}\n"
     elif language == "hi":
-        fonts += "\\newfontfamily\\devanagarifont[Script=Devanagari]{Noto Serif Devanagari}\n"
+        # The main font: a family nothing switches to leaves the text unreadable.
+        fonts += "\\setmainfont[Script=Devanagari]{Noto Serif Devanagari}\n"
+    # xeCJK works with XeLaTeX only.
+    engines = "XeLaTeX" if language in _CJK else "XeLaTeX or LuaLaTeX"
     return (
-        "% Compile with XeLaTeX or LuaLaTeX, then BibTeX.\n"
+        f"% Compile with {engines}, then BibTeX.\n"
         "\\documentclass[12pt]{article}\n"
         f"{fonts}"
         "\\usepackage[round]{natbib}\n\\usepackage{booktabs,longtable}\n"

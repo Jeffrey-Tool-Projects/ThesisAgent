@@ -18,6 +18,7 @@ from __future__ import annotations
 import copy
 import re
 from dataclasses import dataclass
+from difflib import SequenceMatcher
 from pathlib import Path
 
 from pptx import Presentation
@@ -242,19 +243,33 @@ def _set_text_by_name(by_name, key, text, font_pt, bold=False):
 def _write_text_frame(shape, text: str, *, font_pt: int | None = None, bold: bool = False) -> None:
     """Replace the text and keep its formatting, paragraph by paragraph.
 
-    More lines than before look like the last one. ``font_pt`` and ``bold``
-    are for a shape that had no text to take the look from.
+    A paragraph whose text stays is left as it is, with every run in it: a
+    changed one takes the look of its first run, and doing that to all of
+    them flattened the subscripts and the coloured numbers of a whole box
+    when one line was edited. More lines than before look like the last one.
+    ``font_pt`` and ``bold`` are for a shape that had no text to take the
+    look from.
     """
     text_frame = shape.text_frame
+    before = [(p.text, copy.deepcopy(p._p)) for p in text_frame.paragraphs]  # noqa: SLF001
     looks = [
         (copy.deepcopy(paragraph._p.pPr), copy.deepcopy(paragraph.runs[0]._r.rPr))  # noqa: SLF001
+        if paragraph.runs else None
         for paragraph in text_frame.paragraphs
-        if paragraph.runs
     ]
     text_frame.word_wrap = True
     text_frame.text = text
-    for index, paragraph in enumerate(text_frame.paragraphs):
-        paragraph_look, run_look = looks[min(index, len(looks) - 1)] if looks else (None, None)
+    unchanged = _unchanged_lines(
+        [line for line, _element in before], [p.text for p in text_frame.paragraphs]
+    )
+    for index, paragraph in enumerate(list(text_frame.paragraphs)):
+        if index in unchanged:
+            kept = before[unchanged[index]][1]
+            paragraph._p.getparent().replace(paragraph._p, kept)  # noqa: SLF001
+            for run in text_frame.paragraphs[index].runs:
+                _ensure_colour(shape, run)
+            continue
+        paragraph_look, run_look = _look_for(looks, index)
         if paragraph_look is not None:
             _replace_child(paragraph._p, "a:pPr", paragraph_look)  # noqa: SLF001
         for run in paragraph.runs:
@@ -265,6 +280,24 @@ def _write_text_frame(shape, text: str, *, font_pt: int | None = None, bold: boo
                     run.font.size = Pt(font_pt)
                 run.font.bold = bold
             _ensure_colour(shape, run)
+
+
+def _unchanged_lines(before: list[str], after: list[str]) -> dict[int, int]:
+    """Which line of ``after`` is which line of ``before``, for those that stay.
+
+    Example: ``_unchanged_lines(["a", "b"], ["a", "new", "b"]) == {0: 0, 2: 1}``.
+    """
+    blocks = SequenceMatcher(None, before, after, autojunk=False).get_matching_blocks()
+    return {block.b + i: block.a + i for block in blocks for i in range(block.size)}
+
+
+def _look_for(looks: list, index: int) -> tuple:
+    """The look of paragraph ``index``, or of the nearest one that has text."""
+    earlier = [look for look in looks[: index + 1] if look is not None]
+    later = [look for look in looks[index + 1 :] if look is not None]
+    if earlier:
+        return earlier[-1]
+    return later[0] if later else (None, None)
 
 
 def _replace_child(element, tag: str, replacement) -> None:
@@ -283,12 +316,27 @@ def _ensure_colour(shape, run) -> None:
 
 
 def _on_dark(shape) -> bool:
-    """Whether the shape's slide has a dark background of its own."""
-    try:
-        fill = shape.part.slide.background.fill
-        red, green, blue = fill.fore_color.rgb
-    except (AttributeError, TypeError):
+    """Whether the slide the shape is on has a dark background."""
+    slide = shape.part.slide
+    for owner in (slide, slide.slide_layout, slide.slide_layout.slide_master):
+        background = owner._element.cSld.find(qn("p:bg"))  # noqa: SLF001
+        if background is not None:
+            return _is_dark_fill(background)
+    return False
+
+
+def _is_dark_fill(background) -> bool:
+    """Whether a ``p:bg`` element is a plain dark colour.
+
+    Read from the XML: python-pptx's ``background.fill`` writes an empty
+    background into a slide that has none of its own, so asking for the
+    colour hid the background of the layout in the saved deck.
+    """
+    path = "/".join(qn(tag) for tag in ("p:bgPr", "a:solidFill", "a:srgbClr"))
+    colour = background.find(path)
+    if colour is None:
         return False
+    red, green, blue = RGBColor.from_string(colour.get("val"))
     return 0.299 * red + 0.587 * green + 0.114 * blue < _DARK_LUMINANCE
 
 

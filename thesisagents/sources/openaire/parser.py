@@ -13,14 +13,19 @@ from collections.abc import Iterator
 from typing import Any
 
 from thesisagents.core.models import Paper
+from thesisagents.utils.markup import plain_text
 
 _SOURCE = "openaire"
 _ARXIV_RE = re.compile(r"arxiv\.org/(?:abs|pdf)/([\w.\-/]+)", re.IGNORECASE)
 
 
+#: A link to the file names it ``1706.03762v5.pdf``, which is not the id.
+_ARXIV_FILE_SUFFIX = re.compile(r"(?:v\d+)?(?:\.pdf)?$", re.IGNORECASE)
+
+
 def parse_product(record: dict[str, Any]) -> Paper:
     """Map one ``results[]`` entry to a ``Paper``."""
-    title = (record.get("mainTitle") or record.get("title") or "").strip()
+    title = plain_text(record.get("mainTitle") or record.get("title"))
     authors = tuple(_authors(record.get("authors") or []))
     year = _year(record.get("publicationDate") or "")
     venue = _venue(record)
@@ -89,11 +94,11 @@ def _venue(record: dict[str, Any]) -> str | None:
 def _abstract(descriptions: list[dict[str, Any]]) -> str:
     for entry in descriptions:
         if isinstance(entry, dict):
-            value = (entry.get("value") or "").strip()
+            value = plain_text(entry.get("value"))
             if value:
                 return value
         elif isinstance(entry, str) and entry.strip():
-            return entry.strip()
+            return plain_text(entry)
     return ""
 
 
@@ -130,10 +135,20 @@ def _instance_urls(instances: list[dict[str, Any]]) -> Iterator[tuple[str, bool]
     """
     for instance in instances:
         data = instance or {}
-        is_open = (data.get("accessRight") or "").upper() == "OPEN"
+        is_open = _access(data.get("accessRight")) == "OPEN"
         for url in data.get("urls") or []:
             if url:
                 yield url, is_open
+
+
+def _access(value: Any) -> str:
+    """The access right in capitals: ``v2`` sends an object, ``v1`` sent its label.
+
+    Example: ``_access({"code": "c_abf2", "label": "Open"}) == "OPEN"``.
+    """
+    if isinstance(value, dict):
+        value = value.get("label")
+    return str(value or "").upper()
 
 
 def _doi(pids: list[dict[str, Any]]) -> str | None:
@@ -147,7 +162,7 @@ def _arxiv_id(record: dict[str, Any]) -> str | None:
     for url, _ in _instance_urls(record.get("instances") or []):
         match = _ARXIV_RE.search(url)
         if match:
-            return match.group(1)
+            return _ARXIV_FILE_SUFFIX.sub("", match.group(1))
     return None
 
 

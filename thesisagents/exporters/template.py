@@ -63,8 +63,10 @@ Example use::
 
 from __future__ import annotations
 
+import io
 import json
 import tomllib
+import zipfile
 from collections.abc import Mapping
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -657,6 +659,7 @@ def open_template(
     report, prs, layouts, parsed = _inspect(path, config, dark_mode=dark_mode)
     if not report.ok or prs is None or parsed is None:
         raise TemplateError(report.message())
+    _remove_slides(prs)
     prs.slide_width = SLIDE_WIDTH
     prs.slide_height = SLIDE_HEIGHT
     return OpenedTemplate(
@@ -665,6 +668,44 @@ def open_template(
         config=parsed,
         report=report,
     )
+
+
+_TEMPLATE_TYPE = b"presentationml.template.main+xml"
+_PRESENTATION_TYPE = b"presentationml.presentation.main+xml"
+_CONTENT_TYPES = "[Content_Types].xml"
+
+
+def _open_file(path: Path) -> Any:
+    """Open a ``.pptx``, or a ``.potx`` as the presentation it would make.
+
+    python-pptx refuses a ``.potx`` because its main part is declared as a
+    template. The parts are the same, so the declaration is changed in a copy
+    in memory.
+    """
+    if path.suffix.lower() != ".potx":
+        return Presentation(str(path))
+    copied = io.BytesIO()
+    with zipfile.ZipFile(path) as source, zipfile.ZipFile(copied, "w") as target:
+        for item in source.infolist():
+            data = source.read(item.filename)
+            if item.filename == _CONTENT_TYPES:
+                data = data.replace(_TEMPLATE_TYPE, _PRESENTATION_TYPE)
+            target.writestr(item, data)
+    copied.seek(0)
+    return Presentation(copied)
+
+
+def _remove_slides(prs: Any) -> None:
+    """Take out the slides the template came with.
+
+    A school's template has sample slides. The exporter's cover is the first
+    slide of the deck, so with them in front the sample got the cover's panel
+    and the real cover a header band under its white title.
+    """
+    slide_ids = prs.slides._sldIdLst  # noqa: SLF001  # python-pptx has no public way to delete
+    for element in list(slide_ids):
+        slide_ids.remove(element)
+        prs.part.drop_rel(element.rId)
 
 
 def _config_source(config: TemplateConfig | str | Path | None) -> str | None:
@@ -703,7 +744,7 @@ def _inspect(
             parsed = None
             errors.append(TemplateIssue("invalid-config", str(err).removeprefix("[pptx] ")))
     try:
-        prs = Presentation(template)
+        prs = _open_file(Path(path).expanduser())
     except Exception as err:  # noqa: BLE001 - python-pptx raises several unrelated types
         errors.append(TemplateIssue(
             "unreadable-template",
@@ -727,6 +768,12 @@ def _inspect(
         layouts, layout_errors, layout_warnings = _resolve_layouts(prs, parsed)
         errors.extend(layout_errors)
         warnings.extend(layout_warnings)
+    if len(prs.slides):
+        warnings.append(TemplateIssue(
+            "template-slides-removed",
+            f"the template holds {len(prs.slides)} slide(s) of its own. They are left out "
+            "of the deck, only its layouts and artwork are used.",
+        ))
     if dark_mode and parsed is not None and parsed.colors:
         warnings.append(TemplateIssue(
             "colors-ignored-in-dark-mode",

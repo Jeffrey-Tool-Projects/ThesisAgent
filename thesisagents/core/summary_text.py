@@ -7,7 +7,8 @@ paper, the result blocks per research question) is carried over untouched.
 The line formats, also shown to the user:
 
 * a list: one statement per line,
-* headed lists: ``# heading`` starts a group, the lines after it belong to it,
+* headed lists: ``# heading`` starts a group, the lines after it belong to it.
+  A statement that begins with ``#`` is written ``\\#``,
 * columns: cells separated by `` | ``. A literal bar is written ``\\|``,
 * a paragraph: all lines are joined.
 
@@ -97,18 +98,31 @@ def texts_to_summary(
     )
 
 
+def _one_line(text: object) -> str:
+    """``text`` on one line. A line break inside a statement would split it in two."""
+    return " ".join(str(text).splitlines())
+
+
+def _bullet(text: object) -> str:
+    """One statement of a headed list, so that ``#1 cause`` is not read as a heading."""
+    line = _one_line(text)
+    return f"\\{line}" if line.lstrip().startswith(("#", "\\#")) else line
+
+
 def _to_text(spec: FieldSpec, value: Any) -> str:
     if spec.kind == PARAGRAPH:
         return value
     if spec.kind == LINES:
-        return "\n".join(value)
+        return "\n".join(_one_line(line) for line in value)
     if spec.kind == HEADED:
         return "\n".join(
             line
             for heading, bullets in value
-            for line in (f"# {heading}".rstrip(), *bullets)
+            for line in (f"# {_one_line(heading)}".rstrip(), *map(_bullet, bullets))
         )
-    return "\n".join(" | ".join(cell.replace("|", "\\|") for cell in row) for row in value)
+    return "\n".join(
+        " | ".join(_one_line(cell).replace("|", "\\|") for cell in row) for row in value
+    )
 
 
 def _to_value(spec: FieldSpec, text: str) -> Any:
@@ -131,7 +145,7 @@ def _headed(lines: list[str]) -> tuple[tuple[str, tuple[str, ...]], ...]:
         else:
             if not groups:
                 groups.append(("", []))
-            groups[-1][1].append(line)
+            groups[-1][1].append(line[1:] if line.startswith(("\\#", "\\\\#")) else line)
     return tuple((heading, tuple(bullets)) for heading, bullets in groups)
 
 

@@ -66,6 +66,7 @@ from thesisagents.core.pipeline import (
 )
 from thesisagents.core.query import normalize_query
 from thesisagents.exporters import export_collection
+from thesisagents.exporters.bibtex import unique_keys
 from thesisagents.exporters.i18n import DEFAULT_LANGUAGE, SUPPORTED_LANGUAGES
 from thesisagents.fetchers.http import shutdown_clients
 from thesisagents.library import Library
@@ -762,6 +763,24 @@ def _synthetic_pdf_results(
     ]
 
 
+def _papers_with_pdf(collection: PaperCollection, pdf_results: list) -> list[Paper]:
+    """The papers whose PDF is on disk.
+
+    The downloader returns one result per paper in order, so they are paired
+    by position: a BibTeX key can belong to two papers, and one's PDF must
+    not count for the other. Results that do not line up (a caller with a
+    subset) are matched by key.
+    """
+    if len(pdf_results) == len(collection.papers):
+        return [
+            paper
+            for paper, result in zip(collection.papers, pdf_results, strict=True)
+            if result.path is not None
+        ]
+    saved = {result.paper_key for result in pdf_results if result.path is not None}
+    return [paper for paper in collection.papers if paper.bibtex_key() in saved]
+
+
 def _emit_per_paper(
     collection: PaperCollection,
     options: ExportOptions,
@@ -774,12 +793,7 @@ def _emit_per_paper(
     Non-PPT formats (xlsx, bib, md, json) aggregate over the accessible
     subset so the bibliography file matches the slides on disk.
     """
-    saved_by_key = {
-        r.paper_key: r for r in pdf_results if r.path is not None
-    }
-    accessible_papers: list[Paper] = [
-        p for p in collection.papers if p.bibtex_key() in saved_by_key
-    ]
+    accessible_papers = _papers_with_pdf(collection, pdf_results)
     if not accessible_papers:
         print(
             "error: no PDF could be downloaded; no slides were generated.",
@@ -803,12 +817,14 @@ def _emit_per_paper(
         )
 
     per_paper_written: list[tuple[Paper, Path]] = []
-    for paper in accessible_papers:
+    # Unique: two papers with one BibTeX key would write the same deck.
+    stems = unique_keys(accessible_papers)
+    for paper, stem in zip(accessible_papers, stems, strict=True):
         single = PaperCollection(query=collection.query, papers=(paper,))
         per_options = dataclasses.replace(
             options,
             formats=(EXPORT_PPTX,),
-            filename_stem=paper.bibtex_key(),
+            filename_stem=stem,
         )
         emitted = export_collection(
             single,
@@ -887,12 +903,39 @@ def _resolve_enrich_mode(args: argparse.Namespace) -> str:
         return "skip-lightweight"
     from thesisagents.intelligence import providers
 
-    settings = providers.resolve(
-        getattr(args, "llm_provider", None),
-        model=getattr(args, "llm_model", None),
-        base_url=getattr(args, "llm_base_url", None),
-    )
+    try:
+        settings = providers.resolve(
+            getattr(args, "llm_provider", None),
+            model=getattr(args, "llm_model", None),
+            base_url=getattr(args, "llm_base_url", None),
+        )
+    except ConfigError as err:
+        if getattr(args, "llm_provider", None):
+            raise
+        # A misspelt THESISAGENTS_LLM_PROVIDER: nobody asked for a summary in
+        # this run, so it must not cost the search that has already finished.
+        _LOG.warning("%s, summaries are skipped", err)
+        return "skip-no-key"
     return "auto" if providers.problem(settings) is None else "skip-no-key"
+
+
+def _missing_model(args: argparse.Namespace) -> str:
+    """Why no model writes the summaries, for the notice to the user.
+
+    Names the chosen provider's own problem: a user of ``--llm-provider
+    ollama`` without a model was told to set an Anthropic key.
+    """
+    from thesisagents.intelligence import providers
+
+    try:
+        settings = providers.resolve(
+            args.llm_provider, model=args.llm_model, base_url=args.llm_base_url
+        )
+    except ConfigError as err:
+        return str(err)
+    if settings.provider.name == providers.ANTHROPIC:
+        return "no ANTHROPIC_API_KEY in env"
+    return providers.problem(settings) or "no usable model"
 
 
 async def _maybe_enrich(
@@ -909,7 +952,7 @@ async def _maybe_enrich(
     enrich_mode = _resolve_enrich_mode(args)
     if enrich_mode == "skip-no-key" and not args.quiet:
         print(
-            "Lightweight deck — no ANTHROPIC_API_KEY in env.\n"
+            f"Lightweight deck — {_missing_model(args)}.\n"
             "If you (the human) want auto-enrichment, set the key, or choose "
             "another model with --llm-provider, and rerun.\n"
             "If you (an LLM agent) are running this, the lightweight "

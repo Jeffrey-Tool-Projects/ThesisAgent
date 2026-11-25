@@ -117,8 +117,15 @@ class SavedSearchMixin:
         ]
 
     def saved_search(self, name: str) -> SavedSearch:
-        for saved in self.saved_searches():
-            if saved.name.casefold() == " ".join(name.split()).casefold():
+        wanted = " ".join(name.split())
+        stored = self.saved_searches()
+        # The exact spelling first: SQLite compares only ASCII without case,
+        # so "École" and "école" can both be saved.
+        for saved in stored:
+            if saved.name == wanted:
+                return saved
+        for saved in stored:
+            if saved.name.casefold() == wanted.casefold():
                 return saved
         raise LibraryError(f"no saved search called {name!r}")
 

@@ -17,6 +17,7 @@ from __future__ import annotations
 import argparse
 import asyncio
 import json
+import sqlite3
 import sys
 from collections.abc import Callable, Sequence
 from pathlib import Path
@@ -118,7 +119,7 @@ def main(argv: Sequence[str]) -> int:
     try:
         with Library(args.library, create=create) as library:
             return _ACTIONS[args.action](library, args)
-    except (ThesisAgentsError, ValueError) as err:
+    except (ThesisAgentsError, ValueError, OSError, sqlite3.Error) as err:
         print(f"error: {err}", file=sys.stderr)
         return 2
 
@@ -232,9 +233,7 @@ def _import(library: Library, args: argparse.Namespace) -> int:
         report = library.add_papers(result.papers, keywords=Path(args.file).name, kind="import")
         print(f"{report.added} added, {report.merged} already in the library")
         if args.tag:
-            names = {paper.dedup_key() for paper in result.papers}
-            ids = [e.paper_id for e in library.entries() if names & set(e.paper.identity_keys())]
-            library.add_tags(ids, args.tag)
+            library.add_tags(library.ids_of(result.papers), args.tag)
     for reason in result.skipped:
         print(f"skipped, {reason}", file=sys.stderr)
     return 0 if result.papers else 2
@@ -286,6 +285,9 @@ def _delete_search(library: Library, args: argparse.Namespace) -> int:
 
 
 def _prisma(library: Library, args: argparse.Namespace) -> int:
+    if args.svg and Path(args.svg).suffix.lower() != ".svg":
+        # The file is overwritten, so a mistyped path must not be the library.
+        raise ValueError(f"--svg needs a path that ends with .svg, not {args.svg}")
     flow = prisma_flow(library)
     print(json.dumps(flow.to_dict(), ensure_ascii=False, indent=2))
     if args.svg:

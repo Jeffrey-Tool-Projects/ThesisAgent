@@ -52,6 +52,20 @@ def query_identifier(keywords: str) -> str:
     return re.sub(r"[^\w]+", "-", keywords.casefold()).strip("-") or "query"
 
 
+def _free_identifier(queries: dict[str, dict[str, Any]], keywords: str) -> str:
+    """The id of the query ``keywords``, not shared with another query.
+
+    "C++ testing" and "C testing" both shorten to ``c-testing``. Under one id
+    the second would take over the judgements of the first.
+    """
+    base = query_identifier(keywords)
+    identifier, number = base, 1
+    while queries.get(identifier, {}).get("keywords", keywords) != keywords:
+        number += 1
+        identifier = f"{base}-{number}"
+    return identifier
+
+
 async def collect(
     payload: dict[str, Any],
     keywords: Sequence[str],
@@ -72,16 +86,16 @@ async def collect(
         collection = await search(
             Query(keywords=normalised, sources=tuple(sources), max_results=max_results)
         )
-        identifier = query_identifier(normalised)
+        identifier = _free_identifier(queries, normalised)
         entry = queries.get(identifier)
         if entry is None:
             entry = {"id": identifier, "relevance": {}}
             queries[identifier] = entry
             payload["queries"].append(entry)
         entry["keywords"] = normalised
-        entry["retrieved"] = list(
-            dict.fromkeys(paper_identifier(paper) for paper in collection.papers)
-        )
+        found = list(dict.fromkeys(paper_identifier(paper) for paper in collection.papers))
+        # A search that found nothing (no network) does not undo an earlier one.
+        entry["retrieved"] = found or entry.get("retrieved", [])
         for paper in collection.papers:
             papers[paper_identifier(paper)] = {
                 "title": paper.title,
@@ -225,8 +239,10 @@ def _collect(path: Path, args: argparse.Namespace) -> int:
     from thesisagents.core.pipeline import run_search
     from thesisagents.fetchers.http import shutdown_clients
 
-    lines = Path(args.queries).read_text(encoding="utf-8").splitlines()
-    keywords = [line.strip() for line in lines if line.strip() and not line.startswith("#")]
+    # "-sig": Notepad puts a byte order mark at the start of the first query.
+    lines = Path(args.queries).read_text(encoding="utf-8-sig").splitlines()
+    stripped = [line.strip() for line in lines]
+    keywords = [line for line in stripped if line and not line.startswith("#")]
     sources = [name.strip() for name in args.source.split(",") if name.strip()]
 
     async def run() -> dict[str, Any]:

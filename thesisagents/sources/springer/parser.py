@@ -9,22 +9,21 @@ allowed), the venue under ``publicationName``, the date under
 
 from __future__ import annotations
 
-import re
 from typing import Any
 
 from thesisagents.core.models import Paper
+from thesisagents.utils.markup import plain_text
 
 _SOURCE = "springer"
-_HTML_TAG_RE = re.compile(r"<[^>]+>")
 
 
 def parse_record(record: dict[str, Any]) -> Paper:
     """Map one ``records[]`` entry to a ``Paper``."""
-    title = (record.get("title") or "").strip()
+    title = plain_text(record.get("title"))
     authors = tuple(_authors(record.get("creators") or []))
     year = _year(record.get("publicationDate") or "")
     venue = (record.get("publicationName") or "").strip() or None
-    abstract = _strip_html(record.get("abstract") or "")
+    abstract = _abstract_text(record.get("abstract"))
     doi = (record.get("doi") or "").strip() or None
     url = _landing_url(record.get("url") or [], doi)
     source_id = (record.get("identifier") or doi or url or "").strip()
@@ -91,9 +90,9 @@ def _landing_url(urls: list[dict[str, Any]], doi: str | None) -> str:
     return f"https://doi.org/{doi}" if doi else ""
 
 
-def _strip_html(value: str) -> str:
-    stripped = _HTML_TAG_RE.sub("", value).strip()
-    return " ".join(stripped.split())
+def _abstract_text(value: Any) -> str:
+    """The abstract as plain text, empty when the API sent anything but text."""
+    return plain_text(value) if isinstance(value, str) else ""
 
 
 def _to_int(value: Any) -> int | None:

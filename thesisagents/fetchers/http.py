@@ -14,6 +14,7 @@ from __future__ import annotations
 import asyncio
 import contextlib
 import ipaddress
+import threading
 from collections.abc import AsyncIterator
 from dataclasses import dataclass
 
@@ -67,11 +68,21 @@ class HttpsOnlyTransport(httpx.AsyncBaseTransport):
 
 @dataclass(frozen=True, slots=True)
 class _ClientKey:
+    """A client is shared within one event loop, the one its sockets belong to.
+
+    The desktop app gives every worker a loop of its own. With the source
+    alone as the key, the second paper of an enrichment run got the first
+    one's client and failed with "Event loop is closed", and the end of one
+    worker closed the clients of another that was still searching.
+    """
+
     source: str
+    loop: asyncio.AbstractEventLoop
 
 
 _CLIENTS: dict[_ClientKey, httpx.AsyncClient] = {}
-_LOCK = asyncio.Lock()
+#: A thread lock, held for dictionary work only: loops run on several threads.
+_LOCK = threading.Lock()
 
 
 _BROWSER_UA = (
@@ -109,14 +120,14 @@ def _build_client(source: str) -> httpx.AsyncClient:
 
 
 async def get_client(source: str) -> httpx.AsyncClient:
-    """Return the per-source shared async client, lazily constructed."""
-    key = _ClientKey(source=source)
-    client = _CLIENTS.get(key)
-    if client is not None:
-        return client
-    async with _LOCK:
+    """Return the shared async client of ``source`` in the running loop, built lazily."""
+    key = _ClientKey(source=source, loop=asyncio.get_running_loop())
+    with _LOCK:
         client = _CLIENTS.get(key)
         if client is None:
+            # Clients whose loop ended cannot be used or closed any more.
+            for stale in [known for known in _CLIENTS if known.loop.is_closed()]:
+                del _CLIENTS[stale]
             client = _build_client(source)
             _CLIENTS[key] = client
             _LOG.debug("Constructed HTTP client for source=%s", source)
@@ -203,17 +214,19 @@ def llm_client(base_url: str) -> httpx.Client:
 
 
 async def shutdown_clients() -> None:
-    """Close all shared clients. Call from app shutdown / CLI exit.
+    """Close the running loop's shared clients. Call at the end of a run.
 
-    Tolerates clients whose original event loop has already closed —
-    that happens in the test suite where each ``asyncio.run`` spins
-    its own loop, and a client cached during an earlier test cannot
-    be re-closed in a later loop's context. We drop those clients
-    from the registry; the OS will reclaim the dangling sockets.
+    Clients of another loop that is still running belong to another
+    worker and are left alone. Those of a loop that has already closed
+    cannot be closed from here, so they are only dropped from the
+    registry and the OS reclaims the dangling sockets.
     """
-    async with _LOCK:
-        clients = list(_CLIENTS.values())
-        _CLIENTS.clear()
+    current = asyncio.get_running_loop()
+    with _LOCK:
+        own = [key for key in _CLIENTS if key.loop is current]
+        clients = [_CLIENTS.pop(key) for key in own]
+        for key in [known for known in _CLIENTS if known.loop.is_closed()]:
+            del _CLIENTS[key]
     for client in clients:
         try:
             await client.aclose()

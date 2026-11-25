@@ -108,6 +108,10 @@ def _trim_to_slide_budget(
     elements = list(sld_id_list)
     for i in sorted(drop_set, reverse=True):
         sld_id_list.remove(elements[i])
+        # And the slide itself. Left in the file it can still be read there,
+        # and its name collides with a slide that is added later, which
+        # PowerPoint then reports as a damaged file.
+        prs.part.drop_rel(elements[i].rId)
 
 
 def _categorise_slides(prs: Presentation, language: str) -> list[str]:

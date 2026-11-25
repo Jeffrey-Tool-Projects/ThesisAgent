@@ -75,6 +75,7 @@ class ModelCard(QWidget):
         self._language = language
         self._shown = ""
         self._drafts: dict[str, tuple[str, str, str]] = {}
+        self._loaded_keys: dict[str, str] = {}
         outer = QVBoxLayout(self)
         outer.setContentsMargins(0, 0, 0, 0)
         card, layout = make_card(t("model.card", language), self)
@@ -130,6 +131,7 @@ class ModelCard(QWidget):
             )
             for name, provider in providers.PROVIDERS.items()
         }
+        self._loaded_keys = {name: key for name, (_m, _u, key) in self._drafts.items()}
         chosen = store.value(_PROVIDER_KEY, "", type=str)
         if chosen not in providers.PROVIDERS:
             chosen = providers.selected_provider()
@@ -144,8 +146,13 @@ class ModelCard(QWidget):
         for name, (model, base_url, key) in self._drafts.items():
             store.setValue(f"llm/model/{name}", model)
             store.setValue(f"llm/base_url/{name}", base_url)
-            if providers.PROVIDERS[name].key_env and name != providers.ANTHROPIC:
+            if not providers.PROVIDERS[name].key_env or name == providers.ANTHROPIC:
+                continue
+            # As on the Settings page: a key that could not be read shows as
+            # empty, and that must not delete it.
+            if key or self._loaded_keys.get(name):
                 credentials.write(store, _secret_key(name), key)
+                self._loaded_keys[name] = key
         store.setValue(_PROVIDER_KEY, self.provider())
         apply_saved_model(store)
 

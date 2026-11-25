@@ -54,7 +54,11 @@ _MAX_NOTE_LENGTH: Final[int] = 100_000
 #: Titles whose words overlap at least this much are suggested as one paper.
 _DUPLICATE_OVERLAP: Final[float] = 0.85
 _SHORTEST_TITLE: Final[int] = 3
-_WORD = re.compile(r"\w+")
+#: A word of a title. Chinese, Japanese and Korean are written without spaces
+#: between words (or with few), so each of their characters counts as one:
+#: as a single "word" such a title was below the shortest length compared.
+_CJK = "\u3040-\u30ff\u3400-\u4dbf\u4e00-\u9fff\uac00-\ud7af\uf900-\ufaff"
+_WORD = re.compile(rf"[{_CJK}]|[^\W{_CJK}]+")
 
 
 @dataclass(frozen=True, slots=True)
@@ -339,8 +343,8 @@ class CurationMixin:
 
         Imports already merge what shares a DOI, an arXiv ID or title, author
         and year. What is left are near misses: a preprint and its journal
-        version, a title with and without its subtitle. Titles are compared
-        by their words, so this needs no network.
+        version, a title spelled in two ways. Titles are compared by their
+        words, so this needs no network.
         """
         with self._lock:
             rows = self._conn.execute("SELECT id, title FROM papers ORDER BY id").fetchall()

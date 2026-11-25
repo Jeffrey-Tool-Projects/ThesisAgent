@@ -35,6 +35,8 @@ _SOURCE_NAME = "openalex"
 _SEARCH_ENDPOINT = "https://api.openalex.org/works"
 _WORK_ENDPOINT = "https://api.openalex.org/works/{id}"
 _CONTACT_ENV = "THESISAGENTS_CONTACT_EMAIL"
+#: The API's own limit. A lower one here cut a search for 200 papers to 50.
+_MAX_PER_PAGE = 200
 
 #: Restrict the JSON to the fields the parser actually reads — keeps the
 #: response small and shields us from upstream schema noise.
@@ -91,7 +93,7 @@ class OpenAlexFetcher(Fetcher):
         return parse_work(data)
 
     def _build_search_params(self, query: Query) -> dict[str, str]:
-        per_page = min(query.max_results, 50)
+        per_page = min(query.max_results, _MAX_PER_PAGE)
         params: dict[str, str] = {
             "search": query.keywords,
             "per-page": str(per_page),

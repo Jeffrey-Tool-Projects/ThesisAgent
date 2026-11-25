@@ -48,6 +48,7 @@ class SavedSearchesTab(QWidget):
     def __init__(self, language: str, parent: QWidget | None = None) -> None:
         super().__init__(parent)
         self._language = language
+        self._busy = False
         layout = QVBoxLayout(self)
         layout.setContentsMargins(0, 8, 0, 0)
         self._table = QTableWidget(0, 4, self)
@@ -102,16 +103,18 @@ class SavedSearchesTab(QWidget):
         return items[0].text() if items else ""
 
     def set_busy(self, busy: bool) -> None:
+        self._busy = busy
         self._save_button.setEnabled(not busy)
-        self._refresh(busy)
+        self._refresh()
 
-    def _refresh(self, busy: bool = False) -> None:
+    def _refresh(self) -> None:
+        # Selecting another row while a search runs must not unlock the buttons.
         for button in (self._run, self._delete):
-            button.setEnabled(bool(self.selected()) and not busy)
+            button.setEnabled(bool(self.selected()) and not self._busy)
 
     def _save(self) -> None:
         name = self._name.text().strip()
-        if name:
+        if name and not self._busy:
             self.save_requested.emit(name)
             self._name.clear()
 
@@ -164,6 +167,10 @@ class ReviewTab(QWidget):
         rows = [
             (labels["identified"], sum(flow.identified.values()), flow.identified),
             (labels["duplicates"], flow.duplicates_removed, {}),
+            *(
+                [(labels["removed_other"], flow.removed_other, {})]
+                if flow.removed_other else []
+            ),
             (labels["screened"], flow.unique, {}),
             (labels["awaiting"], flow.awaiting, {}),
             (labels["excluded"], flow.excluded_abstract, flow.reasons_abstract),

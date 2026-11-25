@@ -63,8 +63,10 @@ class UpdateCheck(QObject):
         return True
 
     def _on_answer(self, version: object) -> None:
-        settings_store().setValue(_SEEN_KEY, version or "")
+        # No answer is also what a machine without network gets, so the release
+        # seen before stays. It is compared with the running version on use.
         if isinstance(version, str):
+            settings_store().setValue(_SEEN_KEY, version)
             self.found.emit(version)
 
 

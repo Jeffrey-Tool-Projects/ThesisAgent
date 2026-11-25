@@ -15,6 +15,8 @@ so adding a venue is one-line + one assertion.
 
 from __future__ import annotations
 
+import re
+
 from thesisagents.core.models import Paper
 
 #: Sources whose papers bypass the venue filter. arXiv preprints rarely have
@@ -38,7 +40,6 @@ TOP_VENUE_TOKENS: tuple[str, ...] = (
     "cryptology eprint",
     "advances in cryptology",
     "eurocrypt",
-    "crypto ",  # "crypto 2024" — the trailing space avoids matching "cryptography"
     "asiacrypt",
     "tches",
     # ------------------------------------------------------------------
@@ -63,7 +64,6 @@ TOP_VENUE_TOKENS: tuple[str, ...] = (
     # Software engineering / PL
     # ------------------------------------------------------------------
     "international conference on software engineering",
-    " icse ",
     "esec/fse",
     "foundations of software engineering",
     "automated software engineering",
@@ -140,17 +140,37 @@ TOP_VENUE_TOKENS: tuple[str, ...] = (
     # these directly; OpenAIRE + Crossref + OpenAlex also commonly route
     # papers here.
     # ------------------------------------------------------------------
-    "nature ",  # "Nature 632" — trailing space avoids "Natural" / "Nature-" prefixed venues
     "nature machine intelligence",
     "nature computational science",
     "nature communications",
     "nature methods",
     "scientific reports",
-    "science ",  # "Science 384" — trailing space avoids "Sciences" / "Sciencey-"
     "science advances",
+    "science robotics",
+    "science immunology",
+    "science signaling",
+    "science translational medicine",
     "proceedings of the national academy of sciences",
     "machine learning",  # Springer ML journal — venue string is exactly this
     "lecture notes in computer science",
+)
+
+
+#: Names too short for a substring. As ``"nature "`` and ``"science "`` they
+#: missed the journals themselves (a source reports "Nature", with nothing
+#: behind it) and let in every "Journal of Computer Science and ...". The
+#: journals are matched as the whole name, with a volume or an issue behind
+#: it, the conferences as a word.
+_WHOLE_NAMES = re.compile(
+    r"(?:the )?(?:nature|science)(?:\s*,?\s*(?:vol\.?\s*)?\d.*|\s*\(.*)?\s*$"
+    r"|.*\b(?:icse|crypto)\b"
+    # The journals of the Nature family, by the words that follow the name.
+    r"|nature (?:reviews?\b.*|aging|astronomy|biomedical engineering|biotechnology|cancer"
+    r"|cardiovascular research|catalysis|cell biology|chemical biology|chemical engineering"
+    r"|chemistry|cities|climate change|ecology (?:&|and) evolution|electronics|energy|food"
+    r"|genetics|geoscience|health|human behaviour|immunology|materials|medicine|mental health"
+    r"|metabolism|microbiology|nanotechnology|neuroscience|photonics|physics|plants|protocols"
+    r"|structural (?:&|and) molecular biology|sustainability|synthesis|water)\b"
 )
 
 
@@ -161,7 +181,9 @@ def is_top_tier(paper: Paper) -> bool:
     """
     if paper.source in TRUSTED_SOURCES:
         return True
-    venue = (paper.venue or "").lower()
+    venue = " ".join((paper.venue or "").lower().split())
     if not venue:
         return False
+    if _WHOLE_NAMES.match(venue):
+        return True
     return any(token in venue for token in TOP_VENUE_TOKENS)

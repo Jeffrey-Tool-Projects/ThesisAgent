@@ -26,6 +26,7 @@ import contextlib
 import os
 import shutil
 import tempfile
+import threading
 import time
 from pathlib import Path
 from urllib.parse import urlparse
@@ -44,9 +45,8 @@ _DOWNLOAD_POLL_INTERVAL = 0.5
 
 #: Publisher CDN hosts where httpx-style PDF GETs reliably 403.
 #: Anything resolved on these hosts is routed through WebRunner.
-#: Subdomain matching: `endswith` on the hostname so
-#: e.g. ``onlinelibrary.wiley.com`` matches the broader ``wiley.com``
-#: entry.
+#: The host itself or a subdomain of it, so ``onlinelibrary.wiley.com``
+#: matches the broader ``wiley.com`` entry.
 _PAYWALLED_SUFFIXES: tuple[str, ...] = (
     "ieeexplore.ieee.org",
     "ieee.org",
@@ -104,6 +104,27 @@ async def download_via_browser(url: str, target: Path) -> bool:
 
 def _download_sync(url: str, target: Path) -> bool:
     """Boot Chrome → navigate to PDF URL → wait for file → copy to target."""
+    with _profile_turn():
+        return _download_with_chrome(url, target)
+
+
+#: Held while a download uses the user's own Chrome profile.
+_PROFILE_LOCK = threading.Lock()
+
+
+def _profile_turn() -> contextlib.AbstractContextManager[object]:
+    """Wait for the Chrome profile, when one is set.
+
+    Chrome opens a profile once. Two downloads at a time with
+    ``THESISAGENTS_CHROME_PROFILE_DIR`` set meant that the second could not
+    start and its paper was skipped.
+    """
+    if os.environ.get(_PROFILE_DIR_ENV, "").strip():
+        return _PROFILE_LOCK
+    return contextlib.nullcontext()
+
+
+def _download_with_chrome(url: str, target: Path) -> bool:
     from thesisagents.fetchers import webrunner_browser
 
     tmpdir = Path(tempfile.mkdtemp(prefix="thesisagents_pdf_"))

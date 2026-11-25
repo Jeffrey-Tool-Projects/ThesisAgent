@@ -572,7 +572,11 @@ class SearchPage(QWidget):
         return value if value >= _MIN_YEAR else None
 
     def current_query(self) -> Query | None:
-        """The search the form describes, None while it is incomplete."""
+        """The search the form describes, None while it is incomplete.
+
+        Raises ``ValueError`` for one that cannot be run, such as a year range
+        that ends before it starts.
+        """
         keywords = self._query_input.text().strip()
         sources = self._sources_widget.selected()
         if not keywords or not sources:
@@ -587,7 +591,11 @@ class SearchPage(QWidget):
         )
 
     def _on_search_clicked(self) -> None:
-        query = self.current_query()
+        try:
+            query = self.current_query()
+        except ValueError as err:
+            self._set_status(t("search.error_generic", self._ui_language, error=str(err)))
+            return
         if query is None:
             self._set_status(t("search.error_empty_query", self._ui_language))
             return

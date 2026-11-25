@@ -277,3 +277,34 @@ def test_library_prisma_draws(server, library_path, sample_papers, tmp_path):
     assert result["unique"] == 2
     assert target.read_text(encoding="utf-8").startswith("<svg")
     _fails(server, "library_prisma", "cannot write", library=library_path, svg_path=str(tmp_path))
+
+
+def test_library_prisma_overwrites_only_drawings(server, library_path, sample_papers, tmp_path):
+    _add(server, library_path, sample_papers)
+    _fails(server, "library_prisma", "does not end with .svg", library=library_path,
+           svg_path=library_path)
+    assert _call(server, "library_prisma", library=library_path)["unique"] == 2
+
+
+def test_library_import_tags_a_paper_that_was_merged(server, library_path, tmp_path):
+    file = tmp_path / "x.bib"
+    file.write_text("@misc{a, title={One}, doi={10.1000/one}}", encoding="utf-8")
+    _call(server, "library_import", library=library_path, file=str(file))
+    file.write_text(
+        "@misc{a, title={Uno}, doi={10.1000/one}}\n@misc{b, title={Due}, doi={10.1000/due}}",
+        encoding="utf-8",
+    )
+    _call(server, "library_import", library=library_path, file=str(file), tags=["t"])
+    found = _call(server, "library_search", library=library_path, tags=["t"])
+    assert found["count"] == 2
+
+
+def test_library_update_makes_all_changes_or_none(server, library_path, sample_papers):
+    _add(server, library_path, sample_papers)
+    with pytest.raises(ToolError):
+        _call(
+            server, "library_update", library=library_path, paper_ids=[1],
+            add_tags=["chapter 2"], status="raed",
+        )
+    with Library(library_path, create=False) as library:
+        assert not library.tags()

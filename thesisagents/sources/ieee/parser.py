@@ -8,6 +8,7 @@ from typing import Any
 
 from thesisagents.core.exceptions import ParseError
 from thesisagents.core.models import Paper
+from thesisagents.utils.markup import plain_text
 
 _SOURCE = "ieee"
 _DOC_URL = "https://ieeexplore.ieee.org/document/{arnumber}"
@@ -165,8 +166,7 @@ def _author_name(author: dict[str, Any]) -> str:
 
 
 def _clean_html(value: str) -> str:
-    cleaned = re.sub(r"<[^>]+>", "", value)
-    return " ".join(cleaned.split())
+    return plain_text(value)
 
 
 def _to_int(value: Any) -> int | None:

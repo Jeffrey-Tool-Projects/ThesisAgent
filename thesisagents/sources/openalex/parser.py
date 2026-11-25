@@ -14,6 +14,7 @@ import re
 from typing import Any
 
 from thesisagents.core.models import Paper
+from thesisagents.utils.markup import plain_text
 
 _SOURCE = "openalex"
 _DOI_PREFIX = "https://doi.org/"
@@ -22,7 +23,7 @@ _OPENALEX_PREFIX = "https://openalex.org/"
 
 def parse_work(record: dict[str, Any]) -> Paper:
     """Map one entry from ``/works`` to a ``Paper``."""
-    title = (record.get("title") or record.get("display_name") or "").strip()
+    title = plain_text(record.get("title") or record.get("display_name"))
     authors = tuple(_authors(record.get("authorships") or []))
     year = _to_int(record.get("publication_year"))
     venue = _venue(record)

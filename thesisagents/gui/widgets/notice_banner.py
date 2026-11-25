@@ -55,6 +55,11 @@ class NoticeBanner(QFrame):
 
     def show_notice(self, notice: Notice) -> None:
         """Display ``notice``. Kinds the banner does not know are ignored."""
+        if notice.kind == CAPTCHA_CLEARED and self._tick.isActive() and (
+            notice.site and notice.site != self._site
+        ):
+            # Two sources can wait at once. The one still shown needs the user.
+            return
         self._hide.stop()
         self._tick.stop()
         if notice.kind == CAPTCHA_WAITING:

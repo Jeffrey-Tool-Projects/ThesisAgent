@@ -27,18 +27,22 @@ _LOG = get_logger(__name__)
 _ENV_VAR = "THESISAGENTS_PDF_COOKIES_FILE"
 
 _jar: MozillaCookieJar | None = None
-_load_attempted: bool = False
+#: The path that was read last, ``None`` before the first look. Remembered
+#: instead of a flag: the desktop app sets the variable while it runs, and
+#: one look before that used to switch the cookies off until the next start.
+_loaded_path: str | None = None
 _load_warned: bool = False
 
 
 def _load_jar() -> MozillaCookieJar | None:
     """Lazily parse the cookies file. Returns None when the env var is unset
     or the file can't be read; logs an explanation in both cases."""
-    global _jar, _load_attempted, _load_warned
-    if _load_attempted:
-        return _jar
-    _load_attempted = True
+    global _jar, _loaded_path, _load_warned
     path_str = (os.environ.get(_ENV_VAR) or "").strip()
+    if path_str == _loaded_path:
+        return _jar
+    _loaded_path = path_str
+    _jar = None
     if not path_str:
         return None
     path = Path(path_str).expanduser()
@@ -109,7 +113,7 @@ def _domain_matches(host: str, cookie: Cookie) -> bool:
 
 def _reset_for_tests() -> None:
     """Test-only hook so each test starts with a fresh load state."""
-    global _jar, _load_attempted, _load_warned
+    global _jar, _loaded_path, _load_warned
     _jar = None
-    _load_attempted = False
+    _loaded_path = None
     _load_warned = False

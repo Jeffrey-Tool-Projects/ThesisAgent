@@ -137,8 +137,10 @@ def extract_metadata(text: str) -> ExtractedMetadata:
     if not text:
         return ExtractedMetadata()
     head = text[:6000]
-    arxiv_id = _extract_arxiv_id(text)
-    doi = _extract_doi(text)
+    # From the first page only: further on stand the references, and their
+    # first identifier made the paper into the one it cites.
+    arxiv_id = _extract_arxiv_id(head)
+    doi = _extract_doi(head)
     abstract_start, abstract = _extract_abstract(text)
     pre_abstract = head[:abstract_start] if abstract_start is not None else head
     title, authors = _extract_title_and_authors(pre_abstract)
@@ -168,7 +170,14 @@ def _extract_doi(text: str) -> str | None:
 
 
 def _extract_year(head: str) -> int | None:
-    """Pick the first plausible 4-digit publication year in page 1."""
+    """Pick the first plausible 4-digit publication year in page 1.
+
+    Identifiers are taken out first: the arXiv stamp "arXiv:2005.11401" begins
+    with a year and a month, and read as 2005 it dated every preprint of 2020
+    to the years 2001 to 2012.
+    """
+    for pattern in (_ARXIV_RE, _ARXIV_URL_RE, _DOI_RE):
+        head = pattern.sub(" ", head)
     for raw in _YEAR_RE.findall(head):
         year = int(raw)
         # Reject years that show up because of a phone number, ZIP code,

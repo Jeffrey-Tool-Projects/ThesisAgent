@@ -170,8 +170,12 @@ def reference_order(papers: Sequence[Paper]) -> list[int]:
         paper = papers[index]
         authors = [_listed(a) for a in paper.authors if a.strip()]
         first = " ".join(authors) or paper.title
-        # Accents do not change the place of a letter.
+        # Accents do not change the place of a letter. A name in another script
+        # has no ASCII form: what is left of it (the spaces between the authors)
+        # would put all such papers in one place.
         plain = unicodedata.normalize("NFKD", first).encode("ascii", "ignore").decode()
-        return (plain or first).casefold(), str(paper.year or ""), paper.title.casefold()
+        if not any(char.isalnum() for char in plain) or _is_cjk(first):
+            plain = first
+        return plain.casefold(), str(paper.year or ""), paper.title.casefold()
 
     return sorted(range(len(papers)), key=key)

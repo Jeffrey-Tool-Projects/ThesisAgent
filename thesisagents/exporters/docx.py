@@ -67,7 +67,7 @@ class DocxExporter(Exporter):
         labels = labels_of(collection)
         for block in review_blocks(collection, options.language):
             if isinstance(block, Heading):
-                document.add_heading(_clean(block.text), level=block.level)
+                _add_heading(document, block.text, block.level)
             elif isinstance(block, Paragraph):
                 document.add_paragraph(_text(block.content, labels))
             elif isinstance(block, Bullets):
@@ -100,6 +100,19 @@ def _open(template: str | None) -> Any:
 def _style(document: Any, name: str) -> str | None:
     """``name`` when the document has that style, else None (its default)."""
     return name if name in [style.name for style in document.styles] else None
+
+
+def _add_heading(document: Any, text: str, level: int) -> None:
+    """A heading, in bold where the template does not define its style.
+
+    The failure this prevents: a school's template often defines only the
+    levels it uses, and python-docx raises ``KeyError`` for the others.
+    """
+    style = _style(document, f"Heading {level}")
+    if style is not None:
+        document.add_paragraph(_clean(text), style=style)
+        return
+    document.add_paragraph().add_run(_clean(text)).bold = True
 
 
 def _clean(text: str) -> str:
@@ -181,7 +194,7 @@ def _add_references(
 ) -> None:
     from docx.shared import Inches
 
-    document.add_heading(_clean(block.heading), level=2)
+    _add_heading(document, block.heading, 2)
     for index in reference_order(collection.papers):
         paragraph = document.add_paragraph()
         paragraph.paragraph_format.left_indent = Inches(0.5)

@@ -549,8 +549,10 @@ it did not hold before.
 ### `library_prisma`
 
 The PRISMA 2020 flow: records identified per source, duplicates removed,
-screened, excluded with reasons, assessed and included. `svg_path` also
-draws the diagram. Counts what was recorded, nothing is estimated.
+records removed for other reasons (`removed_other`: a filter or the result
+limit cut them off, or they were deleted), screened, excluded with reasons,
+assessed and included. `svg_path`, which must end with `.svg`, also draws
+the diagram. Counts what was recorded, nothing is estimated.
 
 ### `fetch_paper`
 

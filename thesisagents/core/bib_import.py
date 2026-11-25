@@ -30,9 +30,15 @@ SOURCE_RIS: Final[str] = "ris"
 MAX_FILE_BYTES: Final[int] = 50_000_000
 
 _YEAR = re.compile(r"\b(1[5-9]\d{2}|20\d{2}|21\d{2})\b")
+#: ``abs/`` and ``pdf/`` count only on arxiv.org or at the start of a word
+#: ("CoRR, abs/1706.03762"). On any other host they are ordinary folders.
 _ARXIV = re.compile(
-    r"(?:arxiv[:./ ]|abs/|pdf/)\s*(\d{4}\.\d{4,5}(?:v\d+)?|[a-z-]+(?:\.[A-Z]{2})?/\d{7})", re.I
+    r"(?:arxiv[:./ ]|arxiv\.org/(?:abs|pdf)/|(?:^|[\s,])abs/)\s*"
+    r"(\d{4}\.\d{4,5}(?:v\d+)?|[a-z-]+(?:\.[A-Z]{2})?/\d{7})",
+    re.I,
 )
+#: Fields that are an address, where ``~`` and ``--`` are not typography.
+_VERBATIM: Final[frozenset[str]] = frozenset({"url", "doi", "eprint"})
 _DOI = re.compile(r"10\.\d{4,9}/\S+")
 
 
@@ -92,7 +98,10 @@ def parse_bibtex(text: str) -> ImportedBibliography:
     for record in _bibtex_records(text, skipped):
         if record.kind in {"comment", "preamble", "string"}:
             continue
-        fields = {name: _plain(value) for name, value in record.fields.items()}
+        fields = {
+            name: _address(value) if name in _VERBATIM else _plain(value)
+            for name, value in record.fields.items()
+        }
         paper = _bibtex_paper(record.key, fields, record.fields)
         if paper is None:
             skipped.append(f"line {record.line}: {record.key or record.kind} has no title")
@@ -108,7 +117,9 @@ def _bibtex_paper(key: str, fields: dict[str, str], raw: dict[str, str]) -> Pape
     # Names are split before LaTeX is resolved: braces group a name that
     # contains "and".
     authors = tuple(
-        _turn_name(_plain(name)) for name in _split_names(raw.get("author", raw.get("editor", "")))
+        # A name in braces of its own is an organisation and stays as it is.
+        _plain(name) if _is_group(name) else _turn_name(_plain(name))
+        for name in _split_names(raw.get("author", raw.get("editor", "")))
     )
     doi = _doi_of(fields.get("doi", "") or fields.get("url", ""))
     venue = next(
@@ -135,7 +146,11 @@ def _bibtex_records(text: str, skipped: list[str]) -> Iterator[_Record]:
     """Every ``@type{…}`` of ``text``, abbreviations already replaced."""
     strings = {m: m for m in ("jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep",
                               "oct", "nov", "dec")}
+    done = 0
     for match in re.finditer(r"@\s*(\w+)\s*([{(])", text):
+        if match.start() < done:
+            # Inside the record before it: an abstract that quotes BibTeX.
+            continue
         line = text.count("\n", 0, match.start()) + 1
         kind = match.group(1).lower()
         if kind in {"comment", "preamble"}:
@@ -146,6 +161,7 @@ def _bibtex_records(text: str, skipped: list[str]) -> Iterator[_Record]:
             skipped.append(f"line {line}: the record is not closed")
             continue
         body = text[match.end():end]
+        done = end
         if kind == "string":
             strings.update(_fields(body, strings))
             continue
@@ -245,6 +261,22 @@ def _split_names(text: str) -> list[str]:
     return [name.strip() for name in names if name.strip() and name.strip() != "others"]
 
 
+def _is_group(text: str) -> bool:
+    """Whether one pair of braces encloses all of ``text``.
+
+    >>> _is_group("{Barnes and Noble, Inc.}"), _is_group("{Lovelace}, {Ada}")
+    (True, False)
+    """
+    if not (text.startswith("{") and text.endswith("}")):
+        return False
+    depth = 0
+    for index, char in enumerate(text):
+        depth += (char == "{") - (char == "}")
+        if depth == 0:
+            return index == len(text) - 1
+    return False
+
+
 def _turn_name(name: str) -> str:
     """``"Lovelace, Ada"`` as ``"Ada Lovelace"``, like the search sources write it."""
     family, comma, given = name.partition(",")
@@ -295,6 +327,21 @@ def _plain(text: str) -> str:
     text = text.replace("---", "—").replace("--", "–").replace("~", " ")
     text = re.sub(r"(?<!\\)[{}]", "", text)
     return " ".join(text.split())
+
+
+def _address(text: str) -> str:
+    r"""A URL, DOI or eprint id: LaTeX escapes undone and nothing else.
+
+    ``_plain`` reads ``~`` as a space and ``--`` as a dash, which breaks a
+    link to a home page.
+
+    >>> _address(r"http://cs.edu/\~{}foo/a--b\_c")
+    'http://cs.edu/~foo/a--b_c'
+    """
+    text = re.sub(r"\\textasciitilde\s*(?:\{\})?|\\~(?:\{\})?|\$\\sim\$", "~", text)
+    text = re.sub(r"\\url\b", "", text)
+    text = re.sub(r"\\([&%$#_{}])", r"\1", text)
+    return " ".join(re.sub(r"[{}]", "", text).split())
 
 
 # --- RIS ------------------------------------------------------------------------

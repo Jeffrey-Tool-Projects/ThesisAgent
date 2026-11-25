@@ -79,6 +79,7 @@ class XlsxExporter(Exporter):
         self._write_papers_sheet(workbook, collection, include_abstract)
         self._write_comparison_sheet(workbook, collection)
         self._write_meta_sheet(workbook, collection)
+        _as_text(workbook)
         return workbook
 
     def _write_comparison_sheet(self, workbook: Workbook, collection: PaperCollection) -> None:
@@ -139,6 +140,20 @@ class XlsxExporter(Exporter):
             sheet.cell(row=index, column=2, value=value)
         sheet.column_dimensions["A"].width = 22
         sheet.column_dimensions["B"].width = 60
+
+
+def _as_text(workbook: Workbook) -> None:
+    """Make every cell that begins with ``=`` text again.
+
+    openpyxl stores such a string as a formula. Titles and summaries come
+    from outside, and this export writes no formula of its own, so a cell
+    like ``=HYPERLINK(...)`` must be shown and not run.
+    """
+    for sheet in workbook.worksheets:
+        for row in sheet.iter_rows():
+            for cell in row:
+                if cell.data_type == "f":
+                    cell.data_type = "s"
 
 
 def _write_header(sheet) -> None:

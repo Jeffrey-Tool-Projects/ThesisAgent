@@ -194,7 +194,10 @@ def max_paper_chars(settings: LlmSettings) -> int:
     stated = os.environ.get(MAX_CHARS_ENV, "").strip()
     if stated.isdigit() and int(stated) > 0:
         return int(stated)
-    host = httpx.URL(settings.base_url).host if settings.base_url else ""
+    try:
+        host = httpx.URL(settings.base_url).host if settings.base_url else ""
+    except httpx.InvalidURL:
+        host = ""  # the request reports the address
     return _LOCAL_MAX_CHARS if host and is_local_host(host) else _HOSTED_MAX_CHARS
 
 
@@ -317,6 +320,8 @@ def _request(settings: LlmSettings, method: str, path: str, body: Any) -> Any:
             response = client.request(
                 method, settings.base_url + path, json=body, headers=headers
             )
+    except httpx.InvalidURL as err:
+        raise ConfigError(f"{settings.base_url} is not a usable address: {err}") from err
     except httpx.TimeoutException as err:
         raise SourceUnavailableError(
             _LOCAL_SOURCE, f"{settings.describes} did not answer in time"

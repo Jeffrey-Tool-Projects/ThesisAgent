@@ -103,6 +103,11 @@ _SUFFIX_RULES: tuple[tuple[str, str], ...] = (
     ("s", ""),
 )
 
+# What an English word ends with when its plural takes "es". Every other "es"
+# belongs to the word: with it stripped, "image" and "images", "language" and
+# "languages" had different stems and never matched.
+_ES_PLURAL_ENDINGS: tuple[str, ...] = ("ss", "x", "zz", "ch", "sh")
+
 # Acronym <-> expansion synonyms. Each entry lets a search for the short form
 # surface papers that only write the long form, and vice-versa.
 # Why: without this the relevance axis misses a whole class of on-topic papers
@@ -137,6 +142,8 @@ def _stem(token: str) -> str:
     for suffix, repl in _SUFFIX_RULES:
         if suffix == "s" and token.endswith("ss"):
             continue
+        if suffix == "es" and not token[:-2].endswith(_ES_PLURAL_ENDINGS):
+            continue  # "images" is "image" and an "s"
         if token.endswith(suffix):
             stem = token[: len(token) - len(suffix)] + repl
             return stem if len(stem) >= _MIN_STEM_LEN else token

@@ -991,3 +991,29 @@ def test_search_snowball_bad_direction_is_a_tool_error(
                  snowball="sideways")
     with pytest.raises(ToolError, match="direction must be one of"):
         asyncio.run(call)
+
+
+def test_a_bad_argument_reaches_the_client_with_its_reason(server):
+    """The core reports a bad argument as ValueError, which the SDK would hide."""
+    with pytest.raises(ToolError, match=r"max_results must be in \[1, 200\]"):
+        asyncio.run(_call(server, "search", keywords="x", sources=["arxiv"], max_results=500))
+    with pytest.raises(ToolError, match="empty after normalisation"):
+        asyncio.run(_call(server, "search", keywords="   "))
+
+
+def test_export_names_the_sources_of_the_papers(server, sample_papers, tmp_path):
+    """The workbook and the cover said "arxiv", wherever the papers came from."""
+    import dataclasses
+
+    from openpyxl import load_workbook
+
+    papers = [
+        dataclasses.replace(paper, source=source).to_dict()
+        for paper, source in zip(sample_papers, ("openalex", "dblp"), strict=False)
+    ]
+    written = asyncio.run(_call(
+        server, "export", papers=papers, keywords="x", formats=["xlsx"], out_dir=str(tmp_path),
+        verify_identifiers=False,
+    ))["written"]
+    sheet = load_workbook(written["xlsx"])["Query"]
+    assert {row[0].value: row[1].value for row in sheet.iter_rows()}["Sources"] == "dblp, openalex"

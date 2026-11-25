@@ -13,11 +13,10 @@ wants this one.
 
 Author-name handling is the one subtlety. ``Paper`` stores a flat "First Last"
 display string, but CSL wants a structured ``{"family": …, "given": …}`` so a
-style can render "Last, F." or "First Last" as the style dictates. We split on
-the final space (everything before it is ``given``, the last token is
-``family``); a single-token name becomes ``family`` only. This is the same
-last-token heuristic the BibTeX cite-key builder already uses, so the two stay
-consistent.
+style can render "Last, F." or "First Last" as the style dictates. Names are
+split by ``apa.split_name``, which the Word draft uses too: the last token is
+``family``, "Last, First" is read as written, and a name in Chinese, Japanese or
+Korean characters stays whole.
 """
 
 from __future__ import annotations
@@ -28,7 +27,9 @@ from pathlib import Path
 from thesisagents.core.constants import EXPORT_CSL
 from thesisagents.core.exceptions import ExportError
 from thesisagents.core.models import ExportOptions, Paper, PaperCollection
+from thesisagents.exporters.apa import split_name
 from thesisagents.exporters.base import Exporter
+from thesisagents.exporters.bibtex import unique_keys
 
 # CSL reference types. A paper with a venue is a journal/conference article; one
 # without (an arXiv preprint, a tech report) is a "manuscript", the CSL type
@@ -61,13 +62,7 @@ class CslJsonExporter(Exporter):
 def _keyed(collection: PaperCollection):
     """Yield (collision-free cite key, paper), reusing the BibTeX key scheme so
     the same paper carries the same id across the bib / CSL exports."""
-    used: dict[str, int] = {}
-    for paper in collection.papers:
-        base = paper.bibtex_key()
-        count = used.get(base, 0)
-        used[base] = count + 1
-        key = base if count == 0 else f"{base}{chr(ord('a') + count)}"
-        yield key, paper
+    yield from zip(unique_keys(collection.papers), collection.papers, strict=True)
 
 
 def _render_item(key: str, paper: Paper) -> dict:
@@ -94,7 +89,7 @@ def _render_item(key: str, paper: Paper) -> dict:
 
 def _name_parts(name: str) -> dict[str, str]:
     """Split a flat display name into CSL ``family`` / ``given`` parts."""
-    tokens = name.split()
-    if len(tokens) <= 1:
-        return {"family": name.strip()}
-    return {"family": tokens[-1], "given": " ".join(tokens[:-1])}
+    family, given = split_name(name)
+    given, _comma, suffix = (part.strip() for part in given.partition(","))
+    parts = {"family": family, "given": given, "suffix": suffix}
+    return {key: value for key, value in parts.items() if value or key == "family"}

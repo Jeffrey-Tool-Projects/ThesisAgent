@@ -261,6 +261,7 @@ class SettingsPage(QWidget):
         super().__init__(parent)
         self._ui_language = ui_language
         self._field_inputs: dict[str, QLineEdit] = {}
+        self._loaded_secrets: dict[str, str] = {}
         self._build_ui()
         self._load_from_store()
 
@@ -486,7 +487,12 @@ class SettingsPage(QWidget):
         for key, env_var, _label in _SETTINGS_FIELDS:
             value = self._field_inputs[key].text().strip()
             if key in _SECRET_KEYS:
-                in_store = credentials.write(store, key, value) and in_store
+                # Empty now and empty before is no change: a credential store that
+                # was locked when the page was filled shows every key as empty,
+                # and writing that back would delete them.
+                if value or self._loaded_secrets.get(key):
+                    in_store = credentials.write(store, key, value) and in_store
+                    self._loaded_secrets[key] = value
             else:
                 store.setValue(key, value)
             if value:
@@ -527,7 +533,10 @@ class SettingsPage(QWidget):
     def _load_from_store(self) -> None:
         store = settings_store()
         for key, _env_var, _label in _SETTINGS_FIELDS:
-            self._field_inputs[key].setText(_saved_value(store, key))
+            value = _saved_value(store, key)
+            self._field_inputs[key].setText(value)
+            if key in _SECRET_KEYS:
+                self._loaded_secrets[key] = value
         self._cookies_input.setText(store.value(_COOKIES_KEY, "", type=str))
         self._chrome_profile_input.setText(
             store.value(_CHROME_PROFILE_KEY, "", type=str),

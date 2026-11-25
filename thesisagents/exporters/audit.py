@@ -76,13 +76,29 @@ def _shape_fill_rgb(shape):
     return None
 
 
-def _iter_runs(shape):
-    if not shape.has_text_frame:
-        return
-    for paragraph in shape.text_frame.paragraphs:
+def _iter_runs(text_frame):
+    for paragraph in text_frame.paragraphs:
         for run in paragraph.runs:
             if run.text.strip():
                 yield run
+
+
+def _iter_texts(shapes):
+    """``(name, text frame, fill)`` of everything on a slide that holds text.
+
+    Shapes inside groups and the cells of tables are included. Without them
+    red or invisible text passed the audit as soon as it stood in a table.
+    """
+    for shape in shapes:
+        name = getattr(shape, "name", "?") or "?"
+        if hasattr(shape, "shapes"):
+            yield from _iter_texts(shape.shapes)
+        elif getattr(shape, "has_table", False):
+            for row in shape.table.rows:
+                for cell in row.cells:
+                    yield name, cell.text_frame, _shape_fill_rgb(cell)
+        elif shape.has_text_frame:
+            yield name, shape.text_frame, _shape_fill_rgb(shape)
 
 
 def audit_deck(path: str | Path) -> list[Issue]:
@@ -95,8 +111,8 @@ def audit_prs(prs) -> list[Issue]:
     one-stop ``review_deck`` can load the file once and share the object."""
     issues: list[Issue] = []
     for idx, slide in enumerate(prs.slides, start=1):
-        for shape in slide.shapes:
-            issues.extend(_shape_issues(idx, shape))
+        for name, text_frame, fill_rgb in _iter_texts(slide.shapes):
+            issues.extend(_text_issues(idx, name, text_frame, fill_rgb))
     return issues
 
 
@@ -135,16 +151,16 @@ def _classify_run(
     return None
 
 
-def _shape_issues(slide_idx: int, shape) -> list[Issue]:
-    """Every colour-contract issue among one shape's non-empty text runs.
+def _text_issues(
+    slide_idx: int, name: str, text_frame, fill_rgb: tuple[int, int, int] | None
+) -> list[Issue]:
+    """Every colour-contract issue among the non-empty runs of one text frame.
 
-    Split out of ``audit_prs`` so the per-run checks stay readable. The
-    shape's fill is read once and shared by every run inside it.
+    Split out of ``audit_prs`` so the per-run checks stay readable. The fill
+    of the shape or cell is read once and shared by every run inside it.
     """
-    name = getattr(shape, "name", "?") or "?"
-    fill_rgb = _shape_fill_rgb(shape)
     issues: list[Issue] = []
-    for run in _iter_runs(shape):
+    for run in _iter_runs(text_frame):
         found = _classify_run(_run_rgb(run), fill_rgb)
         if found is not None:
             kind, detail, hard = found

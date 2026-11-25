@@ -47,7 +47,9 @@ def unique_keys(papers: Iterable[Paper]) -> list[str]:
         base_key = paper.bibtex_key()
         count = used_keys.get(base_key, 0)
         used_keys[base_key] = count + 1
-        keys.append(base_key if count == 0 else f"{base_key}{chr(ord('a') + count)}")
+        # After "z" a number: the character behind it in ASCII is a brace.
+        suffix = chr(ord("a") + count) if count < 26 else str(count + 1)
+        keys.append(base_key if count == 0 else f"{base_key}{suffix}")
     return keys
 
 
@@ -68,7 +70,7 @@ def _render_entry(key: str, paper: Paper) -> str:
     fields: list[tuple[str, str]] = []
     fields.append(("title", _bib_escape(paper.title)))
     if paper.authors:
-        fields.append(("author", _bib_escape(" and ".join(paper.authors))))
+        fields.append(("author", " and ".join(map(_bib_name, paper.authors))))
     if paper.year is not None:
         fields.append(("year", str(paper.year)))
     if paper.venue:
@@ -86,22 +88,30 @@ def _render_entry(key: str, paper: Paper) -> str:
     return f"@{entry_type}{{{key},\n  {field_block}\n}}"
 
 
-_REPLACEMENTS = (
-    ("\\", r"\textbackslash{}"),
-    ("{", r"\{"),
-    ("}", r"\}"),
-    ("&", r"\&"),
-    ("%", r"\%"),
-    ("$", r"\$"),
-    ("#", r"\#"),
-    ("_", r"\_"),
-    ("~", r"\textasciitilde{}"),
-    ("^", r"\textasciicircum{}"),
-)
+_REPLACEMENTS = str.maketrans({
+    "\\": r"\textbackslash{}",
+    "{": r"\{",
+    "}": r"\}",
+    "&": r"\&",
+    "%": r"\%",
+    "$": r"\$",
+    "#": r"\#",
+    "_": r"\_",
+    "~": r"\textasciitilde{}",
+    "^": r"\textasciicircum{}",
+})
+
+
+def _bib_name(name: str) -> str:
+    """One author. "Barnes and Noble" needs braces, or BibTeX reads two people."""
+    escaped = _bib_escape(" ".join(name.split()))
+    return f"{{{escaped}}}" if " and " in f" {escaped.lower()} " else escaped
 
 
 def _bib_escape(value: str) -> str:
-    out = value
-    for src, target in _REPLACEMENTS:
-        out = out.replace(src, target)
-    return out
+    """``value`` with LaTeX's special characters written out.
+
+    In one pass: replacing one character after the other escaped the braces
+    of ``\\textbackslash{}`` again, which prints them.
+    """
+    return value.translate(_REPLACEMENTS)

@@ -195,6 +195,7 @@ paints its own background on every slide.
 | `missing-title-placeholder` | error | `[placeholders] title` lists a role whose layout has no title placeholder. |
 | `title-placeholder-overlaps-content` | error | That placeholder ends below 1.40 in. |
 | `slide-size-normalised` | warning | The slides are not 16:9 and the deck is resized. |
+| `template-slides-removed` | warning | The template holds slides of its own. They are left out of the deck, only layouts and artwork are used. |
 | `colors-ignored-in-dark-mode` | warning | `[colors]` is set and the export is dark. |
 
 A broken config reads like this (same run):

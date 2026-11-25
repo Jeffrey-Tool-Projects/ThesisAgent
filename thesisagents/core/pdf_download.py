@@ -19,7 +19,9 @@ file, matching cookies are attached on top.
 from __future__ import annotations
 
 import asyncio
+import hashlib
 import re
+from collections.abc import Sequence
 from dataclasses import dataclass, replace
 from pathlib import Path
 from urllib.parse import urljoin, urlparse
@@ -109,13 +111,13 @@ async def download_pdfs(
 
     per_host: dict[str, asyncio.Semaphore] = {}
 
-    async def _bounded(paper: Paper) -> PdfDownloadResult:
+    async def _bounded(paper: Paper, name: str) -> PdfDownloadResult:
         host = urlparse(paper.pdf_url or "").hostname or ""
         host_sem = per_host.setdefault(host, asyncio.Semaphore(_PER_HOST_CONCURRENCY))
         # The host's slot first: a paper that waits for a busy host must not
         # hold one of the global slots meanwhile.
         async with host_sem, sem:
-            return await _download_one(paper, pdf_dir)
+            return await _download_one(paper, pdf_dir / f"{name}.pdf")
 
     # ``return_exceptions=True``: a download is per-paper best-effort, and the
     # soft failures (404, wrong content-type, oversized body) are already turned
@@ -125,7 +127,12 @@ async def download_pdfs(
     # PDF the other tasks had already written to disk. Each failed slot becomes
     # a skipped result carrying the exception type as its reason instead.
     outcomes = await asyncio.gather(
-        *(_bounded(paper) for paper in collection.papers),
+        *(
+            _bounded(paper, name)
+            for paper, name in zip(
+                collection.papers, _file_names(collection.papers), strict=True
+            )
+        ),
         return_exceptions=True,
     )
     results: list[PdfDownloadResult] = []
@@ -146,6 +153,26 @@ async def download_pdfs(
     return results
 
 
+def _file_names(papers: Sequence[Paper]) -> list[str]:
+    """One file name (without ``.pdf``) per paper, no two alike.
+
+    The failure this prevents: ``wang2023deep`` is the BibTeX key of many
+    papers. Under one name the second paper was reported as already on disk
+    with the first one's PDF. The name is told apart by the paper's
+    identity, not by its position, so the next run finds the same file.
+    """
+    names: list[str] = []
+    taken: set[str] = set()
+    for paper in papers:
+        name = safe_filename(_safe_key(paper))[:_MAX_FILENAME_LENGTH]
+        if name.casefold() in taken:
+            digest = hashlib.sha256(paper.dedup_key().encode("utf-8")).hexdigest()[:8]
+            name = f"{name[: _MAX_FILENAME_LENGTH - 9]}-{digest}"
+        taken.add(name.casefold())
+        names.append(name)
+    return names
+
+
 def _safe_key(paper: Paper) -> str:
     """``bibtex_key()`` that can't itself fail the error-reporting path.
 
@@ -159,12 +186,11 @@ def _safe_key(paper: Paper) -> str:
         return paper.source_id or "unknown"
 
 
-async def _download_one(paper: Paper, pdf_dir: Path) -> PdfDownloadResult:
+async def _download_one(paper: Paper, target: Path) -> PdfDownloadResult:
     key = paper.bibtex_key()
     if not paper.pdf_url:
         _LOG.info("skip pdf for %s: no pdf_url", key)
         return PdfDownloadResult(paper_key=key, path=None, skipped_reason="no_pdf_url")
-    target = pdf_dir / f"{safe_filename(key)[:_MAX_FILENAME_LENGTH]}.pdf"
     if target.exists() and target.stat().st_size > 0:
         _LOG.info("pdf already on disk for %s: %s", key, target)
         return PdfDownloadResult(

@@ -110,23 +110,59 @@ FORM_WRAP_WIDTH: Final[int] = 460
 
 
 class _FormWrapFilter(QObject):
-    """Switches one form's row-wrap policy as its container or its text resizes."""
+    """Switches one form's row-wrap policy as its container or its text resizes.
+
+    Only the width in view counts. Inside a scroll area a container is
+    stretched to its own minimum width, and that minimum depends on the
+    policy: with the labels beside the fields it is wider. Judging by the
+    stretched width made the answer depend on itself. With a threshold
+    between the two minimums (1104 px between 1052 and 1466 at 24 pt) the
+    page changed back and forth within one call until the stack overflowed,
+    and a form widened once kept its labels beside the fields in a pane too
+    narrow to show both.
+    """
 
     def __init__(self, container: QWidget, form: QFormLayout, threshold: int) -> None:
         super().__init__(container)
+        self._container = container
         self._form = form
         self._threshold = threshold
+        self._viewports: list[QWidget] = []
 
     def eventFilter(self, watched: QObject, event: QEvent) -> bool:  # noqa: N802 - Qt override
-        relevant = event.type() in (QEvent.Type.Resize, QEvent.Type.FontChange)
-        if relevant and isinstance(watched, QWidget):
-            self.apply(watched.width())
+        if event.type() in (QEvent.Type.Resize, QEvent.Type.FontChange):
+            self.apply()
         return False
 
-    def apply(self, width: int) -> None:
+    def visible_width(self) -> int:
+        """The container's width, at most that of every scroll area around it."""
+        self._watch_viewports()
+        return min([self._container.width(), *(view.width() for view in self._viewports)])
+
+    def _watch_viewports(self) -> None:
+        """Find the scroll areas around the container, which joins them after it is built.
+
+        Their viewports are watched too: a pane that narrows leaves a
+        stretched container as wide as it was, so the container says nothing.
+        """
+        viewports = []
+        ancestor = self._container.parentWidget()
+        while ancestor is not None:
+            if isinstance(ancestor, QScrollArea):
+                viewports.append(ancestor.viewport())
+            ancestor = ancestor.parentWidget()
+        for view in viewports:
+            if view not in self._viewports:
+                view.installEventFilter(self)
+        for view in self._viewports:
+            if view not in viewports:
+                view.removeEventFilter(self)
+        self._viewports = viewports
+
+    def apply(self) -> None:
         policy = (
             QFormLayout.RowWrapPolicy.WrapAllRows
-            if width < self._threshold * layout_scale()
+            if self.visible_width() < self._threshold * layout_scale()
             else QFormLayout.RowWrapPolicy.DontWrapRows
         )
         if self._form.rowWrapPolicy() != policy:
@@ -141,13 +177,15 @@ def adapt_form_rows(
     It watches the container's own width rather than the window's, because
     the same form is narrow in the side pane of an expanded window and wide
     when stacked on a medium one. Labels in languages with long words
-    (German, Russian) otherwise squeeze the fields to a few characters.
+    (German, Russian) otherwise squeeze the fields to a few characters. In a
+    scroll area the part of that width in view counts, see
+    :class:`_FormWrapFilter`.
     """
     form.setFieldGrowthPolicy(QFormLayout.FieldGrowthPolicy.AllNonFixedFieldsGrow)
     form.setLabelAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter)
     watcher = _FormWrapFilter(container, form, threshold)
     container.installEventFilter(watcher)
-    watcher.apply(container.width())
+    watcher.apply()
 
 
 # --- reflowing grid ---------------------------------------------------

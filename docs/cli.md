@@ -498,7 +498,9 @@ changes a tag, a note or a decision.
   and fills its gaps from the others.
 - `screen … --stage full_text exclude` needs a `--reason`, which PRISMA
   asks to be reported. `undo` takes a decision back.
-- `prisma` counts what was recorded and estimates nothing.
+- `prisma` counts what was recorded and estimates nothing. Records a
+  search returned and did not keep (a filter, `--max`) are listed apart
+  from duplicates. `--svg` takes a path that ends with `.svg`.
 - `delete` and `merge` cannot be undone. `delete` asks unless `--yes`.
 
 ## Source statistics

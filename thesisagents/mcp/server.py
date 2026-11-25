@@ -148,7 +148,10 @@ _SEARCH_SNOWBALL_MAX_TOTAL = 50
 
 
 def _as_tool_error(func: Callable[..., Any]) -> Callable[..., Any]:
-    """Re-raise :class:`ThesisAgentsError` from a tool as the SDK's ``ToolError``, message intact.
+    """Re-raise a tool's own errors as the SDK's ``ToolError``, message intact.
+
+    Those are :class:`ThesisAgentsError` and ``ValueError``, which the core uses for a bad
+    argument ("max_results must be in [1, 200]").
 
     The SDK reports a ``ToolError`` to the client as the tool's error text. The 1.x SDK also
     wraps any other exception that way, but 2.x treats other exceptions as a crash and the
@@ -161,7 +164,7 @@ def _as_tool_error(func: Callable[..., Any]) -> Callable[..., Any]:
         async def async_wrapper(*args: Any, **kwargs: Any) -> Any:
             try:
                 return await func(*args, **kwargs)
-            except ThesisAgentsError as error:
+            except (ThesisAgentsError, ValueError) as error:
                 raise ToolError(str(error)) from error
 
         return async_wrapper
@@ -170,7 +173,7 @@ def _as_tool_error(func: Callable[..., Any]) -> Callable[..., Any]:
     def sync_wrapper(*args: Any, **kwargs: Any) -> Any:
         try:
             return func(*args, **kwargs)
-        except ThesisAgentsError as error:
+        except (ThesisAgentsError, ValueError) as error:
             raise ToolError(str(error)) from error
 
     return sync_wrapper
@@ -622,7 +625,8 @@ def _register_export_tool(server: FastMCP) -> None:
         paper_objs = tuple(Paper.from_dict(p) for p in papers)
         query = Query(
             keywords=normalize_query(keywords),
-            sources=("arxiv",),
+            # Shown on the cover of a deck and in the workbook.
+            sources=tuple(sorted({p.source for p in paper_objs if p.source})) or ("arxiv",),
             max_results=Query.clamp_max_results(len(paper_objs)),
         )
         collection = PaperCollection(query=query, papers=paper_objs)

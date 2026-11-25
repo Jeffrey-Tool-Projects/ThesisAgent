@@ -9,6 +9,7 @@ flow. Papers are named by the ``paper_id`` that ``library_search`` returns.
 from __future__ import annotations
 
 from collections.abc import Callable
+from pathlib import Path
 from typing import Any
 
 from thesisagents.core.bib_import import read_bibliography
@@ -57,14 +58,15 @@ def _register_update(tool: Callable[[Callable[..., Any]], Any]) -> None:
             raise ThesisAgentsError("a note applies to exactly one paper")
         try:
             with Library(library, create=False) as store:
-                store.add_tags(paper_ids, add_tags or ())
-                store.remove_tags(paper_ids, remove_tags or ())
-                if status is not None:
-                    store.set_reading_status(paper_ids, status)
-                if note is not None:
-                    store.set_note(paper_ids[0], note)
-                if decision is not None:
-                    store.screen(paper_ids, decision, reason=reason, stage=stage)
+                with store.together():
+                    store.add_tags(paper_ids, add_tags or ())
+                    store.remove_tags(paper_ids, remove_tags or ())
+                    if status is not None:
+                        store.set_reading_status(paper_ids, status)
+                    if note is not None:
+                        store.set_note(paper_ids[0], note)
+                    if decision is not None:
+                        store.screen(paper_ids, decision, reason=reason, stage=stage)
                 wanted = set(paper_ids)
                 return {
                     "papers": [
@@ -104,11 +106,7 @@ def _register_editing(tool: Callable[[Callable[..., Any]], Any]) -> None:
         with Library(library) as store:
             report = store.add_papers(result.papers, keywords=file, kind="import")
             if tags:
-                names = {paper.dedup_key() for paper in result.papers}
-                ids = [
-                    e.paper_id for e in store.entries() if names & set(e.paper.identity_keys())
-                ]
-                store.add_tags(ids, tags)
+                store.add_tags(store.ids_of(result.papers), tags)
             return {**report.to_dict(), "skipped": list(result.skipped)}
 
 
@@ -204,20 +202,32 @@ def _register_review(tool: Callable[[Callable[..., Any]], Any]) -> None:
         """The PRISMA 2020 flow of a library: found, screened, included.
 
         Counts what was recorded, nothing is estimated. ``svg_path`` also
-        draws the diagram into that file.
+        draws the diagram into that file, which must end with ``.svg``.
         """
         with Library(library, create=False) as store:
             flow = prisma_flow(store)
         result = flow.to_dict()
         if svg_path:
-            from pathlib import Path
-
-            try:
-                Path(svg_path).write_text(prisma_svg(flow), encoding="utf-8")
-            except OSError as err:
-                raise ThesisAgentsError(f"cannot write {svg_path}: {err}") from err
+            _write_svg(svg_path, prisma_svg(flow))
             result["svg"] = svg_path
         return result
+
+
+def _write_svg(path: str, drawing: str) -> None:
+    """Write ``drawing``, into a path that ends with ``.svg`` only.
+
+    The boundary this guards: the file is overwritten without asking, and a
+    mixed-up argument must not be the library itself.
+
+    Example: ``_write_svg("thesis.db", drawing)`` raises.
+    """
+    target = Path(path)
+    if target.suffix.lower() != ".svg":
+        raise ThesisAgentsError(f"cannot write {path}: it does not end with .svg")
+    try:
+        target.write_text(drawing, encoding="utf-8")
+    except OSError as err:
+        raise ThesisAgentsError(f"cannot write {path}: {err}") from err
 
 
 def _record(entry: dict[str, Any]) -> dict[str, Any]:

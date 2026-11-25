@@ -20,7 +20,11 @@ _NS = {
     "arxiv": "http://arxiv.org/schemas/atom",
 }
 _SOURCE = "arxiv"
-_ARXIV_ID_RE = re.compile(r"arxiv\.org/abs/([^/?#]+)")
+#: Up to the query: an old identifier holds a slash (``cs/0112017v1``), and
+#: without the part behind it every old paper had the identifier "cs".
+_ARXIV_ID_RE = re.compile(r"arxiv\.org/abs/([^?#\s]+)")
+#: The API answers a bad identifier with an entry that describes the error.
+_ERROR_ENTRY = "arxiv.org/api/errors"
 _VERSION_SUFFIX_RE = re.compile(r"v\d+$")
 
 
@@ -31,7 +35,11 @@ def parse_atom_feed(xml_text: str) -> list[Paper]:
     except ET.ParseError as err:
         raise ParseError(_SOURCE, f"invalid Atom XML: {err}") from err
     entries = root.findall("atom:entry", _NS)
-    return [_parse_entry(entry) for entry in entries]
+    return [
+        _parse_entry(entry)
+        for entry in entries
+        if _ERROR_ENTRY not in _text(entry.find("atom:id", _NS))
+    ]
 
 
 def _parse_entry(entry: Any) -> Paper:

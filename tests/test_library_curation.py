@@ -9,7 +9,7 @@ import pytest
 from thesisagents import cli
 from thesisagents.core.diagnostics import SearchDiagnostics, SourceStat
 from thesisagents.core.exceptions import LibraryError
-from thesisagents.core.models import Paper, PaperCollection, Query
+from thesisagents.core.models import Paper, PaperCollection, PaperSummary, Query
 from thesisagents.library import (
     Library,
     prisma_flow,
@@ -241,9 +241,10 @@ def test_a_saved_search_needs_a_name(library, name):
 # --- PRISMA -----------------------------------------------------------------------------
 
 
-def _stat(source: str, returned: int) -> SourceStat:
+def _stat(source: str, returned: int, after_dedup: int | None = None) -> SourceStat:
     return SourceStat(
-        source=source, requested=25, returned=returned, after_dedup=returned,
+        source=source, requested=25, returned=returned,
+        after_dedup=returned if after_dedup is None else after_dedup,
     )
 
 
@@ -254,7 +255,9 @@ def test_prisma_counts_what_was_recorded(tmp_path):
         )
         library.add_collection(PaperCollection(
             query=Query("x", ("arxiv", "dblp")), papers=papers,
-            diagnostics=SearchDiagnostics(source_stats=(_stat("arxiv", 8), _stat("dblp", 6))),
+            diagnostics=SearchDiagnostics(
+                source_stats=(_stat("arxiv", 8), _stat("dblp", 6, 2)),
+            ),
         ))
         ids = [e.paper_id for e in library.entries()]
         library.screen(ids[:6], "include")
@@ -266,7 +269,7 @@ def test_prisma_counts_what_was_recorded(tmp_path):
         library.screen([ids[9]], "include", stage="full_text")
         flow = prisma_flow(library)
     assert flow.identified == {"arxiv": 8, "dblp": 6}
-    assert (flow.duplicates_removed, flow.unique) == (4, 10)
+    assert (flow.duplicates_removed, flow.removed_other, flow.unique) == (4, 0, 10)
     assert (flow.excluded_abstract, flow.awaiting) == (2, 2)
     assert (flow.full_text, flow.excluded_full_text, flow.included) == (6, 1, 3)
     assert flow.full_text_awaiting == 2
@@ -409,3 +412,190 @@ def test_cli_names_a_missing_library(tmp_path, capsys):
     assert cli.main(["library", str(tmp_path / "none.db"), "list"]) == 2
     assert "no library" in capsys.readouterr().err
     assert not (tmp_path / "none.db").exists()
+
+
+# --- what used to lose or mislabel records ------------------------------------------------
+
+
+def _run_of(papers, *stats) -> PaperCollection:
+    return PaperCollection(
+        query=Query("x", ("arxiv",)), papers=tuple(papers),
+        diagnostics=SearchDiagnostics(source_stats=stats),
+    )
+
+
+def _studies(count: int) -> list[Paper]:
+    return [
+        _paper(str(i), f"Study number {i} about topic {i * 7}", doi=f"10.1000/{i}")
+        for i in range(count)
+    ]
+
+
+def test_prisma_does_not_call_a_cut_off_record_a_duplicate(tmp_path):
+    with Library(tmp_path / "p.db") as library:
+        # 40 records, 30 distinct papers, of which the result limit kept 25.
+        library.add_collection(_run_of(_studies(25), _stat("arxiv", 25, 25), _stat("dblp", 15, 5)))
+        flow = prisma_flow(library)
+        assert (flow.duplicates_removed, flow.removed_other, flow.unique) == (10, 5, 25)
+        assert flow.to_dict()["removed_other"] == 5
+        assert "Records removed for other reasons (n = 5)" in prisma_svg(flow)
+        # The same search again finds nothing new: those 25 are duplicates.
+        library.add_collection(_run_of(_studies(25), _stat("arxiv", 25, 25), _stat("dblp", 15, 5)))
+        flow = prisma_flow(library)
+        assert (flow.duplicates_removed, flow.removed_other, flow.unique) == (45, 10, 25)
+        library.delete([library.entries()[0].paper_id])
+        flow = prisma_flow(library)
+        assert (flow.duplicates_removed, flow.unique) == (44, 24)
+    total = sum(flow.identified.values())
+    assert total == flow.duplicates_removed + flow.removed_other + flow.unique
+
+
+def test_prisma_counts_papers_found_along_citation_links(tmp_path):
+    with Library(tmp_path / "p.db") as library:
+        library.add_collection(_run_of(_studies(12), _stat("arxiv", 10, 9)))
+        flow = prisma_flow(library)
+    assert flow.identified == {"arxiv": 10, "snowball": 3}
+    assert (flow.duplicates_removed, flow.removed_other, flow.unique) == (1, 0, 12)
+
+
+def test_prisma_counts_a_merge_by_hand_as_a_duplicate(tmp_path):
+    with Library(tmp_path / "p.db") as library:
+        library.add_collection(_run_of(_studies(5), _stat("arxiv", 3, 3), _stat("dblp", 2, 2)))
+        first, second, *_rest = [e.paper_id for e in library.entries()]
+        library.merge(first, [second])
+        flow = prisma_flow(library)
+    assert (flow.duplicates_removed, flow.removed_other, flow.unique) == (1, 0, 4)
+
+
+def test_prisma_leaves_the_box_out_when_nothing_was_cut(library):
+    assert "other reasons" not in prisma_svg(prisma_flow(library))
+
+
+def test_chinese_papers_are_recognised_when_imported_again(library):
+    papers = [
+        _paper("c1", "深度學習於影像辨識之研究", authors=("王小明",), year=2020),
+        _paper("c2", "自然語言處理綜述", authors=("王小明",), year=2020),
+    ]
+    assert library.add_papers(papers).added == 2
+    again = library.add_papers(papers)
+    assert (again.added, again.merged) == (0, 2)
+
+
+def test_chinese_titles_are_compared_too(library):
+    library.add_papers([
+        _paper("c1", "深度學習於醫學影像辨識之應用研究", authors=("王小明",)),
+        _paper("c2", "深度學習於醫學影像辨識的應用研究", authors=("王小明",)),
+        _paper("c3", "圖書館服務品質之調查", authors=("李四",)),
+    ])
+    ids = _ids(library)
+    assert (ids["c1"], ids["c2"]) in library.duplicate_candidates()
+    assert all(ids["c3"] not in group for group in library.duplicate_candidates())
+
+
+def test_imported_papers_are_found_under_their_stored_record(library, run, tmp_path):
+    ids = _ids(library)
+    # The journal version, merged into the preprint, keeps the preprint's DOI.
+    journal = _paper("j", "Quite another title", doi="10.5555/journal")
+    library.add_papers([journal])
+    library.merge(ids["1"], [_ids(library)["j"]])
+    assert library.ids_of([journal, journal]) == [ids["1"]]
+    file = tmp_path / "z.bib"
+    file.write_text(
+        "@article{j, title={Quite another title}, doi={10.5555/journal}}", encoding="utf-8"
+    )
+    assert run("import", str(file), "--tag", "thesis")[0] == 0
+    assert _entry(library, ids["1"]).tags == ("thesis",)
+
+
+def test_joining_two_stored_papers_keeps_the_richer_summary(tmp_path):
+    rich = PaperSummary(language="en", core_observation="It works.")
+    flat = PaperSummary(language="en", motivation=("why",))
+    with Library(tmp_path / "s.db") as library:
+        library.add_papers([
+            _paper("a", "One name of it", doi="10.1000/a", summary=flat, citation_count=1),
+            _paper("b", "Another name", arxiv_id="2401.00001", summary=rich, citation_count=9),
+        ])
+        # Carries the DOI of one and the arXiv id of the other.
+        library.add_papers([
+            _paper("c", "One name of it", doi="10.1000/a", arxiv_id="2401.00001")
+        ])
+        entry = library.entries()[0]
+        assert len(library) == 1
+    assert entry.paper.summary == rich
+    assert entry.paper.citation_count == 9
+
+
+def test_saved_searches_that_differ_in_an_accented_letter(library):
+    library.save_search("École", _QUERY)
+    library.save_search("école", Query("other", ("dblp",)))
+    assert library.saved_search("école").query.keywords == "other"
+    assert library.saved_search("École").query == _QUERY
+    library.delete_saved_search("école")
+    assert library.saved_search("ÉCOLE").name == "École"
+
+
+def test_two_processes_can_upgrade_a_library_at_once(tmp_path, monkeypatch):
+    path = tmp_path / "old.db"
+    with monkeypatch.context() as patch:
+        patch.setattr(schema, "SCHEMA_VERSION", 1)
+        first = sqlite3.connect(path, isolation_level=None)
+        schema.prepare(first, str(path))
+    original, upgraded = schema.transaction, []
+
+    def after_another_process(conn):
+        if not upgraded:
+            upgraded.append(True)
+            second = sqlite3.connect(path, isolation_level=None)
+            schema.prepare(second, str(path))
+            second.close()
+        return original(conn)
+
+    monkeypatch.setattr(schema, "transaction", after_another_process)
+    assert schema.prepare(first, str(path)) == schema.SCHEMA_VERSION
+    first.close()
+    with Library(path) as library:
+        assert library.tags() == {}
+
+
+def test_the_diagram_is_only_drawn_into_an_svg(library, run, tmp_path):
+    target = tmp_path / "thesis.db"
+    target.write_text("precious", encoding="utf-8")
+    code, _out, err = run("prisma", "--svg", str(target))
+    assert code == 2
+    assert ".svg" in err
+    assert target.read_text(encoding="utf-8") == "precious"
+
+
+def test_papers_get_the_identity_keys_of_today(tmp_path):
+    # A Chinese title was stored under a key of its ASCII letters, so the same
+    # file imported again was a second paper.
+    path = tmp_path / "old.db"
+    paper = _paper("7", "基於深度學習之程式碼審查", url="https://example.org/7")
+    with Library(path) as library:
+        library.add_papers([paper])
+    conn = sqlite3.connect(path, isolation_level=None)
+    conn.execute("DELETE FROM identity_keys")
+    conn.execute("INSERT INTO identity_keys (key, paper_id) VALUES ('hash:old', 1)")
+    conn.execute(
+        "INSERT INTO papers (record, title, year, first_seen, last_seen) "
+        "VALUES ('{}', 'unreadable', 2000, 'a', 'a')"
+    )
+    conn.execute("PRAGMA user_version = 2")
+    conn.close()
+    with Library(path, create=False) as library:
+        assert library.schema_version == schema.SCHEMA_VERSION
+        assert library.add_papers([paper]).merged == 1
+        keys = {row[0] for row in library._conn.execute("SELECT key FROM identity_keys")}
+        assert {"hash:old", paper.dedup_key()} <= keys
+
+
+def test_several_edits_are_made_together_or_not_at_all(library):
+    paper_id = library.entries()[0].paper_id
+    with pytest.raises(ValueError, match="reading status"), library.together():
+        library.add_tags([paper_id], ["chapter 2"])
+        library.set_reading_status([paper_id], "raed")
+    assert library.tags() == {}
+    with library.together():
+        library.add_tags([paper_id], ["chapter 2"])
+        library.set_reading_status([paper_id], "read")
+    assert dict(library.tags()) == {"chapter 2": 1}

@@ -48,6 +48,7 @@ import asyncio
 import dataclasses
 import os
 from typing import Any
+from urllib.parse import quote
 
 import httpx
 
@@ -209,7 +210,7 @@ async def _query_unpaywall(doi: str) -> str | None:
     try:
         response = await asyncio.wait_for(
             client.get(
-                f"{_UNPAYWALL_ENDPOINT}/{doi}",
+                f"{_UNPAYWALL_ENDPOINT}/{quote(doi, safe='/')}",
                 params={"email": email},
             ),
             timeout=_LOOKUP_TIMEOUT_SECONDS,
@@ -255,7 +256,7 @@ async def _query_semantic_scholar(doi: str) -> str | None:
     try:
         response = await asyncio.wait_for(
             client.get(
-                f"{_S2_ENDPOINT}/DOI:{doi}",
+                f"{_S2_ENDPOINT}/DOI:{quote(doi, safe='/')}",
                 params={"fields": "openAccessPdf"},
                 headers=headers or None,
             ),
@@ -364,7 +365,7 @@ async def _query_arxiv_title(paper: Paper) -> str | None:
     # only at the title field. Pull the top 3 in case the first is a
     # later version of a different paper with similar words.
     query = Query(
-        keywords=f'ti:"{paper.title}"',
+        keywords=f'ti:"{paper.title.replace(chr(34), " ").strip()}"',
         sources=("arxiv",),
         max_results=3,
     )

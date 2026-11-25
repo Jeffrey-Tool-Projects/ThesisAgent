@@ -490,7 +490,9 @@ its `source`, `source_id`, `url` and `title`. One field departs from
 "first value wins": a later, higher `citation_count` replaces the
 stored one.
 
-**Tables** (schema version 1, in `thesisagents/library/schema.py`):
+**Tables** (schema version 1, in `thesisagents/library/schema.py`,
+version 2 adds tags, notes, screening and saved searches, version 3
+stores the identity keys anew):
 
 | Table | Holds |
 |---|---|

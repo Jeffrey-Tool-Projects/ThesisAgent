@@ -60,7 +60,7 @@ class LibraryError(ThesisAgentsError):
     to do, because the only fixes are the user's: point ``--library`` at
     another file, or upgrade.
 
-    Example: opening a library with schema version 3 from a build that knows
+    Example: opening a library with schema version 9 from a build that knows
     version 1 raises this instead of reading tables it would misinterpret.
     """
 
