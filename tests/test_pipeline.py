@@ -360,7 +360,7 @@ async def test_enrich_collection_caps_concurrency(monkeypatch):
     # analysers that don't trace the monkeypatched async call path.
     counters = {"active": 0, "peak": 0}
 
-    async def fake_enrich_one(paper, *, language, model):
+    async def fake_enrich_one(paper, *, language, model, **_choice):
         counters["active"] += 1
         counters["peak"] = max(counters["peak"], counters["active"])
         await asyncio.sleep(0.01)
@@ -457,7 +457,7 @@ async def test_diagnostics_survive_oa_resolution_and_enrichment(monkeypatch):
     pool = {"arxiv": _make_fetcher("arxiv", [paper])}
     monkeypatch.setattr(pipeline_module, "load_fetcher", lambda name: pool[name])
 
-    async def fake_enrich_one(paper, *, language, model):
+    async def fake_enrich_one(paper, *, language, model, **_choice):
         return dataclasses.replace(paper, pdf_url="https://example.com/p.pdf")
 
     monkeypatch.setattr(pipeline_module, "_enrich_one", fake_enrich_one)

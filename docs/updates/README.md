@@ -58,6 +58,7 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 
 | ID | Date | Title | Tags | Batch |
 |---|---|---|---|---|
+| U-20261126-08 | 2026-11-26 | Summaries from many model providers, local ones included | #done #intelligence #gui #cli #i18n | [2026-11](2026-11.md) |
 | U-20261126-07 | 2026-11-26 | The Library page edits: notes, screening, imports, saved searches, citation graph, PRISMA | #done #gui #library #i18n | [2026-11](2026-11.md) |
 | U-20261126-06 | 2026-11-26 | The library can be edited: tags, notes, screening, merging, imports, saved searches, PRISMA | #done #library #cli #mcp | [2026-11](2026-11.md) |
 | U-20261126-05 | 2026-11-26 | Update notice, Windows installer, a real version number | #done #gui #release #i18n | [2026-11](2026-11.md) |

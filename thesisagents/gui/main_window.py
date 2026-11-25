@@ -284,6 +284,8 @@ class MainWindow(QMainWindow):
         self._settings_page.font_size_changed.connect(self._on_font_size_changed)
         self._settings_page.language_changed.connect(self._on_language_changed)
         self._settings_page.access_changed.connect(self._search_page.apply_access)
+        # Emitted by every save, whatever was changed.
+        self._settings_page.access_changed.connect(lambda _on: self._enrich_page.refresh_model())
 
     # --- responsive -----------------------------------------------------
 

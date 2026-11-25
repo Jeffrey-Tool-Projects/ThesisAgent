@@ -25,7 +25,6 @@ Behaviour rules:
 
 from __future__ import annotations
 
-import os
 from dataclasses import replace
 from pathlib import Path
 
@@ -56,14 +55,10 @@ from thesisagents.gui.widgets.responsive import (
     make_card,
 )
 from thesisagents.gui.workers import AsyncWorker
+from thesisagents.intelligence import providers
 
-# Anthropic env var name — mirrors intelligence.summarise._API_KEY_ENV
-# but duplicated here so importing this page doesn't pull the optional
-# anthropic SDK at module-load time.
-_API_KEY_ENV = "ANTHROPIC_API_KEY"
 #: QSettings group the form is saved under when the window closes.
 _FORM_GROUP = "form/enrich"
-_DEFAULT_MODEL = "claude-opus-4-7"
 #: i18n key of the status shown when an action needs papers and the page
 #: has none yet (the export, import and enrich buttons all check it).
 _NO_COLLECTION_KEY = "enrich.error_no_collection"
@@ -122,7 +117,7 @@ class EnrichPage(QWidget):
         form.addRow(t("enrich.language_label", language), self._language_combo)
 
         self._model_input = QLineEdit(self)
-        self._model_input.setPlaceholderText(_DEFAULT_MODEL)
+        self._model_input.setPlaceholderText(providers.resolve().describes)
         form.addRow(t("enrich.model_label", language), self._model_input)
         adapt_form_rows(settings_card, form)
         controls_layout.addWidget(settings_card)
@@ -350,9 +345,10 @@ class EnrichPage(QWidget):
                 t(_NO_COLLECTION_KEY, self._ui_language),
             )
             return
-        if not os.environ.get(_API_KEY_ENV):
+        reason = providers.problem(self._model_settings())
+        if reason:
             self._status_label.setText(
-                t("enrich.error_no_key", self._ui_language),
+                t("enrich.error_no_key", self._ui_language, reason=reason),
             )
             return
         self._enriched_papers = []
@@ -374,6 +370,14 @@ class EnrichPage(QWidget):
         )
         self._enrich_next()
 
+    def _model_settings(self) -> providers.LlmSettings:
+        """The model this run would use: the one typed here, else Settings'."""
+        return providers.resolve(model=self._model_input.text().strip() or None)
+
+    def refresh_model(self) -> None:
+        """Show the model now chosen in Settings."""
+        self._model_input.setPlaceholderText(providers.resolve().describes)
+
     def _enrich_next(self) -> None:
         assert self._collection is not None  # noqa: S101 # nosec B101  # state-machine invariant, not runtime validation
         idx = self._pending_index
@@ -394,7 +398,7 @@ class EnrichPage(QWidget):
             self._enrich_next()
             return
         language = self._language_combo.currentData() or "en"
-        model = self._model_input.text().strip() or _DEFAULT_MODEL
+        model = self._model_input.text().strip() or None
 
         async def coro() -> object:
             # Lazy import — the intelligence extra is optional.

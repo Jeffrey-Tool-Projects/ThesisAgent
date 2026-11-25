@@ -268,10 +268,12 @@ def build_parser() -> argparse.ArgumentParser:
         "--enrich",
         action="store_true",
         help=(
-            "Explicitly enable PDF + Claude enrichment. Errors out when "
-            "ANTHROPIC_API_KEY is unset. By default the CLI now auto-enriches "
-            "when the env var is set, so you only need this flag when you "
-            "want to fail-loud instead of fall-back-quietly. Requires "
+            "Explicitly enable summaries written by a language model. Errors "
+            "out when the model cannot be used (no key, no model chosen). By "
+            "default the CLI enriches when ANTHROPIC_API_KEY is set or "
+            "THESISAGENTS_LLM_PROVIDER names a usable provider, so you only "
+            "need this flag when you want to fail-loud instead of "
+            "fall-back-quietly. Requires "
             "`pip install thesisagents[intelligence]`."
         ),
     )
@@ -280,8 +282,8 @@ def build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help=(
             "Force the lightweight (abstract-only) deck even when the "
-            "environment has ANTHROPIC_API_KEY set. Skips Anthropic API "
-            "calls entirely. Use this for fast, free runs."
+            "environment names a language model. Makes no model calls at "
+            "all. Use this for fast, free runs."
         ),
     )
     parser.add_argument(
@@ -302,8 +304,30 @@ def build_parser() -> argparse.ArgumentParser:
         "--llm-model",
         default=None,
         help=(
-            "Override the Anthropic model used when --enrich is on. "
-            "Default: claude-opus-4-7 (or THESISAGENTS_LLM_MODEL)."
+            "The model that writes the summaries. Default: "
+            "THESISAGENTS_LLM_MODEL, or claude-opus-4-7 with Anthropic. The "
+            "other providers need one."
+        ),
+    )
+    parser.add_argument(
+        "--llm-provider",
+        default=None,
+        metavar="NAME",
+        help=(
+            "Who runs the model: anthropic (default), a hosted service "
+            "(openai, gemini, mistral, deepseek, xai, groq, openrouter, "
+            "together, fireworks, dashscope, moonshot), a program on this "
+            "computer (ollama, lmstudio, llamacpp, vllm), or custom with "
+            "--llm-base-url. Default: THESISAGENTS_LLM_PROVIDER."
+        ),
+    )
+    parser.add_argument(
+        "--llm-base-url",
+        default=None,
+        metavar="URL",
+        help=(
+            "Address of an OpenAI-compatible server, up to /v1. Overrides the "
+            "provider's own. Default: THESISAGENTS_LLM_BASE_URL."
         ),
     )
     parser.add_argument(
@@ -848,21 +872,26 @@ def _resolve_enrich_mode(args: argparse.Namespace) -> str:
     """Decide whether to enrich, and why. Returns one of:
 
     * ``"explicit"`` — user passed ``--enrich``; any failure surfaces.
-    * ``"auto"`` — ``ANTHROPIC_API_KEY`` is set and ``--lightweight`` is not;
-      enrichment runs, failures fall back to lightweight.
+    * ``"auto"`` — the chosen model can be used (``ANTHROPIC_API_KEY`` is set,
+      or another provider is named and complete) and ``--lightweight`` is not
+      given. Enrichment runs, failures fall back to lightweight.
     * ``"skip-lightweight"`` — user passed ``--lightweight``; no API call,
       no notice (they asked for it).
     * ``"skip-no-key"`` — no API key, no ``--enrich``; lightweight with a
       one-line hint about how to upgrade.
     """
-    import os as _os
     if args.enrich:
         return "explicit"
     if args.lightweight:
         return "skip-lightweight"
-    if _os.environ.get("ANTHROPIC_API_KEY"):
-        return "auto"
-    return "skip-no-key"
+    from thesisagents.intelligence import providers
+
+    settings = providers.resolve(
+        getattr(args, "llm_provider", None),
+        model=getattr(args, "llm_model", None),
+        base_url=getattr(args, "llm_base_url", None),
+    )
+    return "auto" if providers.problem(settings) is None else "skip-no-key"
 
 
 async def _maybe_enrich(
@@ -880,8 +909,8 @@ async def _maybe_enrich(
     if enrich_mode == "skip-no-key" and not args.quiet:
         print(
             "Lightweight deck — no ANTHROPIC_API_KEY in env.\n"
-            "If you (the human) want auto-enrichment, set the key and "
-            "rerun.\n"
+            "If you (the human) want auto-enrichment, set the key, or choose "
+            "another model with --llm-provider, and rerun.\n"
             "If you (an LLM agent) are running this, the lightweight "
             "deck is intermediate, NOT the deliverable: read each PDF "
             "in exports/<run>/pdfs/, hand-author a rich PaperSummary, "
@@ -892,9 +921,17 @@ async def _maybe_enrich(
         )
     if enrich_mode not in {"explicit", "auto"} or not collection.papers:
         return collection
+    from thesisagents.intelligence import providers
+
+    settings = providers.resolve(
+        args.llm_provider, model=args.llm_model, base_url=args.llm_base_url
+    )
+    reason = providers.problem(settings)
+    if reason:
+        # Only with --enrich: "auto" was chosen because there is no problem.
+        raise ConfigError(reason)
     print(
-        f"Auto-enriching {len(collection)} paper(s) via Anthropic API "
-        f"({args.llm_model or 'default model'}). "
+        f"Auto-enriching {len(collection)} paper(s) with {settings.describes}. "
         f"Pass --lightweight to skip.",
         file=sys.stderr,
     )
@@ -923,7 +960,8 @@ async def _enrich_for_mode(
     if args.pdf:
         return await _enrich_local_pdf_collection(collection, args)
     return await enrich_collection(
-        collection, language=args.lang, model=args.llm_model
+        collection, language=args.lang, model=args.llm_model,
+        provider=args.llm_provider, base_url=args.llm_base_url,
     )
 
 
@@ -954,6 +992,7 @@ async def _enrich_local_pdf_collection(
             summary = await asyncio.to_thread(
                 summarise_paper, paper, extracted,
                 language=args.lang, model=args.llm_model,
+                provider=args.llm_provider, base_url=args.llm_base_url,
             )
         except Exception as err:  # noqa: BLE001  # anthropic client raises various, incl. ThesisAgentsError
             _LOG.warning(

@@ -326,6 +326,13 @@ sidebar and button text.
 A newer release shows as a button in the status bar that opens the download
 page. The app downloads and installs nothing itself.
 
+**AI model** chooses who writes the summaries on the Enrich page: Anthropic,
+another service, or a program on this computer. Every provider keeps its
+own model, address and key, so switching back and forth loses nothing.
+**List models** asks the provider what it offers. The note under the fields
+says whether a paper's text leaves the computer. See
+[`configuration.md`](configuration.md) "Language models".
+
 **Font size** sets the text of the whole app, from 8 to 24 pt (QSettings
 key `ui/font_size`). It is applied as you change it and needs no
 **Save**, since the right size is found by looking at it. **Reset**

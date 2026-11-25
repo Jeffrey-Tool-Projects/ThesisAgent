@@ -49,6 +49,7 @@ from thesisagents.gui.i18n import (
     t,
 )
 from thesisagents.gui.theme import STYLE_CHOICES, STYLE_CLASSIC, THEME_CHOICES, THEME_SYSTEM
+from thesisagents.gui.widgets.model_card import ModelCard, apply_saved_model
 from thesisagents.gui.widgets.responsive import Breakpoint, adapt_form_rows, make_card
 
 # QSettings key (under organization/app) → env var name. The page reads
@@ -142,6 +143,7 @@ def apply_saved_env() -> None:
             os.environ[env_var] = value
         else:
             os.environ.pop(env_var, None)
+    apply_saved_model(store)
     cookies = store.value(_COOKIES_KEY, "", type=str)
     if cookies:
         os.environ[_COOKIES_ENV] = cookies
@@ -303,6 +305,8 @@ class SettingsPage(QWidget):
         ui_form.addRow(self._updates_check)
         adapt_form_rows(ui_card, ui_form)
         left.addWidget(ui_card)
+        self._model_card = ModelCard(language, self)
+        left.addWidget(self._model_card)
 
         browser_card, browser_layout = make_card(t("settings.card_browser", language), self)
         browser_form = QFormLayout()
@@ -432,6 +436,9 @@ class SettingsPage(QWidget):
     def theme_combo(self) -> QComboBox:
         return self._theme_combo
 
+    def model_card(self) -> ModelCard:
+        return self._model_card
+
     def updates_checkbox(self) -> QCheckBox:
         return self._updates_check
 
@@ -486,6 +493,8 @@ class SettingsPage(QWidget):
                 os.environ[env_var] = value
             else:
                 os.environ.pop(env_var, None)
+        # The Anthropic key was just stored above, which the card reads.
+        self._model_card.save(store)
         self._show_storage(in_store)
         cookies = self._cookies_input.text().strip()
         store.setValue(_COOKIES_KEY, cookies)
@@ -530,6 +539,7 @@ class SettingsPage(QWidget):
                 break
         theme_index = self._theme_combo.findData(saved_theme())
         self._theme_combo.setCurrentIndex(max(0, theme_index))
+        self._model_card.load(store)
         self._vpn_check.setChecked(saved_vpn_access())
         self._updates_check.setChecked(saved_update_check())
         style_index = self._style_combo.findData(saved_style())

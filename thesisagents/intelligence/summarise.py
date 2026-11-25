@@ -1,41 +1,42 @@
 """Summarise a paper's full text into a structured ``PaperSummary``.
 
-Talks to Anthropic's Claude API. The system prompt is marked
-``cache_control=ephemeral`` so the model picks it up from the prompt cache
-on the second paper onwards — running 20 papers in one session pays the
-schema prompt ingestion cost once, not 20 times.
-
-Required: ``ANTHROPIC_API_KEY`` in the environment.
-Optional: ``THESISAGENTS_LLM_MODEL`` overrides ``DEFAULT_MODEL``.
+This module holds the prompt and reads the answer. Which model is asked, a
+hosted service or a program on this computer, is decided in
+``providers.py``.
 """
 
 from __future__ import annotations
 
 import json
-import os
 import re
 from dataclasses import dataclass
 
-from thesisagents.core.exceptions import ConfigError, ParseError
+from thesisagents.core.exceptions import ParseError
 from thesisagents.core.models import Paper, PaperSummary
 from thesisagents.exporters.i18n import normalise_language
+from thesisagents.intelligence import providers
 from thesisagents.intelligence.pdf import ExtractedPdf
 from thesisagents.utils.logging import get_logger
 
 _LOG = get_logger(__name__)
 
-DEFAULT_MODEL: str = "claude-opus-4-7"
-_API_KEY_ENV: str = "ANTHROPIC_API_KEY"
-_MODEL_ENV: str = "THESISAGENTS_LLM_MODEL"
-
-_MAX_PDF_CHARS_TO_SEND: int = 80_000
-_MAX_OUTPUT_TOKENS: int = 2_000
+DEFAULT_MODEL: str = providers.DEFAULT_ANTHROPIC_MODEL
 
 _LANGUAGE_LABELS: dict[str, str] = {
     "en": "English",
     "zh-tw": "Traditional Chinese (繁體中文)",
     "zh-cn": "Simplified Chinese (简体中文)",
     "ja": "Japanese (日本語)",
+    "es": "Spanish (Español)",
+    "fr": "French (Français)",
+    "de": "German (Deutsch)",
+    "ko": "Korean (한국어)",
+    "pt": "Portuguese (Português)",
+    "ru": "Russian (Русский)",
+    "it": "Italian (Italiano)",
+    "vi": "Vietnamese (Tiếng Việt)",
+    "hi": "Hindi (हिन्दी)",
+    "id": "Indonesian (Bahasa Indonesia)",
 }
 
 _BUCKET_ALIASES: dict[str, str] = {
@@ -67,50 +68,39 @@ _BUCKET_ALIASES: dict[str, str] = {
 
 @dataclass(frozen=True, slots=True)
 class AnthropicSummariser:
-    """One configured Anthropic client + model. Reusable across papers."""
+    """One configured Anthropic model. Kept for callers that name it directly."""
 
     model: str = DEFAULT_MODEL
     api_key: str | None = None
 
-    def _client(self):
-        try:
-            import anthropic  # imported lazily so the extra is truly optional
-        except ImportError as err:
-            raise ConfigError(
-                "anthropic is not installed; "
-                "run `pip install thesisagents[intelligence]`"
-            ) from err
-        api_key = self.api_key or os.environ.get(_API_KEY_ENV)
-        if not api_key:
-            raise ConfigError(
-                f"{_API_KEY_ENV} is not set — required for --enrich mode"
-            )
-        return anthropic.Anthropic(api_key=api_key)
-
     def summarise(
         self, paper: Paper, pdf_text: str, language: str, raw_text_chars: int
     ) -> PaperSummary:
-        canonical_lang = normalise_language(language)
-        lang_label = _LANGUAGE_LABELS.get(canonical_lang, "English")
-        prompt = _build_user_message(paper, pdf_text, lang_label)
-        client = self._client()
-        response = client.messages.create(
-            model=self.model,
-            max_tokens=_MAX_OUTPUT_TOKENS,
-            system=[
-                {
-                    "type": "text",
-                    "text": _SYSTEM_PROMPT,
-                    "cache_control": {"type": "ephemeral"},
-                }
-            ],
-            messages=[{"role": "user", "content": prompt}],
+        settings = providers.resolve(
+            providers.ANTHROPIC, model=self.model, api_key=self.api_key
         )
-        text = _first_text_block(response)
-        data = _parse_json_blob(text)
-        return _data_to_summary(
-            data, language=canonical_lang, model=self.model, raw_text_chars=raw_text_chars
-        )
+        return summarise_with(settings, paper, pdf_text, language, raw_text_chars)
+
+
+def summarise_with(
+    settings: providers.LlmSettings,
+    paper: Paper,
+    pdf_text: str,
+    language: str,
+    raw_text_chars: int,
+) -> PaperSummary:
+    """Ask the model of ``settings`` for a summary. Blocking."""
+    canonical_lang = normalise_language(language)
+    prompt = _build_user_message(
+        paper,
+        pdf_text,
+        _LANGUAGE_LABELS.get(canonical_lang, "English"),
+        providers.max_paper_chars(settings),
+    )
+    data = _parse_json_blob(providers.complete(settings, _SYSTEM_PROMPT, prompt))
+    return _data_to_summary(
+        data, language=canonical_lang, model=settings.model, raw_text_chars=raw_text_chars
+    )
 
 
 def summarise_paper(
@@ -120,18 +110,12 @@ def summarise_paper(
     language: str = "en",
     model: str | None = None,
     api_key: str | None = None,
+    provider: str | None = None,
+    base_url: str | None = None,
 ) -> PaperSummary:
-    """Convenience wrapper for one-shot summarisation."""
-    summariser = AnthropicSummariser(
-        model=model or os.environ.get(_MODEL_ENV) or DEFAULT_MODEL,
-        api_key=api_key,
-    )
-    return summariser.summarise(
-        paper=paper,
-        pdf_text=pdf.text,
-        language=language,
-        raw_text_chars=pdf.chars,
-    )
+    """Summarise one paper with the chosen provider, the environment's by default."""
+    settings = providers.resolve(provider, model=model, base_url=base_url, api_key=api_key)
+    return summarise_with(settings, paper, pdf.text, language, pdf.chars)
 
 
 # ---------------------------------------------------------------------------
@@ -162,8 +146,10 @@ presentation deck. Output rules:
 """
 
 
-def _build_user_message(paper: Paper, pdf_text: str, lang_label: str) -> str:
-    truncated = pdf_text[:_MAX_PDF_CHARS_TO_SEND]
+def _build_user_message(
+    paper: Paper, pdf_text: str, lang_label: str, max_chars: int
+) -> str:
+    truncated = pdf_text[:max_chars]
     header_bits = [
         f"TITLE: {paper.title}",
         f"AUTHORS: {', '.join(paper.authors) if paper.authors else 'unknown'}",
@@ -175,7 +161,7 @@ def _build_user_message(paper: Paper, pdf_text: str, lang_label: str) -> str:
     header = "\n".join(header_bits)
     return (
         f"{header}\n\n"
-        f"=== FULL PAPER TEXT (truncated to {_MAX_PDF_CHARS_TO_SEND} chars) ===\n"
+        f"=== FULL PAPER TEXT (truncated to {max_chars} chars) ===\n"
         f"{truncated}\n"
         f"=== END PAPER TEXT ===\n\n"
         f"Produce the structured JSON summary as described in the system instructions. "
@@ -188,19 +174,13 @@ def _build_user_message(paper: Paper, pdf_text: str, lang_label: str) -> str:
 # ---------------------------------------------------------------------------
 
 
-def _first_text_block(response) -> str:
-    for block in response.content:
-        text = getattr(block, "text", None)
-        if isinstance(text, str) and text:
-            return text
-    raise ParseError("intelligence", "Anthropic response had no text block")
-
-
 _JSON_BLOCK_RE = re.compile(r"\{.*\}", re.S)
 
 
 def _parse_json_blob(text: str) -> dict:
     """Tolerate (1) clean JSON, (2) JSON inside markdown fences, (3) leading prose."""
+    # Local reasoning models write their thoughts first, braces included.
+    text = re.sub(r"<think>.*?</think>", "", text, flags=re.S)
     candidate = text.strip()
     if candidate.startswith("```"):
         # strip first fence line and any trailing fence
@@ -209,16 +189,18 @@ def _parse_json_blob(text: str) -> dict:
         if candidate.endswith("```"):
             candidate = candidate[:-3].rstrip()
     try:
-        return json.loads(candidate)
+        data = json.loads(candidate)
     except json.JSONDecodeError:
-        pass
-    match = _JSON_BLOCK_RE.search(text)
-    if match:
+        match = _JSON_BLOCK_RE.search(text)
+        if not match:
+            raise ParseError("intelligence", "LLM response contained no JSON object") from None
         try:
-            return json.loads(match.group(0))
+            data = json.loads(match.group(0))
         except json.JSONDecodeError as err:
             raise ParseError("intelligence", f"LLM response is not JSON: {err}") from err
-    raise ParseError("intelligence", "LLM response contained no JSON object")
+    if not isinstance(data, dict):
+        raise ParseError("intelligence", "LLM response is JSON but not an object")
+    return data
 
 
 def _data_to_summary(

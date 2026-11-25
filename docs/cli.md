@@ -23,7 +23,7 @@ thesisagents (--query KEYWORDS | --paper IDENTIFIER | --pdf PATH |
                 [--no-abstract]
                 [--lang LANG]
                 [--enrich] [--lightweight]
-                [--llm-model MODEL]
+                [--llm-model MODEL] [--llm-provider NAME] [--llm-base-url URL]
                 [--top-tier-only]
                 [--paywall-threshold FLOAT] [--yes]
                 [--max-slides N] [--dark-mode]
@@ -56,7 +56,9 @@ thesisagents (--query KEYWORDS | --paper IDENTIFIER | --pdf PATH |
 | `--lang` / `-l` | `en` | Slide-deck template language. Supported: `en`, `zh-tw`, `zh-cn`, `ja`, `es`, `fr`, `de`, `ko`, `pt`, `ru`, `it`, `vi`, `hi`, `id` (14 in total). When combined with `--enrich`, also instructs the LLM to write its bullets in this language. |
 | `--enrich` | auto-on when `ANTHROPIC_API_KEY` is set | Fetch each paper's PDF and have the Anthropic API write a structured summary; the deck switches to thesis-style layout. Requires `ANTHROPIC_API_KEY` and the `[intelligence]` extra. **Not needed when running over MCP** — an LLM agent can call `fetch_pdf_text` + `export` directly with a hand-crafted summary. |
 | `--lightweight` | off | Force the abstract-only deck even when `ANTHROPIC_API_KEY` is set. Useful for unattended runs where you do not want to spend tokens. **When an LLM agent is in the editor session**, prefer the LLM-as-agent flow under `scripts/llm_*.py` (the LLM authors a rich `PaperSummary` per paper) over `--lightweight`. |
-| `--llm-model` | `claude-opus-4-7` | Override the default model used when `--enrich` is on. Also reads `THESISAGENTS_LLM_MODEL`. |
+| `--llm-provider NAME` | `anthropic` | Who runs the model that writes the summaries, see `docs/configuration.md` "Language models". Also reads `THESISAGENTS_LLM_PROVIDER`. |
+| `--llm-model` | `claude-opus-4-7` with Anthropic, none otherwise | The model. Also reads `THESISAGENTS_LLM_MODEL`. |
+| `--llm-base-url URL` | the provider's own | Address of an OpenAI-compatible server, up to `/v1`. Also reads `THESISAGENTS_LLM_BASE_URL`. |
 | `--top-tier-only` | off | Restrict results to the curated top-tier CS venue whitelist (S&P / CCS / NDSS / USENIX Security / NeurIPS / ICML / ICSE / SIGMOD / SIGCOMM / CHI / etc.) + arXiv pass-through. **Off by default** so IEEE / ACM workshop papers (which dominate "LLM × security" / "LLM × X" topics) survive. |
 | `--no-oa-resolve` | off | Skip the open-access PDF resolver step that runs after dedup. By default the pipeline looks up every paper without `pdf_url` in Unpaywall (needs `THESISAGENTS_CONTACT_EMAIL`) and falls back to an arXiv title search — typical lift of 40-70% for IEEE / ACM / Springer / Elsevier paywalled papers. Use this flag if you want raw source output without OA enrichment, or to skip the extra HTTP round-trips on a tight latency budget. |
 | `--paywall-threshold` | `0.30` | Fraction of paywalled results above which the search-mode pipeline asks the user before generating per-paper PPTs. |

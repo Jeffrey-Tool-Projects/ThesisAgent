@@ -699,7 +699,7 @@ def _stub_enrich_collection(monkeypatch) -> list[str]:
     """Replace enrich_collection with a no-op that records its calls."""
     calls: list[str] = []
 
-    async def fake_enrich(collection, language=None, model=None):  # noqa: ARG001
+    async def fake_enrich(collection, **_choice):
         calls.append("called")
         return collection
 

@@ -361,6 +361,8 @@ async def enrich_collection(
     *,
     language: str = "en",
     model: str | None = None,
+    provider: str | None = None,
+    base_url: str | None = None,
     concurrency: int = _ENRICH_CONCURRENCY,
 ) -> PaperCollection:
     """Download each paper's PDF, summarise it with an LLM, attach the result.
@@ -380,7 +382,9 @@ async def enrich_collection(
 
     async def _bounded(paper: Paper) -> Paper:
         async with sem:
-            return await _enrich_one(paper, language=language, model=model)
+            return await _enrich_one(
+                paper, language=language, model=model, provider=provider, base_url=base_url
+            )
 
     enriched_papers = await asyncio.gather(
         *(_bounded(paper) for paper in collection.papers)
@@ -393,7 +397,12 @@ async def enrich_collection(
 
 
 async def _enrich_one(
-    paper: Paper, *, language: str, model: str | None
+    paper: Paper,
+    *,
+    language: str,
+    model: str | None,
+    provider: str | None = None,
+    base_url: str | None = None,
 ) -> Paper:
     if not paper.pdf_url:
         _LOG.info(
@@ -415,7 +424,8 @@ async def _enrich_one(
         return paper
     try:
         summary = await asyncio.to_thread(
-            summarise_paper, paper, pdf, language=language, model=model
+            summarise_paper, paper, pdf, language=language, model=model,
+            provider=provider, base_url=base_url,
         )
     except Exception as err:  # noqa: BLE001  # anthropic client raises various, incl. ThesisAgentsError
         _LOG.warning("summarisation failed for %s: %s", paper.bibtex_key(), err)

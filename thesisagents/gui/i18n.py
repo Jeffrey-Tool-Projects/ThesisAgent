@@ -1653,20 +1653,20 @@ _LABELS: Final[dict[str, dict[str, str]]] = {
         "id": "Tidak ada koleksi untuk diperkaya.",
     },
     "enrich.error_no_key": {
-        "en": "ANTHROPIC_API_KEY is not set — open Settings to add it.",
-        "zh-tw": "未設 ANTHROPIC_API_KEY — 請到 Settings 分頁設定。",
-        "zh-cn": "未设 ANTHROPIC_API_KEY — 请到 Settings 分页设置。",
-        "ja": "ANTHROPIC_API_KEY 未設定 — Settings タブで追加してください。",
-        "es": "ANTHROPIC_API_KEY no está configurado: añádalo en Settings.",
-        "fr": "ANTHROPIC_API_KEY non défini — ajoutez-le dans Settings.",
-        "de": "ANTHROPIC_API_KEY ist nicht gesetzt — in Settings ergänzen.",
-        "ko": "ANTHROPIC_API_KEY 미설정 — Settings 탭에서 추가하세요.",
-        "pt": "ANTHROPIC_API_KEY não definido — adicione em Settings.",
-        "ru": "ANTHROPIC_API_KEY не задан — добавьте в Settings.",
-        "it": "ANTHROPIC_API_KEY non impostato — aggiungilo in Settings.",
-        "vi": "Chưa đặt ANTHROPIC_API_KEY — thêm vào tab Settings.",
-        "hi": "ANTHROPIC_API_KEY सेट नहीं — Settings में जोड़ें।",
-        "id": "ANTHROPIC_API_KEY belum diatur — tambah di Settings.",
+        "en": "The model is not ready: {reason}. See Settings → AI model.",
+        "zh-tw": "模型還不能用：{reason}。請到「設定 → AI 模型」。",
+        "zh-cn": "模型还不能用：{reason}。请到“设置 → AI 模型”。",
+        "ja": "モデルを使えません: {reason}。「設定 → AI モデル」を確認してください。",
+        "es": "El modelo no está listo: {reason}. Vea Ajustes → Modelo de IA.",
+        "fr": "Le modèle n'est pas prêt : {reason}. Voir Réglages → Modèle d'IA.",
+        "de": "Das Modell ist nicht bereit: {reason}. Siehe Einstellungen → KI-Modell.",
+        "ko": "모델을 사용할 수 없습니다: {reason}. 설정 → AI 모델을 확인하세요.",
+        "pt": "O modelo não está pronto: {reason}. Veja Configurações → Modelo de IA.",
+        "ru": "Модель не готова: {reason}. См. Настройки → Модель ИИ.",
+        "it": "Il modello non è pronto: {reason}. Vedi Impostazioni → Modello IA.",
+        "vi": "Mô hình chưa sẵn sàng: {reason}. Xem Cài đặt → Mô hình AI.",
+        "hi": "मॉडल तैयार नहीं है: {reason}। सेटिंग्स → AI मॉडल देखें।",
+        "id": "Model belum siap: {reason}. Lihat Pengaturan → Model AI.",
     },
     # --- DeckPage ----------------------------------------------------
     "deck.output_group": {
@@ -5297,6 +5297,241 @@ _LABELS: Final[dict[str, dict[str, str]]] = {
         "vi": "không nêu lý do",
         "hi": "कारण नहीं दिया",
         "id": "tanpa alasan",
+    },
+    # AI model card -----------------------------------------------------
+    "model.card": {
+        "en": "AI model",
+        "zh-tw": "AI 模型",
+        "zh-cn": "AI 模型",
+        "ja": "AI モデル",
+        "es": "Modelo de IA",
+        "fr": "Modèle d'IA",
+        "de": "KI-Modell",
+        "ko": "AI 모델",
+        "pt": "Modelo de IA",
+        "ru": "Модель ИИ",
+        "it": "Modello IA",
+        "vi": "Mô hình AI",
+        "hi": "AI मॉडल",
+        "id": "Model AI",
+    },
+    "model.provider": {
+        "en": "Provider",
+        "zh-tw": "供應商",
+        "zh-cn": "提供商",
+        "ja": "提供元",
+        "es": "Proveedor",
+        "fr": "Fournisseur",
+        "de": "Anbieter",
+        "ko": "제공자",
+        "pt": "Provedor",
+        "ru": "Провайдер",
+        "it": "Fornitore",
+        "vi": "Nhà cung cấp",
+        "hi": "प्रदाता",
+        "id": "Penyedia",
+    },
+    "model.local": {
+        "en": "{name} (this computer)",
+        "zh-tw": "{name}（這台電腦）",
+        "zh-cn": "{name}（这台电脑）",
+        "ja": "{name} (このコンピューター)",
+        "es": "{name} (este equipo)",
+        "fr": "{name} (cet ordinateur)",
+        "de": "{name} (dieser Computer)",
+        "ko": "{name} (이 컴퓨터)",
+        "pt": "{name} (este computador)",
+        "ru": "{name} (этот компьютер)",
+        "it": "{name} (questo computer)",
+        "vi": "{name} (máy này)",
+        "hi": "{name} (यह कंप्यूटर)",
+        "id": "{name} (komputer ini)",
+    },
+    "model.custom": {
+        "en": "Another server (OpenAI-compatible)",
+        "zh-tw": "其他伺服器（OpenAI 相容）",
+        "zh-cn": "其他服务器（OpenAI 兼容）",
+        "ja": "その他のサーバー (OpenAI 互換)",
+        "es": "Otro servidor (compatible con OpenAI)",
+        "fr": "Autre serveur (compatible OpenAI)",
+        "de": "Anderer Server (OpenAI-kompatibel)",
+        "ko": "다른 서버 (OpenAI 호환)",
+        "pt": "Outro servidor (compatível com OpenAI)",
+        "ru": "Другой сервер (совместимый с OpenAI)",
+        "it": "Altro server (compatibile OpenAI)",
+        "vi": "Máy chủ khác (tương thích OpenAI)",
+        "hi": "अन्य सर्वर (OpenAI-संगत)",
+        "id": "Server lain (kompatibel OpenAI)",
+    },
+    "model.base_url": {
+        "en": "Server address",
+        "zh-tw": "伺服器位址",
+        "zh-cn": "服务器地址",
+        "ja": "サーバーのアドレス",
+        "es": "Dirección del servidor",
+        "fr": "Adresse du serveur",
+        "de": "Serveradresse",
+        "ko": "서버 주소",
+        "pt": "Endereço do servidor",
+        "ru": "Адрес сервера",
+        "it": "Indirizzo del server",
+        "vi": "Địa chỉ máy chủ",
+        "hi": "सर्वर पता",
+        "id": "Alamat server",
+    },
+    "model.key": {
+        "en": "API key",
+        "zh-tw": "API 金鑰",
+        "zh-cn": "API 密钥",
+        "ja": "API キー",
+        "es": "Clave de API",
+        "fr": "Clé API",
+        "de": "API-Schlüssel",
+        "ko": "API 키",
+        "pt": "Chave de API",
+        "ru": "Ключ API",
+        "it": "Chiave API",
+        "vi": "Khóa API",
+        "hi": "API कुंजी",
+        "id": "Kunci API",
+    },
+    "model.list": {
+        "en": "List models",
+        "zh-tw": "列出模型",
+        "zh-cn": "列出模型",
+        "ja": "モデル一覧",
+        "es": "Listar modelos",
+        "fr": "Lister les modèles",
+        "de": "Modelle anzeigen",
+        "ko": "모델 목록",
+        "pt": "Listar modelos",
+        "ru": "Список моделей",
+        "it": "Elenca modelli",
+        "vi": "Liệt kê mô hình",
+        "hi": "मॉडल सूची",
+        "id": "Daftar model",
+    },
+    "model.listed": {
+        "en": "{count} models available.",
+        "zh-tw": "有 {count} 個模型可用。",
+        "zh-cn": "有 {count} 个模型可用。",
+        "ja": "{count} 個のモデルが使えます。",
+        "es": "{count} modelos disponibles.",
+        "fr": "{count} modèles disponibles.",
+        "de": "{count} Modelle verfügbar.",
+        "ko": "모델 {count}개를 사용할 수 있습니다.",
+        "pt": "{count} modelos disponíveis.",
+        "ru": "Доступно моделей: {count}.",
+        "it": "{count} modelli disponibili.",
+        "vi": "Có {count} mô hình.",
+        "hi": "{count} मॉडल उपलब्ध हैं।",
+        "id": "{count} model tersedia.",
+    },
+    "model.list_failed": {
+        "en": "Could not list the models: {error}",
+        "zh-tw": "無法列出模型：{error}",
+        "zh-cn": "无法列出模型：{error}",
+        "ja": "モデルを一覧できません: {error}",
+        "es": "No se pudieron listar los modelos: {error}",
+        "fr": "Impossible de lister les modèles : {error}",
+        "de": "Modelle konnten nicht angezeigt werden: {error}",
+        "ko": "모델 목록을 가져오지 못했습니다: {error}",
+        "pt": "Não foi possível listar os modelos: {error}",
+        "ru": "Не удалось получить список моделей: {error}",
+        "it": "Impossibile elencare i modelli: {error}",
+        "vi": "Không liệt kê được mô hình: {error}",
+        "hi": "मॉडल सूचीबद्ध नहीं हो सके: {error}",
+        "id": "Tidak dapat menampilkan model: {error}",
+    },
+    "model.note_local": {
+        "en": "Papers are summarised on this computer, no text leaves it. Start the program first.",
+        "zh-tw": "論文在這台電腦上摘要，內容不會外傳。請先啟動該程式。",
+        "zh-cn": "论文在这台电脑上摘要，内容不会外传。请先启动该程序。",
+        "ja": (
+            "論文はこのコンピューターで要約され、本文は外部に送られません。先にプログラムを起動"
+            "してください。"
+        ),
+        "es": (
+            "Los artículos se resumen en este equipo, ningún texto sale de él. Inicie antes el "
+            "programa."
+        ),
+        "fr": (
+            "Les articles sont résumés sur cet ordinateur, aucun texte n'en sort. Lancez "
+            "d'abord le programme."
+        ),
+        "de": (
+            "Artikel werden auf diesem Computer zusammengefasst, kein Text verlässt ihn. "
+            "Zuerst das Programm starten."
+        ),
+        "ko": (
+            "논문은 이 컴퓨터에서 요약되며 본문은 밖으로 나가지 않습니다. 먼저 프로그램을 실행"
+            "하세요."
+        ),
+        "pt": (
+            "Os artigos são resumidos neste computador, nenhum texto sai dele. Inicie o "
+            "programa antes."
+        ),
+        "ru": (
+            "Статьи обобщаются на этом компьютере, текст его не покидает. Сначала запустите "
+            "программу."
+        ),
+        "it": (
+            "Gli articoli vengono riassunti su questo computer, nessun testo ne esce. Avvia "
+            "prima il programma."
+        ),
+        "vi": (
+            "Bài báo được tóm tắt trên máy này, không văn bản nào rời khỏi máy. Hãy khởi động "
+            "chương trình trước."
+        ),
+        "hi": (
+            "शोध-पत्रों का सारांश इसी कंप्यूटर पर बनता है, कोई पाठ बाहर नहीं जाता। पहले प्रोग्राम "
+            "चालू करें।"
+        ),
+        "id": (
+            "Makalah diringkas di komputer ini, tidak ada teks yang keluar. Jalankan "
+            "programnya dahulu."
+        ),
+    },
+    "model.note_hosted": {
+        "en": "The text of each paper is sent to this service.",
+        "zh-tw": "每篇論文的內容會傳送到這個服務。",
+        "zh-cn": "每篇论文的内容会发送到这个服务。",
+        "ja": "各論文の本文がこのサービスに送信されます。",
+        "es": "El texto de cada artículo se envía a este servicio.",
+        "fr": "Le texte de chaque article est envoyé à ce service.",
+        "de": "Der Text jedes Artikels wird an diesen Dienst gesendet.",
+        "ko": "각 논문의 본문이 이 서비스로 전송됩니다.",
+        "pt": "O texto de cada artigo é enviado a este serviço.",
+        "ru": "Текст каждой статьи отправляется в этот сервис.",
+        "it": "Il testo di ogni articolo viene inviato a questo servizio.",
+        "vi": "Nội dung mỗi bài báo được gửi đến dịch vụ này.",
+        "hi": "हर शोध-पत्र का पाठ इस सेवा को भेजा जाता है।",
+        "id": "Teks setiap makalah dikirim ke layanan ini.",
+    },
+    "model.note_anthropic": {
+        "en": "The text of each paper is sent to this service. Its key is under API keys.",
+        "zh-tw": "每篇論文的內容會傳送到這個服務。金鑰在「API 金鑰」區設定。",
+        "zh-cn": "每篇论文的内容会发送到这个服务。密钥在“API 密钥”区设置。",
+        "ja": "各論文の本文がこのサービスに送信されます。キーは「API キー」にあります。",
+        "es": "El texto de cada artículo se envía a este servicio. Su clave está en Claves de API.",
+        "fr": "Le texte de chaque article est envoyé à ce service. Sa clé est sous Clés API.",
+        "de": (
+            "Der Text jedes Artikels wird an diesen Dienst gesendet. Der Schlüssel steht unter "
+            "API-Schlüssel."
+        ),
+        "ko": "각 논문의 본문이 이 서비스로 전송됩니다. 키는 API 키에 있습니다.",
+        "pt": "O texto de cada artigo é enviado a este serviço. A chave fica em Chaves de API.",
+        "ru": (
+            "Текст каждой статьи отправляется в этот сервис. Его ключ находится в разделе "
+            "ключей API."
+        ),
+        "it": (
+            "Il testo di ogni articolo viene inviato a questo servizio. La chiave è in Chiavi "
+            "API."
+        ),
+        "vi": "Nội dung mỗi bài báo được gửi đến dịch vụ này. Khóa nằm ở phần Khóa API.",
+        "hi": "हर शोध-पत्र का पाठ इस सेवा को भेजा जाता है। इसकी कुंजी API कुंजियाँ में है।",
+        "id": "Teks setiap makalah dikirim ke layanan ini. Kuncinya ada di Kunci API.",
     },
     "settings.vpn_access": {
         "en": "I have institutional / VPN access (download IEEE PDFs)",

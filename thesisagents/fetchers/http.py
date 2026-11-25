@@ -80,6 +80,8 @@ _BROWSER_UA = (
     "Chrome/126.0.0.0 Safari/537.36"
 )
 
+_LLM_TIMEOUT_SECONDS = 600.0
+
 # Sources that are scraped from human-facing pages must look like a browser
 # or the upstream returns 403 / 418. The HTTPS-only + rate-limit guardrails
 # still apply.
@@ -148,6 +150,56 @@ async def scoped_client(source: str) -> AsyncIterator[httpx.AsyncClient]:
         yield client
     finally:
         await client.aclose()
+
+
+class _LlmTransport(httpx.BaseTransport):
+    """Lets requests through to one host only, the model server the user chose.
+
+    Plain HTTP is allowed when that host is this computer or a private
+    address, where a local model server listens. Anywhere else it must be
+    HTTPS: the request carries an API key and the text of a paper.
+    """
+
+    def __init__(self, inner: httpx.BaseTransport, host: str) -> None:
+        self._inner = inner
+        self._host = host
+
+    def handle_request(self, request: httpx.Request) -> httpx.Response:
+        host = request.url.host
+        if host != self._host:
+            raise httpx.RequestError(f"refusing a request to {host}", request=request)
+        if request.url.scheme != "https" and not is_local_host(host):
+            raise httpx.RequestError(
+                f"refusing non-HTTPS request to {request.url}", request=request
+            )
+        return self._inner.handle_request(request)
+
+    def close(self) -> None:
+        self._inner.close()
+
+
+def llm_client(base_url: str) -> httpx.Client:
+    """A blocking client for the language model server at ``base_url``.
+
+    The one sanctioned sibling of :func:`get_client` that may reach this
+    computer, because a local model runs there. It is bound to the host of
+    ``base_url`` and follows no redirect, so neither a key nor a paper goes
+    anywhere else. A local model can take minutes to answer, hence the
+    timeout.
+
+    Example::
+
+        with llm_client("http://localhost:11434/v1") as client:
+            client.post("http://localhost:11434/v1/chat/completions", json=body)
+    """
+    return httpx.Client(
+        transport=_LlmTransport(httpx.HTTPTransport(retries=0), httpx.URL(base_url).host),
+        timeout=httpx.Timeout(_LLM_TIMEOUT_SECONDS, connect=HTTP_TIMEOUT_SECONDS),
+        follow_redirects=False,
+        # A proxy from the environment would see local requests.
+        trust_env=not is_local_host(httpx.URL(base_url).host),
+        headers={"User-Agent": _user_agent_for("llm")},
+    )
 
 
 async def shutdown_clients() -> None:

@@ -60,6 +60,47 @@ for the full HiDPI story.
 | `QT_SCALE_FACTOR_ROUNDING_POLICY` | `PassThrough` (set by app.py if unset) | Lets fractional scale factors (125%, 150%) flow through unchanged. |
 | `QT_QPA_PLATFORM` | OS default | Set to `offscreen` for headless / CI runs of the GUI. |
 
+## Language models
+
+Summaries are written by the model you choose. `THESISAGENTS_LLM_PROVIDER`
+names who runs it:
+
+| Provider | API key | Address |
+|---|---|---|
+| `anthropic` (default) | `ANTHROPIC_API_KEY` | Anthropic's SDK |
+| `openai` | `OPENAI_API_KEY` | `https://api.openai.com/v1` |
+| `gemini` | `GEMINI_API_KEY` | `https://generativelanguage.googleapis.com/v1beta/openai` |
+| `mistral` | `MISTRAL_API_KEY` | `https://api.mistral.ai/v1` |
+| `deepseek` | `DEEPSEEK_API_KEY` | `https://api.deepseek.com/v1` |
+| `xai` | `XAI_API_KEY` | `https://api.x.ai/v1` |
+| `groq` | `GROQ_API_KEY` | `https://api.groq.com/openai/v1` |
+| `openrouter` | `OPENROUTER_API_KEY` | `https://openrouter.ai/api/v1` |
+| `together` | `TOGETHER_API_KEY` | `https://api.together.xyz/v1` |
+| `fireworks` | `FIREWORKS_API_KEY` | `https://api.fireworks.ai/inference/v1` |
+| `dashscope` | `DASHSCOPE_API_KEY` | `https://dashscope-intl.aliyuncs.com/compatible-mode/v1` |
+| `moonshot` | `MOONSHOT_API_KEY` | `https://api.moonshot.ai/v1` |
+| `ollama` | none | `http://localhost:11434/v1` |
+| `lmstudio` | none | `http://localhost:1234/v1` |
+| `llamacpp` | none | `http://localhost:8080/v1` |
+| `vllm` | none | `http://localhost:8000/v1` |
+| `custom` | `THESISAGENTS_LLM_API_KEY` (optional) | `THESISAGENTS_LLM_BASE_URL` |
+
+- `THESISAGENTS_LLM_MODEL` is the model. Anthropic has a default, the others
+  need one: model names change too often to build in. The GUI's **Settings →
+  AI model → List models** asks the service.
+- `THESISAGENTS_LLM_BASE_URL` replaces the address, for a gateway or a
+  server elsewhere. Plain HTTP is accepted only for this computer and
+  private addresses.
+- An API key in the environment never selects its service by itself. A
+  paper's text goes only to the provider you named, and nowhere with a
+  local one.
+- `THESISAGENTS_LLM_MAX_CHARS` is how much of a paper is sent: 80,000
+  characters to a hosted service, 24,000 to a local one. Local programs
+  often run with a small context window and silently drop what does not
+  fit. Raise both together (in Ollama, `num_ctx` of the model).
+- The providers other than Anthropic were checked against a local test
+  server that speaks the same protocol, not against the real services.
+
 ## QSettings on-disk store
 
 When the GUI's **Settings → Save** is clicked, the API keys land in the
@@ -116,8 +157,10 @@ unattended deployments don't need to pass long argument lists.
 | CLI flag | Env var | Notes |
 |---|---|---|
 | `--llm-model MODEL` | `THESISAGENTS_LLM_MODEL` | CLI wins if both are set. |
+| `--llm-provider NAME` | `THESISAGENTS_LLM_PROVIDER` | CLI wins if both are set. |
+| `--llm-base-url URL` | `THESISAGENTS_LLM_BASE_URL` | CLI wins if both are set. |
 
-That's the only one today; everything else is per-source plugin
+Those are the only ones today; everything else is per-source plugin
 config above. The CLI explicitly does NOT read API keys via
 flags (no `--anthropic-key`) — passing a key on the command
 line writes it to shell history, which is a security footgun.
