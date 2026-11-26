@@ -6,8 +6,8 @@ from pathlib import Path
 
 import pytest
 from PySide6.QtCore import QUrl
-from PySide6.QtGui import QColor, QPalette
-from PySide6.QtWidgets import QApplication
+from PySide6.QtGui import QColor, QFont, QPalette
+from PySide6.QtWidgets import QApplication, QCheckBox, QComboBox, QLabel, QLineEdit
 
 from thesisagents.core.models import Paper, PaperCollection, Query
 from thesisagents.gui import theme
@@ -20,6 +20,7 @@ from thesisagents.gui.pages.settings import (
     saved_theme,
     settings_store,
 )
+from thesisagents.gui.widgets import paper_actions
 from thesisagents.gui.widgets.nav_rail import NavRail
 
 
@@ -121,6 +122,30 @@ def test_text_contrasts_with_its_backgrounds(tokens):
     assert contrast(tokens.on_accent, tokens.accent) >= 4.5
 
 
+def test_apply_theme_leaves_no_class_font_over_the_application_font(qtbot):
+    # Qt rebuilds its per-class platform fonts during apply_theme, so lists
+    # and menus lost the per-script fallback families and the 10 pt minimum,
+    # and opening a language list printed eight "OpenType support missing"
+    # lines for the Hindi entry.
+    app = QApplication.instance()
+    saved = QFont(app.font())
+    families = ["Noto Sans", "Nirmala UI", "Arial"]
+    font = QFont(saved)
+    font.setFamilies(families)
+    font.setPointSize(13)
+    try:
+        app.setFont(font)
+        for choice, style in (("light", "classic"), ("dark", "material")):
+            app.setFont(QFont("Courier New", 7), "QAbstractItemView")
+            theme.apply_theme(app, choice, style)
+            for name in ("QAbstractItemView", "QMenu", "QStatusBar", "QMessageBox", "QLabel"):
+                applied = QApplication.font(name)
+                assert (applied.families(), applied.pointSize()) == (families, 13), name
+    finally:
+        app.setFont(saved)
+        theme.apply_theme(app, "light")
+
+
 def test_apply_theme_sets_palette_style_and_glyphs(qtbot):
     app = QApplication.instance()
     tokens = theme.apply_theme(app, "dark")
@@ -133,6 +158,39 @@ def test_apply_theme_sets_palette_style_and_glyphs(qtbot):
         assert assets["check"] in app.styleSheet()
     finally:
         theme.apply_theme(app, "light")
+
+
+@pytest.mark.parametrize("style", theme.STYLE_CHOICES)
+@pytest.mark.parametrize("choice", ["light", "dark"])
+def test_disabled_controls_are_drawn_muted(qtbot, choice, style):
+    # The stylesheet's plain ``QWidget { color }`` also filled the palette's
+    # Disabled group, so a switched-off combo box, line edit or check box
+    # kept body-text colour and looked usable.
+    app = QApplication.instance()
+    tokens = theme.apply_theme(app, choice, style)
+    try:
+        for widget in (QCheckBox("x"), QLineEdit("x"), QComboBox(), QLabel("x")):
+            qtbot.addWidget(widget)
+            widget.setEnabled(False)
+            widget.ensurePolished()
+            palette = widget.palette()
+            for role in (QPalette.ColorRole.WindowText, QPalette.ColorRole.Text):
+                assert palette.color(QPalette.ColorGroup.Disabled, role) == QColor(
+                    tokens.muted
+                ), (type(widget).__name__, role)
+            enabled = palette.color(QPalette.ColorGroup.Active, QPalette.ColorRole.Text)
+            assert enabled == QColor(tokens.text), type(widget).__name__
+    finally:
+        theme.apply_theme(app, "light")
+
+
+def test_theme_assets_come_back_when_their_folder_is_deleted(qtbot, tmp_path, monkeypatch):
+    # A temp-folder cleaner can remove the glyph folder while the app runs,
+    # and the next theme switch raised OSError from write_glyph.
+    gone = tmp_path / "cleaned-up"
+    monkeypatch.setattr(theme, "_asset_dir", lambda: gone)
+    assets = theme.write_theme_assets(theme.MATERIAL_DARK)
+    assert all(Path(path).is_file() for path in assets.values())
 
 
 def test_glyphs_and_icons_draw(tmp_path):
@@ -223,7 +281,8 @@ def test_nav_rail_toggle_collapses_by_hand(qtbot):
     qtbot.addWidget(rail)
     rail.add_item("search", "Search")
     rail.set_compact(True)
-    assert rail.is_compact() and rail.button_text(0) == ""
+    assert rail.is_compact()
+    assert rail.button_text(0) == ""
     rail.set_compact(False)
     assert rail.button_text(0).strip() == "Search"
 
@@ -280,7 +339,7 @@ def test_search_page_reports_busy_until_the_run_ends(qtbot):
 )
 def test_double_click_opens_only_web_links(qtbot, monkeypatch, url, opened):
     calls: list[QUrl] = []
-    monkeypatch.setattr(search_module.QDesktopServices, "openUrl", calls.append)
+    monkeypatch.setattr(paper_actions.QDesktopServices, "openUrl", calls.append)
     page = search_module.SearchPage(ui_language="en")
     qtbot.addWidget(page)
     page._on_search_finished(_collection(1, url=url))  # noqa: SLF001

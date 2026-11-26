@@ -51,7 +51,7 @@ Flujo MCP de 6 pasos
    5. (lee cada PDF y produce dict summary estructurado)
    6. export(papers=[{...paper, "summary": {...}}], language="es", ...)
 
-18 herramientas MCP en total: descubrimiento (``list_sources``,
+25 herramientas MCP en total: descubrimiento (``list_sources``,
 ``list_exports``), ``search``, ``snowball``, ``library_add``, ``library_search``, ``library_stats``, ``fetch_paper``, ``fetch_pdf_text``,
 ``download_pdfs``, ``pptx_validate_template``, ``export`` y seis operaciones de deck ``pptx_*``
 (``pptx_inspect``, ``pptx_review``, ``pptx_update_slide``,
@@ -214,7 +214,7 @@ Dónde buscar más
 ----------------
 
 * Flags CLI y variables de entorno: :doc:`/cli`
-* 18 herramientas del servidor MCP: :doc:`/mcp`
+* 25 herramientas del servidor MCP: :doc:`/mcp`
 * Kit de edición PPTX: :doc:`/pptx_editing`
 * El archivo ``readmes/README.es.md`` en la raíz del repo tiene la lista
   completa de funcionalidades del proyecto.

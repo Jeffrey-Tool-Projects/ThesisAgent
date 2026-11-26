@@ -1,7 +1,10 @@
 """Download paper PDFs alongside the exported artefacts.
 
-Reuses the shared per-source HTTPS-only client so the same rate-limit token
-bucket, TLS guardrails, and User-Agent rules apply as for search traffic.
+Reuses the shared per-source HTTPS-only client, so the same TLS and
+local-network guardrails apply as for search traffic. The sources' token
+buckets do not: they pace API calls, and a PDF sits on some other host. What
+keeps this stage polite is a cap on parallel downloads and a smaller one per
+host.
 Failures (missing pdf_url, network errors, wrong content-type) are logged
 and skipped — the rest of the export workflow is unaffected.
 
@@ -16,7 +19,9 @@ file, matching cookies are attached on top.
 from __future__ import annotations
 
 import asyncio
+import hashlib
 import re
+from collections.abc import Sequence
 from dataclasses import dataclass, replace
 from pathlib import Path
 from urllib.parse import urljoin, urlparse
@@ -33,12 +38,13 @@ _PDF_SUBDIR: str = "pdfs"
 _MAX_PDF_BYTES: int = 50_000_000
 _MAX_FILENAME_LENGTH: int = 80
 
-#: Cap on simultaneously-downloading PDFs. Each per-source client already has
-#: its own token bucket, but several sources can hand back PDF URLs on the SAME
-#: publisher CDN (dl.acm.org, link.springer.com, …) under different source
-#: clients — bypassing any single bucket. A global cap keeps that burst from
-#: looking like a scrape and risking an IP block. 4 keeps the stage brisk.
+#: Cap on simultaneously-downloading PDFs. Several sources can hand back PDF
+#: URLs on the SAME host under different source clients, so the cap is global.
+#: 4 keeps the stage brisk.
 _DOWNLOAD_CONCURRENCY: int = 4
+#: Of those, how many may run against one host (arxiv.org, a repository). A
+#: burst against a single host looks like a scrape and risks an IP block.
+_PER_HOST_CONCURRENCY: int = 2
 
 #: Real browser User-Agent — many publisher CDNs (Elsevier, IEEE Xplore,
 #: Springer) return 403 to non-browser UAs even for open-access PDFs.
@@ -96,15 +102,22 @@ async def download_pdfs(
     without a ``pdf_url`` are skipped with reason ``no_pdf_url``. A semaphore
     caps how many downloads run at once (``concurrency``, default
     ``_DOWNLOAD_CONCURRENCY``) so a large collection doesn't hammer a single
-    publisher CDN with one request per paper simultaneously.
+    publisher CDN with one request per paper simultaneously, and at most
+    ``_PER_HOST_CONCURRENCY`` of them run against the same host.
     """
     root = ensure_export_dir(out_dir)
     pdf_dir = ensure_export_dir(root / _PDF_SUBDIR)
     sem = asyncio.Semaphore(max(1, concurrency))
 
-    async def _bounded(paper: Paper) -> PdfDownloadResult:
-        async with sem:
-            return await _download_one(paper, pdf_dir)
+    per_host: dict[str, asyncio.Semaphore] = {}
+
+    async def _bounded(paper: Paper, name: str) -> PdfDownloadResult:
+        host = urlparse(paper.pdf_url or "").hostname or ""
+        host_sem = per_host.setdefault(host, asyncio.Semaphore(_PER_HOST_CONCURRENCY))
+        # The host's slot first: a paper that waits for a busy host must not
+        # hold one of the global slots meanwhile.
+        async with host_sem, sem:
+            return await _download_one(paper, pdf_dir / f"{name}.pdf")
 
     # ``return_exceptions=True``: a download is per-paper best-effort, and the
     # soft failures (404, wrong content-type, oversized body) are already turned
@@ -114,7 +127,12 @@ async def download_pdfs(
     # PDF the other tasks had already written to disk. Each failed slot becomes
     # a skipped result carrying the exception type as its reason instead.
     outcomes = await asyncio.gather(
-        *(_bounded(paper) for paper in collection.papers),
+        *(
+            _bounded(paper, name)
+            for paper, name in zip(
+                collection.papers, _file_names(collection.papers), strict=True
+            )
+        ),
         return_exceptions=True,
     )
     results: list[PdfDownloadResult] = []
@@ -135,6 +153,26 @@ async def download_pdfs(
     return results
 
 
+def _file_names(papers: Sequence[Paper]) -> list[str]:
+    """One file name (without ``.pdf``) per paper, no two alike.
+
+    The failure this prevents: ``wang2023deep`` is the BibTeX key of many
+    papers. Under one name the second paper was reported as already on disk
+    with the first one's PDF. The name is told apart by the paper's
+    identity, not by its position, so the next run finds the same file.
+    """
+    names: list[str] = []
+    taken: set[str] = set()
+    for paper in papers:
+        name = safe_filename(_safe_key(paper))[:_MAX_FILENAME_LENGTH]
+        if name.casefold() in taken:
+            digest = hashlib.sha256(paper.dedup_key().encode("utf-8")).hexdigest()[:8]
+            name = f"{name[: _MAX_FILENAME_LENGTH - 9]}-{digest}"
+        taken.add(name.casefold())
+        names.append(name)
+    return names
+
+
 def _safe_key(paper: Paper) -> str:
     """``bibtex_key()`` that can't itself fail the error-reporting path.
 
@@ -148,12 +186,11 @@ def _safe_key(paper: Paper) -> str:
         return paper.source_id or "unknown"
 
 
-async def _download_one(paper: Paper, pdf_dir: Path) -> PdfDownloadResult:
+async def _download_one(paper: Paper, target: Path) -> PdfDownloadResult:
     key = paper.bibtex_key()
     if not paper.pdf_url:
         _LOG.info("skip pdf for %s: no pdf_url", key)
         return PdfDownloadResult(paper_key=key, path=None, skipped_reason="no_pdf_url")
-    target = pdf_dir / f"{safe_filename(key)[:_MAX_FILENAME_LENGTH]}.pdf"
     if target.exists() and target.stat().st_size > 0:
         _LOG.info("pdf already on disk for %s: %s", key, target)
         return PdfDownloadResult(
@@ -190,7 +227,9 @@ async def _download_one(paper: Paper, pdf_dir: Path) -> PdfDownloadResult:
             )
             route = ROUTE_DIRECT_NO_BROWSER
     result = await _fetch_and_validate(paper, target, key)
-    return replace(result, route=route)
+    return replace(  # NOSONAR dataclasses.replace returns the same dataclass type
+        result, route=result.route or route
+    )
 
 
 async def _fetch_and_validate(
@@ -220,6 +259,12 @@ async def _fetch_and_validate(
                 "pdf %s returned HTML; retrying via <meta name=\"citation_pdf_url\"> %s",
                 key, retry_url,
             )
+            # The page names this address, so it gets the same routing as the
+            # first one: a publisher's PDF goes through visible Chrome.
+            if await _browser_fetched(retry_url, target):
+                return PdfDownloadResult(
+                    paper_key=key, path=target, skipped_reason=None, route=ROUTE_BROWSER
+                )
             fetched = await _request_pdf(client, paper, retry_url)
             if isinstance(fetched, PdfDownloadResult):
                 return PdfDownloadResult(
@@ -236,6 +281,19 @@ async def _fetch_and_validate(
     target.write_bytes(body)
     _LOG.info("pdf saved %s (%d bytes) for %s", target, len(body), key)
     return PdfDownloadResult(paper_key=key, path=target, skipped_reason=None)
+
+
+async def _browser_fetched(url: str, target: Path) -> bool:
+    """Fetch ``url`` with visible Chrome when it is a paywalled publisher's.
+
+    False when it is an open host, no browser is available, or Chrome did not
+    get the PDF. The caller then tries a direct request.
+    """
+    from thesisagents.fetchers import webrunner_pdf
+
+    if not webrunner_pdf.should_use_webrunner(url) or not webrunner_pdf.is_available():
+        return False
+    return await webrunner_pdf.download_via_browser(url, target)
 
 
 async def _request_pdf(client, paper: Paper, url: str):
@@ -281,14 +339,94 @@ def _looks_like_pdf(body: bytes, content_type: str) -> bool:
     return body.startswith(b"%PDF")
 
 
-_CITATION_PDF_URL_RE = re.compile(
-    rb'<meta\s+[^>]*?name=["\']citation_pdf_url["\'][^>]*?content=["\']([^"\']+)["\']',
-    re.IGNORECASE,
-)
-_CITATION_PDF_URL_REV_RE = re.compile(
-    rb'<meta\s+[^>]*?content=["\']([^"\']+)["\'][^>]*?name=["\']citation_pdf_url["\']',
-    re.IGNORECASE,
-)
+#: One ``<meta ...`` tag, from ``<meta`` to just before its closing ``>``
+#: (or the end of the scanned head when the tag is cut off). Nothing follows
+#: ``[^>]*``, so the scan never backtracks. The attribute patterns below then
+#: run once per tag. The earlier single pattern per attribute order
+#: (``<meta\s+[^>]*?name=...[^>]*?content=...``) backtracked polynomially on a
+#: long tag that lacks the attribute: a 20 kB tag took seconds to reject.
+_META_TAG_RE = re.compile(rb"<meta\s[^>]*", re.IGNORECASE)
+_CITATION_NAME_RE = re.compile(rb'name=["\']citation_pdf_url["\']', re.IGNORECASE)
+_CONTENT_OPEN_RE = re.compile(rb'content=["\']', re.IGNORECASE)
+#: A non-empty attribute value up to its closing quote. Like the old pattern
+#: it may run past a ``>``, which is legal inside a quoted HTML value.
+_QUOTED_VALUE_RE = re.compile(rb'([^"\']+)["\']')
+
+
+def _content_values(head: bytes, start: int, end: int) -> list[re.Match[bytes]]:
+    """Every non-empty quoted ``content=`` value whose attribute opens in ``[start, end)``.
+
+    Guards the attribute boundary: the ``content=`` opener must sit inside
+    the tag (before its ``>``), while the value may run on past it. An empty
+    value (``content=""``) is skipped, as the old pattern's ``[^"']+`` did.
+    Example: ``[v.group(1) for v in _content_values(b'content="" content="/a"',
+    0, 23)] == [b"/a"]``.
+    """
+    values = []
+    for opener in _CONTENT_OPEN_RE.finditer(head, start, end):
+        value = _QUOTED_VALUE_RE.match(head, opener.end())
+        if value is not None:
+            values.append(value)
+    return values
+
+
+def _name_then_content(head: bytes, start: int, end: int) -> bytes | None:
+    """The ``content`` value of a tag written ``name="citation_pdf_url" content="..."``.
+
+    ``start`` / ``end`` bound one ``<meta`` tag in ``head`` (a match of
+    ``_META_TAG_RE``). Returns ``None`` when the tag names something else or
+    has no ``content`` after the ``name``. Example: for the tag
+    ``<meta name="citation_pdf_url" content="/a.pdf">`` it returns ``b"/a.pdf"``.
+    """
+    name = _CITATION_NAME_RE.search(head, start, end)
+    if name is None:
+        return None
+    values = _content_values(head, name.end(), end)
+    return values[0].group(1) if values else None
+
+
+def _content_then_name(head: bytes, start: int, end: int) -> bytes | None:
+    """The ``content`` value of a tag written ``content="..." name="citation_pdf_url"``.
+
+    ``start`` / ``end`` bound one ``<meta`` tag in ``head``. The ``name``
+    attribute must follow the value before the next ``>``. Candidates are
+    tried in order. A value that ends inside the tag searches up to the
+    tag's own ``>``, the same range a failed earlier candidate already
+    searched, so that search is skipped and the scan stays linear. Example:
+    for the tag ``<meta content="/a.pdf" name="citation_pdf_url">`` it
+    returns ``b"/a.pdf"``.
+    """
+    searched_until = -1
+    for value in _content_values(head, start, end):
+        tail_start = value.end()
+        if tail_start <= end:
+            tail_end = end
+        else:
+            tail_end = head.find(b">", tail_start)
+            tail_end = len(head) if tail_end == -1 else tail_end
+        if tail_end == searched_until:
+            continue
+        if _CITATION_NAME_RE.search(head, tail_start, tail_end) is not None:
+            return value.group(1)
+        searched_until = tail_end
+    return None
+
+
+def _find_citation_pdf_url(head: bytes) -> bytes | None:
+    """The first ``citation_pdf_url`` value in ``head``, as raw bytes.
+
+    A tag with ``name`` before ``content`` anywhere in ``head`` wins over a
+    tag with the reverse order, the precedence the extractor has always had.
+    Example: ``_find_citation_pdf_url(b'<meta content="/a.pdf"
+    name="citation_pdf_url">') == b"/a.pdf"``.
+    """
+    tags = [(tag.start(), tag.end()) for tag in _META_TAG_RE.finditer(head)]
+    for finder in (_name_then_content, _content_then_name):
+        for start, end in tags:
+            value = finder(head, start, end)
+            if value is not None:
+                return value
+    return None
 
 
 def _extract_citation_pdf_url(body: bytes, *, base_url: str) -> str | None:
@@ -302,10 +440,10 @@ def _extract_citation_pdf_url(body: bytes, *, base_url: str) -> str | None:
     if not body:
         return None
     head = body[:32_768]  # the tag always sits in the document <head>
-    match = _CITATION_PDF_URL_RE.search(head) or _CITATION_PDF_URL_REV_RE.search(head)
-    if not match:
+    value = _find_citation_pdf_url(head)
+    if value is None:
         return None
-    candidate = match.group(1).decode("utf-8", errors="replace").strip()
+    candidate = value.decode("utf-8", errors="replace").strip()
     if not candidate:
         return None
     return urljoin(base_url, candidate)

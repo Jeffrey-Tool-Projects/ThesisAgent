@@ -1,0 +1,15 @@
+# The test job of ci.yml installs from ci.txt, which pins every package it installs to an exact
+# version and hash: the runtime dependencies and the [dev] extra of pyproject.toml, plus the build
+# backend listed below. So a new or compromised release on PyPI cannot reach CI until a reviewed
+# Dependabot PR updates ci.txt (SonarCloud text:S8565).
+# ci.txt is generated from pyproject.toml and this file:
+# uv pip compile pyproject.toml .github/requirements/ci.in --extra dev --universal --python-version 3.12 --generate-hashes --exclude-newer <7 days ago> -o .github/requirements/ci.txt
+# (--universal writes one file for every OS and Python version the matrix runs, with environment
+# markers where they differ. --python-version 3.12 is the floor of requires-python. --exclude-newer
+# keeps the 7-day wait Dependabot uses: nothing uploaded in the last week.)
+#
+# The build backend: every package named in [build-system] requires of pyproject.toml. The job
+# installs the project with `pip install --no-deps --no-build-isolation -e .`, so the backend is
+# the one locked here and not whatever is newest on PyPI when the job runs.
+setuptools
+wheel

@@ -1,10 +1,10 @@
 # ThesisAgents
 
-[![CI](https://github.com/Integration-Automation/ThesisAgents/actions/workflows/ci.yml/badge.svg)](https://github.com/Integration-Automation/ThesisAgents/actions/workflows/ci.yml)
-[![Release](https://github.com/Integration-Automation/ThesisAgents/actions/workflows/release.yml/badge.svg?branch=main)](https://github.com/Integration-Automation/ThesisAgents/actions/workflows/release.yml)
+[![CI](https://github.com/Jeffrey-Tool-Projects/ThesisAgent/actions/workflows/ci.yml/badge.svg)](https://github.com/Jeffrey-Tool-Projects/ThesisAgent/actions/workflows/ci.yml)
+[![Release](https://github.com/Jeffrey-Tool-Projects/ThesisAgent/actions/workflows/release.yml/badge.svg?branch=main)](https://github.com/Jeffrey-Tool-Projects/ThesisAgent/actions/workflows/release.yml)
 [![PyPI](https://img.shields.io/pypi/v/thesisagents.svg)](https://pypi.org/project/thesisagents/)
 [![Python](https://img.shields.io/pypi/pyversions/thesisagents.svg)](https://pypi.org/project/thesisagents/)
-[![License: MIT](https://img.shields.io/github/license/Integration-Automation/ThesisAgents.svg)](https://github.com/Integration-Automation/ThesisAgents/blob/main/LICENSE)
+[![License: MIT](https://img.shields.io/github/license/Jeffrey-Tool-Projects/ThesisAgent.svg)](https://github.com/Jeffrey-Tool-Projects/ThesisAgent/blob/main/LICENSE)
 [![Docs](https://readthedocs.org/projects/thesisagents/badge/?version=latest)](https://thesisagents.readthedocs.io/en/latest/)
 
 > **언어**: [English](../README.md) · [繁體中文](README.zh-TW.md) · [简体中文](README.zh-CN.md) · [日本語](README.ja.md) · [Español](README.es.md) · [Français](README.fr.md) · [Deutsch](README.de.md) · **한국어** · [Português](README.pt.md) · [Русский](README.ru.md) · [Italiano](README.it.md) · [Tiếng Việt](README.vi.md) · [हिन्दी](README.hi.md) · [Bahasa Indonesia](README.id.md)
@@ -229,7 +229,7 @@ for key in irrelevant_keys:
   add_slide)는 내보내기가 만들어 낸 어떤 덱에도 작동하며, 여기에
   더해 동등한 `pptx_*` MCP 도구가 있어 LLM 에이전트가 생성된 덱을
   반복 개선할 수 있습니다.
-- **MCP 서버**: 18개 도구 — `list_sources` + `list_exports`
+- **MCP 서버**: 25개 도구 — `list_sources` + `list_exports`
   (탐색), `search`, `snowball`, `library_add`, `library_search`, `library_stats`, `fetch_paper`, `fetch_pdf_text`,
   `download_pdfs`, `pptx_validate_template`, `export`, 그리고 여섯 개의 `pptx_*` 덱 도구
   (`inspect`, `review`, `update_slide`, `delete_slide`,
@@ -242,7 +242,7 @@ for key in irrelevant_keys:
     `fetch_pdf_text` 를 통해 PDF 본문 텍스트를 읽고, 컨텍스트 내에서
     구조화 요약을 작성해 `export` 에 넘깁니다.
   - **Python 파이프라인(`--enrich`)** — CLI 가 스스로 Anthropic 의
-    API 를 호출합니다. 기본 모델 `claude-opus-4-7`.
+    API 를 호출합니다. 기본 모델 `claude-opus-5-5`.
 - **가시 Chrome 퍼블리셔 흐름**: Scholar SERP, IEEE `/rest/search`,
   그리고 모든 페이월 PDF 다운로드(ieeexplore / dl.acm / link.springer
   / sciencedirect / wiley / oup / nature / science / …)는 `selenium`
@@ -356,14 +356,15 @@ py -m thesisagents --paper "https://arxiv.org/abs/1706.03762" `
 | `--source` / `-s` | 쉼표로 구분된 소스 목록. 기본 `arxiv`. |
 | `--max` / `-n` | 소스당 최대 결과 수(1..200). 기본 25. |
 | `--year-from` / `--year-to` | 포함 연도 필터. |
-| `--export` / `-e` | 형식: `pptx,xlsx,md,bib,json,ris,csv,csl` 중 아무거나. 기본은 모드에 따라 다름(아래 참고). |
+| `--export` / `-e` | 형식: `pptx,xlsx,md,bib,json,ris,csv,csl,docx,tex` 중 아무거나. 기본은 모드에 따라 다름(아래 참고). |
 | `--out` / `-o` | 출력 디렉터리. 기본 `./exports`. |
 | `--filename-stem` | 생성되는 파일명 어간을 덮어씀. |
 | `--no-abstract` | 내보내기에서 초록 내용을 생략. |
 | `--lang` / `-l` | 덱 언어: 14개 중 하나 — `en`, `zh-tw`, `zh-cn`, `ja`, `es`, `fr`, `de`, `ko`, `pt`, `ru`, `it`, `vi`, `hi`, `id`. 기본 `en`. |
 | `--enrich` | 자동 보강의 실패-표출 변형. `ANTHROPIC_API_KEY` 와 `[intelligence]` extra 가 필요. (키가 설정되면 자동 보강이 기본.) |
 | `--lightweight` | 보강을 건너뛰고 초록 전용 덱을 강제. 빠른 / 무인 실행에만 사용. **LLM 에이전트가 구동 중이라면 아래의 LLM-as-agent 흐름을 선호하세요.** |
-| `--llm-model` | 보강 시 기본 `claude-opus-4-7` 을 덮어씀. |
+| `--llm-model` | 보강 시 기본 `claude-opus-5-5` 을 덮어씀. |
+| `--llm-command COMMAND` | 명령줄 제공자(`claude-cli`, `cli` 등)의 명령. 논문은 표준 입력으로 전달됩니다. |
 | `--no-pdf` | 자동 PDF 다운로드를 건너뜀. 논문별 PPT 게이트도 비활성화(PDF 없음 → 전체 내용 없음). |
 | `--no-oa-resolve` | 중복 제거 후 OA PDF 리졸버(Unpaywall + S2 + arXiv + CORE.ac.uk)를 건너뜀. |
 | `--top-tier-only` | 결과를 arXiv + 엄선된 CS 대표 화이트리스트(S&P, CCS, NDSS, USENIX Security, NeurIPS, ICML, ICSE, …)로 제한. 기본 꺼짐. |
@@ -388,7 +389,10 @@ py -m thesisagents --paper "https://arxiv.org/abs/1706.03762" `
 | 변수 | 사용 주체 | 용도 |
 |---|---|---|
 | `ANTHROPIC_API_KEY` | `--enrich` | LLM 인증. MCP 상의 LLM-as-agent 경로에는 불필요. |
-| `THESISAGENTS_LLM_MODEL` | `--enrich` | 기본 `claude-opus-4-7` 을 덮어씀. |
+| `THESISAGENTS_LLM_PROVIDER` | `--enrich` | 모델 실행 주체: `anthropic`, `openai`, `gemini`, `mistral`, `deepseek`, `xai`, `groq`, `openrouter`, `together`, `fireworks`, `dashscope`, `moonshot`, 이 컴퓨터의 `ollama`, `lmstudio`, `llamacpp`, `vllm`, 또는 `THESISAGENTS_LLM_BASE_URL` 과 함께 `custom`. 또는 명령줄 AI 프로그램: `claude-cli`, `gemini-cli`, `codex-cli`, `ollama-cli`, 또는 `THESISAGENTS_LLM_COMMAND` 와 함께 쓰는 `cli`. |
+| `THESISAGENTS_LLM_COMMAND` | `--enrich` | 명령줄 제공자의 명령으로, 논문은 표준 입력으로 전달됩니다(예: `claude -p --model opus`). 제공자의 기본 명령을 대체합니다. |
+| `THESISAGENTS_LLM_CLI_TIMEOUT` | `--enrich` | 명령줄 제공자에서 논문 한 편에 허용하는 초(기본 600). |
+| `THESISAGENTS_LLM_MODEL` | `--enrich` | 기본 `claude-opus-5-5` 을 덮어씀. |
 | `THESISAGENTS_S2_API_KEY` | Semantic Scholar + OA 리졸버 | 더 높은 속도 제한; OA 리졸버의 S2 `openAccessPdf` 단계에서도 사용. 무료 키는 <https://www.semanticscholar.org/product/api> 에서. |
 | `THESISAGENTS_NCBI_API_KEY` | PubMed | NCBI 의 익명 제한(3/s)을 10/s 로 올림. 선택 사항. |
 | `THESISAGENTS_CONTACT_EMAIL` | PubMed, ACM, Crossref, OpenAlex, **Unpaywall** | 폴라이트-풀 태그 + OA 리졸버의 Unpaywall 단계를 활성화(IEEE / ACM / Springer / Elsevier 페이월 논문의 PDF 커버리지에서 가장 큰 이득; 전형적 향상 40-70 pp). |
@@ -450,10 +454,11 @@ claude mcp add thesisagents -- ".venv\Scripts\python.exe" -m thesisagents.mcp
 | `library_add` | 논문 → 문헌 라이브러리 (`library` 가 가리키는 SQLite 파일) 에 보관해 이후 세션에서 쓸 수 있게 합니다. 추가는 곧 병합입니다. 이미 있는 논문은 갱신될 뿐 중복되지 않습니다. `relations` 에는 `snowball` 이 반환한 인용 관계를 보관할 수 있습니다. |
 | `library_search` | 쿼리 → 라이브러리에 이미 있는 논문을 검색과 같은 방식으로 채점해 반환합니다. 네트워크를 쓰지 않습니다. 논문마다 이력이 붙습니다. 처음과 마지막으로 본 시각, 그리고 어떤 소스가 반환했는지입니다. |
 | `library_stats` | 라이브러리 → 보관 중인 논문, 실행, 인용 관계의 수, 소스별 논문 수, 최근 가져오기 내역. |
+| `library_update`, `library_delete`, `library_import`, `library_duplicates`, `library_merge`, `library_saved_search`, `library_prisma` | 라이브러리 → 태그, 메모, 읽기 상태와 선별 결정, 논문 삭제와 병합, BibTeX / RIS 가져오기, 새 논문만 알려 주는 저장된 검색, PRISMA 흐름. |
 | `fetch_paper` | arXiv / DOI / PMID / IEEE 식별자 → 단일 논문. |
 | `fetch_pdf_text` | 하나의 PDF 를 다운로드하여 추출한 본문 텍스트를 반환. **"내가 논문을 읽었다"에 이르는 MCP 경로.** |
 | `download_pdfs` | 논문 목록의 PDF 를 `{out_dir}/pdfs/` 로 일괄 다운로드. BibTeX 키로 키가 지정된 논문별 결과를 반환. |
-| `export` | 논문 목록 + 형식 → `.pptx/.xlsx/.md/.bib/.json/.ris/.csv/.csl.json` 을 작성. 리치 논문 스타일 스키마를 위한 논문당 `summary` 필드, `max_slides_per_paper`(기본 25), `dark_mode`(기본 `false` — 프로젝트 기본은 라이트 네이비 밴드 덱, 어두운 OLED / 저조도 후처리에는 `true`)를 받음. 쓰기 전에 모든 DOI / URL 을 검증합니다 (`verify_identifiers`, 기본값 `true`). 잘못되었거나 연결할 수 없는 식별자가 있으면 호출이 실패하고 해당 논문을 알려 주며, 응답에 `verification` 보고서가 포함됩니다. `library` 에는 식별자 확인 결과를 보관할 문헌 라이브러리를 지정합니다. 이전 호출에서 확인된 식별자는 다시 확인하지 않습니다. `pptx_template` (선택적으로 `pptx_template_config`) 을 주면 사용자의 PowerPoint 템플릿 위에 슬라이드를 만듭니다. |
+| `export` | 논문 목록 + 형식 → `.pptx/.xlsx/.md/.bib/.json/.ris/.csv/.csl.json/.docx/.tex` 을 작성. 리치 논문 스타일 스키마를 위한 논문당 `summary` 필드, `max_slides_per_paper`(기본 25), `dark_mode`(기본 `false` — 프로젝트 기본은 라이트 네이비 밴드 덱, 어두운 OLED / 저조도 후처리에는 `true`)를 받음. 쓰기 전에 모든 DOI / URL 을 검증합니다 (`verify_identifiers`, 기본값 `true`). 잘못되었거나 연결할 수 없는 식별자가 있으면 호출이 실패하고 해당 논문을 알려 주며, 응답에 `verification` 보고서가 포함됩니다. `library` 에는 식별자 확인 결과를 보관할 문헌 라이브러리를 지정합니다. 이전 호출에서 확인된 식별자는 다시 확인하지 않습니다. `pptx_template` (선택적으로 `pptx_template_config`) 을 주면 사용자의 PowerPoint 템플릿 위에 슬라이드를 만듭니다. |
 | `pptx_validate_template` | 템플릿 → `export(pptx_template=...)` 에 쓸 수 있는지 여부. 슬라이드 종류별로 쓰일 레이아웃과, 무엇을 고쳐야 하는지 알려 주는 오류와 경고를 반환합니다. 슬라이드는 만들어지지 않습니다. |
 | `pptx_inspect` | 기존 덱의 슬라이드 / 셰이프 구조를 읽음. |
 | `pptx_review` | 한 번의 호출로 덱을 감사 — 오버플로 + 색상 계약 + `paper_rule` 섹션 완전성. 덱 언어를 자동 감지; CLI `python -m thesisagents review <deck.pptx>` 이기도 함. |
@@ -483,11 +488,11 @@ ThesisAgents/
 ├── thesisagents/                 # main package
 │   ├── core/                        # Paper / PaperSummary / RqResult / dedup / ranking / pipeline
 │   ├── fetchers/                    # HTTPS-only async client, token-bucket rate limit
-│   ├── exporters/                   # pptx (thesis-style) · xlsx · bib · md · json · ris · csv · csl · pptx_edit · i18n
+│   ├── exporters/                   # pptx (thesis-style) · xlsx · bib · md · json · ris · csv · csl · docx · tex · pptx_edit · i18n
 │   ├── intelligence/                # PDF fetch + Anthropic summariser  ([intelligence] extra)
 │   ├── library/                     # SQLite literature library kept across runs
 │   ├── evaluation/                  # offline search-quality benchmark (docs/search-quality.md)
-│   ├── mcp/                         # FastMCP server (18 tools)
+│   ├── mcp/                         # FastMCP server (25 tools)
 │   ├── sources/<name>/              # plugin folders: arxiv, semantic_scholar,
 │   │                                #   openalex, pubmed, acm, ieee, scholar,
 │   │                                #   dblp, crossref, openaire, springer,
@@ -522,13 +527,13 @@ pip install thesisagents[gui]
 thesisagents-gui                 # or: thesisagents gui
 ```
 
-창에는 사이드바와 다섯 개의 페이지가 있습니다: **Search**, **Library** (라이브러리 파일의 읽기 전용 보기: 개요, 논문과 그 인용 관계·식별자 검사, 라이브러리를 채운 검색 기록),
+창에는 사이드바와 다섯 개의 페이지가 있습니다: **Search**, **Library** (라이브러리 파일. 태그, 메모, 선별 결정, BibTeX / RIS 가져오기, 중복 병합, 새 논문만 보여 주는 저장된 검색, 인용 관계도, PRISMA 흐름을 지원: 개요, 논문과 그 인용 관계·식별자 검사, 라이브러리를 채운 검색 기록),
 **Enrich**(`collection_ready` 시그널을 통해 LLM-as-agent / Python
 파이프라인 보강을 구동), **Deck**(Dark mode 토글, 슬라이드 상한, 식별자
 검사, 덱 템플릿이 `ExportOptions` 로 흘러 들어감), 그리고
-**Settings**(QSettings 를 통해 API 키를 영속화). Windows 릴리스 zip 은 PySide6 를 포함한 Nuitka 컴파일
-번들을 제공하므로, 별도의 Python 설치 없이 `thesisagents.exe gui` 가
-동작합니다.
+**Settings**(API 키와 환경 설정). Windows 릴리스 zip 은 PySide6 를 포함한 Nuitka 컴파일
+번들을 제공하므로, `thesisagents.exe` 를 열면 별도의 Python 설치 없이, 콘솔 창도
+띄우지 않고 데스크톱 앱이 시작됩니다. 같은 폴더의 `thesisagents-cli.exe` 는 명령줄 프로그램입니다.
 Search 페이지에서는 상위 결과에서 인용을 따라가거나 (스노볼), 결과를 라이브러리 파일에 보관하고 네트워크 없이 그 라이브러리를
 검색할 수도 있으며, Deck 페이지에서는 사용자의 PowerPoint 템플릿 위에 슬라이드를 만들 수 있습니다.
 **UI 는 14개 언어 모두로 제공됩니다**(English, 繁體中文, 简体中文,
@@ -542,7 +547,7 @@ Italiano, Tiếng Việt, हिन्दी, Bahasa Indonesia) — 첫 실행�
 사이드바가 아이콘으로 접히고 폼 레이블이 입력란 위로 옮겨집니다. 창은
 640×480 까지 줄어들며, HiDPI 스케일링이 기본으로 켜져 있습니다.
 **Settings → Theme** 에서 라이트, 다크, 시스템 따르기 중 하나를 고르면
-바로 적용되며, 덱 자체의 다크 모드와는 별개입니다. 결과를 정렬·필터링하고 체크해 일부 논문만 Enrich, Deck, Export 로 보낼 수 있고, 스노볼 범위를 조정할 수 있으며, 실행 중인 검색이나 보강은 취소할 수 있고, 폼 내용은 다음 실행 때도 유지됩니다. Deck 페이지에서는 내보내기 전에 템플릿을 검사하고 완성된 슬라이드를 검토할 수 있으며, API 키가 없으면 Enrich 페이지가 논문을 JSON 파일로 LLM 에이전트에게 넘기고 그 요약을 가져옵니다. Deck 페이지는 PDF도 다운로드할 수 있고, Settings 에서 기관 / VPN 접근을 선언하기 전까지 IEEE 는 제외하며, 새 인터페이스 언어는 작업을 유지한 채 바로 적용됩니다. 같은 스위치로 `ieee` 는 검색에서도 제외됩니다. Search 페이지는 CLI 의 `--pdf` 처럼 로컬 PDF를 결과로 읽어 올 수도 있습니다. 상태 줄은 Chrome 을 거쳐 받은 PDF 수를 알려 주고, 출판사 PDF가 Chrome 을 쓰지 못했을 때 경고합니다. **Settings → Style** 에서 클래식 네이비 스타일과 Material 3 를 전환합니다. `Ctrl+1` …
+바로 적용되며, 덱 자체의 다크 모드와는 별개입니다. 결과를 정렬·필터링하고 체크해 일부 논문만 Enrich, Deck, Export 로 보낼 수 있고, 스노볼 범위를 조정할 수 있으며, 실행 중인 검색이나 보강은 취소할 수 있고, 폼 내용은 다음 실행 때도 유지됩니다. Deck 페이지에서는 내보내기 전에 템플릿을 검사하고 완성된 슬라이드를 검토할 수 있으며, API 키가 없으면 Enrich 페이지가 논문을 JSON 파일로 LLM 에이전트에게 넘기고 그 요약을 가져옵니다. Deck 페이지는 PDF도 다운로드할 수 있고, Settings 에서 기관 / VPN 접근을 선언하기 전까지 IEEE 는 제외하며, 새 인터페이스 언어는 작업을 유지한 채 바로 적용됩니다. 같은 스위치로 `ieee` 는 검색에서도 제외됩니다. Search 페이지는 CLI 의 `--pdf` 처럼 로컬 PDF를 결과로 읽어 올 수도 있습니다. 상태 줄은 Chrome 을 거쳐 받은 PDF 수를 알려 주고, 출판사 PDF가 Chrome 을 쓰지 못했을 때 경고합니다. **Settings → Style** 에서 클래식 네이비 스타일과 Material 3 를 전환합니다. **Settings → Font size** 에서 앱 전체의 글자 크기를 8~24 pt 범위로 바꾸면 바로 적용되고, `Ctrl++`, `Ctrl+-`, `Ctrl+0`(기본값 복원)으로도 바꿀 수 있으며, 레이아웃도 그에 맞춰집니다. 상태 표시줄의 **Log**(`Ctrl+L`)에서 앱이 하는 일을 볼 수 있고, 오류 보고에 첨부할 로그 파일도 남으며, Chrome 이 캡차 해결을 기다리면 배너로 알려 줍니다. API 키는 설정 파일이 아니라 시스템 자격 증명 저장소(Windows 자격 증명 관리자, macOS 키체인, Secret Service)에 보관됩니다. Windows 용으로 관리자 권한이 필요 없는 설치 프로그램이 있고, 새 버전이 나오면 앱이 알려 줍니다(하루 한 번, 끌 수 있음). **Settings → AI model** 에서 요약을 쓸 모델을 고를 수 있습니다. Anthropic, 다른 11개 서비스, 또는 내 컴퓨터의 모델(Ollama, LM Studio, llama.cpp, vLLM) 중에서 고르며, 내 컴퓨터의 모델을 쓰면 본문을 밖으로 보내지 않아도 됩니다. Enrich 와 Library 페이지의 **Edit summary** 에서 논문 요약을 직접 편집하고 논문 일곱 절 중 비어 있는 절을 확인할 수 있습니다. **Word draft** 와 **LaTeX draft** 는 APA 인용, 비교표, 참고문헌이 있는 문헌 검토 초안을 내보내며 학교의 Word 템플릿에도 쓸 수 있습니다. Deck 페이지의 **Edit slides…** 에서 완성된 덱의 글, 순서, 장수를 미리보기와 실행 취소와 함께 바꿀 수 있습니다. **Settings → AI model** 에서는 명령줄 AI 프로그램(Claude Code, Gemini CLI, Codex, Ollama 또는 임의의 명령)도 고를 수 있으며, 로그인된 계정으로 요약하므로 API 키가 필요 없습니다. `Ctrl+1` …
 `Ctrl+5` 로 페이지를 전환합니다.
 
 전체 레퍼런스: [`docs/gui.md`](../docs/gui.md).

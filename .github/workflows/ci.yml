@@ -37,13 +37,31 @@ jobs:
         uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97  # v7.0.0
         with:
           python-version: ${{ matrix.python-version }}
-          # Cache pip downloads keyed on requirements files so re-runs
-          # for the same dep set skip the wheel build.
-          cache: pip
-          cache-dependency-path: |
-            pyproject.toml
-            requirements.txt
-            requirements-dev.txt
+
+      # The pip cache is restored on every ref but saved only from main.
+      # Each entry is about 450 MB (PySide6, PyMuPDF) and a run cannot read
+      # a sibling branch's caches, only its own ref's and main's. With
+      # setup-python's `cache: pip`, dev, every PR merge ref and every
+      # Dependabot branch saved a full set of six: on 2026-11-21 the store
+      # held 17.3 GB against its 10 GB limit, and the 54 MB Nuitka
+      # compiler cache of the release job was next in line for eviction.
+      # main's set is readable from every ref, so one copy serves them all.
+      # Keyed on the lock, which changes only with a dependency. After a
+      # lock change, restore-keys brings back main's older set, so only
+      # the changed wheels are downloaded.
+      - name: Find the pip cache directory
+        id: pip-dir
+        shell: bash
+        run: echo "dir=$(python -m pip cache dir)" >> "$GITHUB_OUTPUT"
+
+      - name: Restore the pip cache
+        id: pip-cache
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9  # v6.1.0
+        with:
+          path: ${{ steps.pip-dir.outputs.dir }}
+          key: pip-${{ runner.os }}-py${{ matrix.python-version }}-${{ hashFiles('.github/requirements/ci.txt') }}
+          restore-keys: |
+            pip-${{ runner.os }}-py${{ matrix.python-version }}-
 
       - name: Install Qt system libraries (Linux)
         # PySide6 wheels ship most native deps but link to a handful
@@ -80,10 +98,26 @@ jobs:
             libxcb-xkb1 \
             libfontconfig1
 
-      - name: Install dev extras
+      - name: Install dev extras (hash-locked, from .github/requirements/ci.in)
+        # Every package comes from ci.txt at an exact version and hash:
+        # the runtime dependencies, the [dev] extra and the build backend.
+        # A new or compromised PyPI release reaches CI only through a
+        # reviewed Dependabot PR that updates ci.txt. The project itself
+        # is then installed with --no-deps (nothing unlocked comes in)
+        # and --no-build-isolation (the locked setuptools builds it).
+        # The command that regenerates ci.txt is in ci.in beside it.
         run: |
-          python -m pip install --upgrade pip
-          pip install -e ".[dev]"
+          python -m pip install --require-hashes --only-binary :all: -r .github/requirements/ci.txt
+          python -m pip install --no-deps --no-build-isolation -e .  # NOSONAR builds the checked-out project itself with the locked backend, every dependency comes hash-locked from ci.txt
+
+      - name: Save the pip cache (main only)
+        # See "Restore the pip cache". Skipped when the exact key was
+        # restored, since that entry already exists.
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9  # v6.1.0
+        if: github.ref == 'refs/heads/main' && steps.pip-cache.outputs.cache-hit != 'true'
+        with:
+          path: ${{ steps.pip-dir.outputs.dir }}
+          key: ${{ steps.pip-cache.outputs.cache-primary-key }}
 
       - name: ruff lint
         run: python -m ruff check .

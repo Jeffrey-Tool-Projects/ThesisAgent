@@ -74,7 +74,7 @@ def _link(source: Paper, target: Paper, relation=RelationKind.REFERENCES) -> Pap
     return PaperRelation(source.dedup_key(), target.dedup_key(), relation, "openalex", 1)
 
 
-@pytest.fixture()
+@pytest.fixture
 def path(tmp_path):
     return tmp_path / "thesis.db"
 
@@ -506,9 +506,10 @@ def test_a_failed_import_leaves_nothing_behind(path):
         def identity_keys(self):
             raise RuntimeError("boom")
 
+    papers = [GNN_ARXIV, _Exploding()]
     with Library(path) as library:
         with pytest.raises(RuntimeError, match="boom"):
-            library.add_papers([GNN_ARXIV, _Exploding()])
+            library.add_papers(papers)
         assert len(library) == 0
         assert library.runs() == []
 

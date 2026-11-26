@@ -39,7 +39,7 @@ def _collection(*papers: Paper) -> PaperCollection:
     return PaperCollection(Query("attention", ("arxiv",)), papers or (SEED,))
 
 
-@pytest.fixture()
+@pytest.fixture
 def page(qtbot, monkeypatch):
     """A Search page whose search returns ``SEED`` and counts its calls."""
     calls: list[str] = []
@@ -115,11 +115,11 @@ def test_a_search_with_the_snowball_off_does_not_run_it(page, qtbot, monkeypatch
 
 
 def test_the_snowball_summary_is_localised(qtbot):
-    from thesisagents.gui.pages.search import _SearchOutcome
+    from thesisagents.gui.pages.search import SearchOutcome
 
     widget = SearchPage(ui_language="zh-tw")
     qtbot.addWidget(widget)
-    widget._on_search_finished(_SearchOutcome(_collection(), discovered=3))  # noqa: SLF001
+    widget._on_search_finished(SearchOutcome(_collection(), discovered=3))  # noqa: SLF001
     assert "滾雪球: 新增 3 篇。" in widget.status_text()
 
 

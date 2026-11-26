@@ -1,10 +1,10 @@
 # ThesisAgents
 
-[![CI](https://github.com/Integration-Automation/ThesisAgents/actions/workflows/ci.yml/badge.svg)](https://github.com/Integration-Automation/ThesisAgents/actions/workflows/ci.yml)
-[![Release](https://github.com/Integration-Automation/ThesisAgents/actions/workflows/release.yml/badge.svg?branch=main)](https://github.com/Integration-Automation/ThesisAgents/actions/workflows/release.yml)
+[![CI](https://github.com/Jeffrey-Tool-Projects/ThesisAgent/actions/workflows/ci.yml/badge.svg)](https://github.com/Jeffrey-Tool-Projects/ThesisAgent/actions/workflows/ci.yml)
+[![Release](https://github.com/Jeffrey-Tool-Projects/ThesisAgent/actions/workflows/release.yml/badge.svg?branch=main)](https://github.com/Jeffrey-Tool-Projects/ThesisAgent/actions/workflows/release.yml)
 [![PyPI](https://img.shields.io/pypi/v/thesisagents.svg)](https://pypi.org/project/thesisagents/)
 [![Python](https://img.shields.io/pypi/pyversions/thesisagents.svg)](https://pypi.org/project/thesisagents/)
-[![License: MIT](https://img.shields.io/github/license/Integration-Automation/ThesisAgents.svg)](https://github.com/Integration-Automation/ThesisAgents/blob/main/LICENSE)
+[![License: MIT](https://img.shields.io/github/license/Jeffrey-Tool-Projects/ThesisAgent.svg)](https://github.com/Jeffrey-Tool-Projects/ThesisAgent/blob/main/LICENSE)
 [![Docs](https://readthedocs.org/projects/thesisagents/badge/?version=latest)](https://thesisagents.readthedocs.io/en/latest/)
 
 > **Ngôn ngữ**: [English](../README.md) · [繁體中文](README.zh-TW.md) · [简体中文](README.zh-CN.md) · [日本語](README.ja.md) · [Español](README.es.md) · [Français](README.fr.md) · [Deutsch](README.de.md) · [한국어](README.ko.md) · [Português](README.pt.md) · [Русский](README.ru.md) · [Italiano](README.it.md) · **Tiếng Việt** · [हिन्दी](README.hi.md) · [Bahasa Indonesia](README.id.md)
@@ -244,7 +244,7 @@ cho mỗi bài trong tuple `PaperCollection`.
   (inspect / update_slide / delete_slide / reorder_slides / add_slide)
   làm việc với bất kỳ deck nào exporter sinh ra, cộng với các công cụ MCP
   `pptx_*` tương đương để một LLM agent có thể lặp trên một deck đã sinh.
-- **Server MCP**: 18 công cụ — `list_sources` + `list_exports`
+- **Server MCP**: 25 công cụ — `list_sources` + `list_exports`
   (khám phá), `search`, `snowball`, `library_add`, `library_search`, `library_stats`, `fetch_paper`, `fetch_pdf_text`,
   `download_pdfs`, `pptx_validate_template`, `export`, và sáu công cụ deck `pptx_*`
   (`inspect`, `review`, `update_slide`, `delete_slide`,
@@ -257,7 +257,7 @@ cho mỗi bài trong tuple `PaperCollection`.
     PDF qua `fetch_pdf_text`, viết một bản tóm tắt có cấu trúc trong ngữ
     cảnh, và truyền nó cho `export`.
   - **Pipeline Python (`--enrich`)** — CLI tự gọi API của Anthropic;
-    mô hình mặc định `claude-opus-4-7`.
+    mô hình mặc định `claude-opus-5-5`.
 - **Các luồng nhà xuất bản qua Chrome hiển thị**: Scholar SERP, IEEE
   `/rest/search`, và mọi tải xuống PDF-có-paywall (ieeexplore / dl.acm /
   link.springer / sciencedirect / wiley / oup / nature / science / …) chạy
@@ -393,14 +393,15 @@ py -m thesisagents --paper "https://arxiv.org/abs/1706.03762" `
 | `--source` / `-s` | Danh sách nguồn phân cách bằng dấu phẩy. Mặc định `arxiv`. |
 | `--max` / `-n` | Số kết quả tối đa mỗi nguồn (1..200). Mặc định 25. |
 | `--year-from` / `--year-to` | Bộ lọc năm bao gồm. |
-| `--export` / `-e` | Định dạng: bất kỳ trong `pptx,xlsx,md,bib,json,ris,csv,csl`. Mặc định tùy chế độ (xem bên dưới). |
+| `--export` / `-e` | Định dạng: bất kỳ trong `pptx,xlsx,md,bib,json,ris,csv,csl,docx,tex`. Mặc định tùy chế độ (xem bên dưới). |
 | `--out` / `-o` | Thư mục đầu ra. Mặc định `./exports`. |
 | `--filename-stem` | Ghi đè stem tên file được sinh. |
 | `--no-abstract` | Bỏ nội dung tóm tắt khỏi các bản xuất. |
 | `--lang` / `-l` | Ngôn ngữ deck: một trong 14 — `en`, `zh-tw`, `zh-cn`, `ja`, `es`, `fr`, `de`, `ko`, `pt`, `ru`, `it`, `vi`, `hi`, `id`. Mặc định `en`. |
 | `--enrich` | Biến thể fail-loud của auto-enrich. Cần `ANTHROPIC_API_KEY` và extra `[intelligence]`. (Auto-enrich là mặc định khi key được đặt.) |
 | `--lightweight` | Bỏ làm giàu + buộc deck chỉ-tóm-tắt. Chỉ dùng cho các lần chạy nhanh / không người trông coi; **khi một LLM agent đang điều khiển, hãy ưu tiên luồng LLM-as-agent** bên dưới. |
-| `--llm-model` | Ghi đè mặc định `claude-opus-4-7` cho việc làm giàu. |
+| `--llm-model` | Ghi đè mặc định `claude-opus-5-5` cho việc làm giàu. |
+| `--llm-command COMMAND` | Dòng lệnh của nhà cung cấp dạng dòng lệnh (`claude-cli`, `cli`, …), bài báo qua đầu vào chuẩn. |
 | `--no-pdf` | Bỏ tải PDF tự động. Cũng vô hiệu hóa gate PPT từng bài (không PDF → không nội dung đầy đủ). |
 | `--no-oa-resolve` | Bỏ bộ giải OA PDF sau khử trùng lặp (Unpaywall + S2 + arXiv + CORE.ac.uk). |
 | `--top-tier-only` | Giới hạn kết quả vào arXiv + một whitelist CS-chủ-lực được tuyển chọn (S&P, CCS, NDSS, USENIX Security, NeurIPS, ICML, ICSE, …). Tắt theo mặc định. |
@@ -425,7 +426,10 @@ py -m thesisagents --paper "https://arxiv.org/abs/1706.03762" `
 | Biến | Được dùng bởi | Mục đích |
 |---|---|---|
 | `ANTHROPIC_API_KEY` | `--enrich` | Xác thực LLM. Không cần cho đường LLM-as-agent qua MCP. |
-| `THESISAGENTS_LLM_MODEL` | `--enrich` | Ghi đè mặc định `claude-opus-4-7`. |
+| `THESISAGENTS_LLM_PROVIDER` | `--enrich` | Ai chạy mô hình: `anthropic`, `openai`, `gemini`, `mistral`, `deepseek`, `xai`, `groq`, `openrouter`, `together`, `fireworks`, `dashscope`, `moonshot`, trên máy này `ollama`, `lmstudio`, `llamacpp`, `vllm`, hoặc `custom` kèm `THESISAGENTS_LLM_BASE_URL`. Hoặc một chương trình AI dòng lệnh: `claude-cli`, `gemini-cli`, `codex-cli`, `ollama-cli`, hoặc `cli` với `THESISAGENTS_LLM_COMMAND`. |
+| `THESISAGENTS_LLM_COMMAND` | `--enrich` | Dòng lệnh của nhà cung cấp dạng dòng lệnh, nhận bài báo qua đầu vào chuẩn (ví dụ `claude -p --model opus`). Thay cho lệnh mặc định của nhà cung cấp. |
+| `THESISAGENTS_LLM_CLI_TIMEOUT` | `--enrich` | Số giây tối đa cho một bài báo với nhà cung cấp dạng dòng lệnh (mặc định 600). |
+| `THESISAGENTS_LLM_MODEL` | `--enrich` | Ghi đè mặc định `claude-opus-5-5`. |
 | `THESISAGENTS_S2_API_KEY` | Semantic Scholar + bộ giải OA | Rate limit cao hơn; cũng được bước S2 `openAccessPdf` của bộ giải OA dùng. Key miễn phí tại <https://www.semanticscholar.org/product/api>. |
 | `THESISAGENTS_NCBI_API_KEY` | PubMed | Nâng giới hạn ẩn danh của NCBI (3/s) lên 10/s. Tùy chọn. |
 | `THESISAGENTS_CONTACT_EMAIL` | PubMed, ACM, Crossref, OpenAlex, **Unpaywall** | Tag polite-pool + bật bước Unpaywall của bộ giải OA (mức thắng lớn nhất về độ phủ PDF cho các bài IEEE / ACM / Springer / Elsevier có paywall; mức nâng điển hình 40-70 pp). |
@@ -486,10 +490,11 @@ Công cụ:
 | `library_add` | Bài báo → thư viện tài liệu (tệp SQLite tại `library`), giữ lại cho các phiên sau. Thêm tức là gộp: bài đã có sẽ được cập nhật, không bị trùng lặp. `relations` lưu các liên kết trích dẫn mà `snowball` trả về. |
 | `library_search` | Truy vấn → các bài báo đã có trong thư viện, được chấm điểm như một lần tìm kiếm, không cần mạng. Mỗi bài kèm lịch sử của nó: lần đầu và lần cuối được thấy, và những nguồn nào đã trả về nó. |
 | `library_stats` | Thư viện → số bài báo, số lần chạy và số liên kết trích dẫn mà nó đang giữ, số bài theo từng nguồn và các lần nhập gần nhất. |
+| `library_update`, `library_delete`, `library_import`, `library_duplicates`, `library_merge`, `library_saved_search`, `library_prisma` | Thư viện → thẻ, ghi chú, trạng thái đọc và quyết định sàng lọc, xóa và gộp bài báo, nhập BibTeX / RIS, tìm kiếm chỉ báo bài mới, và sơ đồ PRISMA. |
 | `fetch_paper` | Định danh arXiv / DOI / PMID / IEEE → một bài đơn. |
 | `fetch_pdf_text` | Tải một PDF, trả về văn bản thân bài đã trích. **Cổng MCP tới "tôi đã đọc bài".** |
 | `download_pdfs` | Tải hàng loạt PDF của một danh sách bài vào `{out_dir}/pdfs/`. Trả về kết quả từng bài có khóa theo khóa BibTeX. |
-| `export` | Danh sách bài + định dạng → ghi `.pptx/.xlsx/.md/.bib/.json/.ris/.csv/.csl.json`. Nhận một trường `summary` mỗi bài cho schema phong cách luận văn đầy đủ, `max_slides_per_paper` (mặc định 25), và `dark_mode` (mặc định `false` — mặc định dự án là deck sáng dải navy, truyền `true` cho post-pass tối OLED / thiếu sáng). Xác minh mọi DOI / URL trước khi ghi (`verify_identifiers`, mặc định `true`): mã định danh sai hoặc không thể kết nối làm lệnh gọi thất bại và nêu rõ bài báo, và phản hồi kèm báo cáo `verification`. `library` chỉ định thư viện tài liệu dùng để lưu kết quả kiểm tra định danh, nên định danh đã được xác minh ở một lần gọi trước sẽ không bị kiểm tra lại. `pptx_template` (kèm `pptx_template_config` tùy chọn) dựng bộ trang chiếu trên mẫu PowerPoint của riêng bạn. |
+| `export` | Danh sách bài + định dạng → ghi `.pptx/.xlsx/.md/.bib/.json/.ris/.csv/.csl.json/.docx/.tex`. Nhận một trường `summary` mỗi bài cho schema phong cách luận văn đầy đủ, `max_slides_per_paper` (mặc định 25), và `dark_mode` (mặc định `false` — mặc định dự án là deck sáng dải navy, truyền `true` cho post-pass tối OLED / thiếu sáng). Xác minh mọi DOI / URL trước khi ghi (`verify_identifiers`, mặc định `true`): mã định danh sai hoặc không thể kết nối làm lệnh gọi thất bại và nêu rõ bài báo, và phản hồi kèm báo cáo `verification`. `library` chỉ định thư viện tài liệu dùng để lưu kết quả kiểm tra định danh, nên định danh đã được xác minh ở một lần gọi trước sẽ không bị kiểm tra lại. `pptx_template` (kèm `pptx_template_config` tùy chọn) dựng bộ trang chiếu trên mẫu PowerPoint của riêng bạn. |
 | `pptx_validate_template` | Mẫu → nó có dùng được cho `export(pptx_template=...)` hay không: bố cục mà mỗi loại trang chiếu sẽ dùng, cùng các lỗi và cảnh báo cho biết cần sửa gì. Không có gì được tạo ra. |
 | `pptx_inspect` | Đọc cấu trúc slide / shape của một deck hiện có. |
 | `pptx_review` | Kiểm toán một deck trong một lời gọi — overflow + hợp đồng màu + độ đầy đủ mục `paper_rule`. Tự phát hiện ngôn ngữ deck; cũng là CLI `python -m thesisagents review <deck.pptx>`. |
@@ -519,11 +524,11 @@ ThesisAgents/
 ├── thesisagents/                 # gói chính
 │   ├── core/                        # Paper / PaperSummary / RqResult / dedup / ranking / pipeline
 │   ├── fetchers/                    # client async chỉ-HTTPS, rate limit token bucket
-│   ├── exporters/                   # pptx (phong cách luận văn) · xlsx · bib · md · json · ris · csv · csl · pptx_edit · i18n
+│   ├── exporters/                   # pptx (phong cách luận văn) · xlsx · bib · md · json · ris · csv · csl · docx · tex · pptx_edit · i18n
 │   ├── intelligence/                # tải PDF + bộ tóm tắt Anthropic  ([intelligence] extra)
 │   ├── library/                     # SQLite literature library kept across runs
 │   ├── evaluation/                  # benchmark chất lượng tìm kiếm offline (docs/search-quality.md)
-│   ├── mcp/                         # server FastMCP (18 công cụ)
+│   ├── mcp/                         # server FastMCP (25 công cụ)
 │   ├── sources/<name>/              # thư mục plugin: arxiv, semantic_scholar,
 │   │                                #   openalex, pubmed, acm, ieee, scholar,
 │   │                                #   dblp, crossref, openaire, springer,
@@ -558,13 +563,14 @@ pip install thesisagents[gui]
 thesisagents-gui                 # hoặc: thesisagents gui
 ```
 
-Cửa sổ có một thanh bên với năm trang: **Search**, **Library** (chế độ xem chỉ đọc một tệp thư viện: tổng quan, các bài báo cùng liên kết trích dẫn và kết quả kiểm tra định danh, và các lần tìm kiếm đã bổ sung vào nó), **Enrich** (điều
+Cửa sổ có một thanh bên với năm trang: **Search**, **Library** (một tệp thư viện với thẻ, ghi chú và quyết định sàng lọc của bạn, nhập BibTeX / RIS, gộp bài trùng, tìm kiếm đã lưu chỉ hiện bài mới, đồ thị trích dẫn và sơ đồ PRISMA: tổng quan, các bài báo cùng liên kết trích dẫn và kết quả kiểm tra định danh, và các lần tìm kiếm đã bổ sung vào nó), **Enrich** (điều
 khiển làm giàu LLM-as-agent / Python-pipeline qua một tín hiệu
 `collection_ready`), **Deck** (nút bật Dark mode, giới hạn slide, kiểm tra
-định danh và mẫu deck luồng vào `ExportOptions`), và **Settings** (duy trì
-API key qua QSettings). Bản release zip Windows đóng gói bundle được biên dịch
-bằng Nuitka kèm sẵn PySide6, nên `thesisagents.exe gui` chạy
-mà không cần cài Python riêng.
+định danh và mẫu deck luồng vào `ExportOptions`), và **Settings** (API key
+và tùy chọn). Bản release zip Windows đóng gói bundle được biên dịch
+bằng Nuitka kèm sẵn PySide6: mở `thesisagents.exe` là chạy ứng dụng desktop,
+không hiện cửa sổ console và không cần cài Python riêng, còn
+`thesisagents-cli.exe` trong cùng thư mục là bản dòng lệnh.
 Trang Search còn có thể lần theo trích dẫn từ các kết quả đứng đầu (lăn
 cầu tuyết), lưu kết quả vào một tệp thư viện và tìm trong thư viện đó
 khi không có mạng, còn trang Deck có thể dựng bộ trang chiếu trên mẫu
@@ -581,7 +587,7 @@ rộng vừa thì nằm phía trên kết quả, và dưới 760 px thanh bên t
 biểu tượng, nhãn của form chuyển lên trên ô nhập. Cửa sổ thu nhỏ xuống
 640×480, với HiDPI scaling bật theo mặc định. **Settings → Theme** chọn sáng,
 tối hoặc theo hệ thống, áp dụng ngay và độc lập với chế độ tối riêng của
-deck. Kết quả có thể sắp xếp, lọc và đánh dấu để chỉ gửi một số bài báo sang Enrich, Deck và Export, giới hạn lăn cầu tuyết có thể điều chỉnh, có thể hủy tìm kiếm hoặc quá trình làm giàu đang chạy, và biểu mẫu được ghi nhớ giữa các lần khởi động. Trang Deck có thể kiểm tra mẫu trước khi xuất và rà soát bất kỳ bộ slide đã hoàn thành nào, và khi không có khóa API, trang Enrich giao các bài báo cho một tác tử LLM dưới dạng tệp JSON rồi nhập các bản tóm tắt của nó. Trang Deck cũng có thể tải PDF, bỏ qua IEEE cho đến khi Settings khai báo quyền truy cập tổ chức / VPN, và ngôn ngữ giao diện mới áp dụng ngay mà vẫn giữ công việc. Cùng công tắc đó cũng loại `ieee` khỏi các lần tìm kiếm. Trang Search cũng có thể đọc PDF trên máy thành kết quả, giống `--pdf` của CLI. Dòng trạng thái cho biết bao nhiêu PDF được tải qua Chrome và cảnh báo khi một PDF của nhà xuất bản không dùng được Chrome. **Settings → Style** chuyển giữa giao diện cổ điển màu xanh navy và Material 3. `Ctrl+1` … `Ctrl+5` chuyển trang.
+deck. Kết quả có thể sắp xếp, lọc và đánh dấu để chỉ gửi một số bài báo sang Enrich, Deck và Export, giới hạn lăn cầu tuyết có thể điều chỉnh, có thể hủy tìm kiếm hoặc quá trình làm giàu đang chạy, và biểu mẫu được ghi nhớ giữa các lần khởi động. Trang Deck có thể kiểm tra mẫu trước khi xuất và rà soát bất kỳ bộ slide đã hoàn thành nào, và khi không có khóa API, trang Enrich giao các bài báo cho một tác tử LLM dưới dạng tệp JSON rồi nhập các bản tóm tắt của nó. Trang Deck cũng có thể tải PDF, bỏ qua IEEE cho đến khi Settings khai báo quyền truy cập tổ chức / VPN, và ngôn ngữ giao diện mới áp dụng ngay mà vẫn giữ công việc. Cùng công tắc đó cũng loại `ieee` khỏi các lần tìm kiếm. Trang Search cũng có thể đọc PDF trên máy thành kết quả, giống `--pdf` của CLI. Dòng trạng thái cho biết bao nhiêu PDF được tải qua Chrome và cảnh báo khi một PDF của nhà xuất bản không dùng được Chrome. **Settings → Style** chuyển giữa giao diện cổ điển màu xanh navy và Material 3. **Settings → Font size** cho phép đổi ngay cỡ chữ của toàn ứng dụng trong khoảng từ 8 đến 24 pt, cũng có thể dùng `Ctrl++`, `Ctrl+-` và `Ctrl+0` (về mặc định), và bố cục tự điều chỉnh theo. **Log** trên thanh trạng thái (`Ctrl+L`) cho biết ứng dụng đang làm gì, kèm tệp nhật ký để đính kèm khi báo lỗi, và một dải thông báo cho biết khi Chrome đang chờ bạn giải captcha. Khóa API được lưu trong kho thông tin xác thực của hệ thống (Windows Credential Manager, macOS Keychain, Secret Service), không nằm trong tệp cài đặt. Trên Windows có trình cài đặt không cần quyền quản trị, và ứng dụng báo khi có phiên bản mới (mỗi ngày một lần, có thể tắt). **Settings → AI model** chọn ai viết tóm tắt: Anthropic, mười một dịch vụ khác hoặc một mô hình trên máy của bạn (Ollama, LM Studio, llama.cpp, vLLM), nên văn bản không cần rời khỏi máy. **Edit summary** trên trang Enrich và Library cho sửa tay bản tóm tắt của một bài báo và chỉ ra phần nào trong bảy phần luận văn còn trống. **Word draft** và **LaTeX draft** xuất bản nháp tổng quan tài liệu có trích dẫn APA, bảng so sánh và tài liệu tham khảo, kể cả vào mẫu Word của trường bạn. **Edit slides…** trên trang Deck sửa chữ, thứ tự và số slide của bộ slide đã xong, có xem trước và hoàn tác. **Settings → AI model** cũng có các chương trình AI dòng lệnh (Claude Code, Gemini CLI, Codex, Ollama hoặc bất kỳ lệnh nào), tóm tắt bằng tài khoản bạn đã đăng nhập, không cần khóa API. `Ctrl+1` … `Ctrl+5` chuyển trang.
 
 Tham chiếu đầy đủ: [`docs/gui.md`](../docs/gui.md).
 

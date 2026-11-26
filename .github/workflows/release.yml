@@ -150,7 +150,10 @@ jobs:
     # so the Deployment view is redundant noise on the repo home.
     steps:
       - name: Checkout the bumped commit
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        # Not fork code: bump-version runs only for a push to this
+        # repository (its if: checks event and head_repository), checks
+        # out main, and this sha is the bump commit it pushed to main.
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1  NOSONAR sha is this repo's own bump commit on main, fork runs are gated out in bump-version
         with:
           ref: ${{ needs.bump-version.outputs.sha }}
           persist-credentials: false
@@ -159,8 +162,12 @@ jobs:
         uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97  # v7.0.0
         with:
           python-version: "3.12"
+          # Keyed on the lock this job installs from, which changes only
+          # with a tool. Keyed on pyproject.toml, each version bump missed,
+          # restored CI's ~400 MB pip cache through the prefix fallback
+          # and saved it again under a new key (422 MB on 2026-11-20).
           cache: pip
-          cache-dependency-path: pyproject.toml
+          cache-dependency-path: .github/requirements/publish.txt
 
       # This job holds the PyPI token, so its tools are wheels only, at
       # locked hashes, and nothing else is installed: no pip upgrade and
@@ -194,7 +201,10 @@ jobs:
       contents: write
     steps:
       - name: Checkout the bumped commit
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        # Not fork code: bump-version runs only for a push to this
+        # repository (its if: checks event and head_repository), checks
+        # out main, and this sha is the bump commit it pushed to main.
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1  NOSONAR sha is this repo's own bump commit on main, fork runs are gated out in bump-version
         with:
           ref: ${{ needs.bump-version.outputs.sha }}
           persist-credentials: false
@@ -233,16 +243,21 @@ jobs:
     timeout-minutes: 180
     env:
       ASSET_NAME: thesisagents-windows-x86_64.zip
+      INSTALLER_NAME: thesisagents-setup-windows-x86_64.exe
       # Nuitka keeps its compiler cache (clcache on MSVC) and downloads
       # under this directory. Unset, it defaults to
       # %LOCALAPPDATA%\Nuitka\Nuitka\Cache on Windows, a path the cache
-      # step did not save, so every release recompiled all ~2700 C
-      # files ("0 cache hits" in the Nuitka log). Nuitka expands `~`
-      # the same way actions/cache does, so both see one directory.
+      # step did not save, so every release recompiled every C file
+      # (4,191 on 2026-11-19, "0 cache hits" in the Nuitka log). Nuitka
+      # expands `~` the same way actions/cache does, so both see one
+      # directory.
       NUITKA_CACHE_DIR: ~/nuitka-cache
     steps:
       - name: Checkout the bumped commit
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        # Not fork code: bump-version runs only for a push to this
+        # repository (its if: checks event and head_repository), checks
+        # out main, and this sha is the bump commit it pushed to main.
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1  NOSONAR sha is this repo's own bump commit on main, fork runs are gated out in bump-version
         with:
           ref: ${{ needs.bump-version.outputs.sha }}
           persist-credentials: false
@@ -251,8 +266,12 @@ jobs:
         uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97  # v7.0.0
         with:
           python-version: "3.12"
-          cache: pip
-          cache-dependency-path: pyproject.toml
+          # No pip cache here. Its entry was about 400 MB and keyed on
+          # pyproject.toml, so every release's version bump saved a new
+          # one, and with the CI ones they filled the repository's 10 GB
+          # cache store and evicted the Nuitka compiler cache below
+          # within hours (v0.1.26 found none). The install step took
+          # 1.1 min with the pip cache, so dropping it costs little.
 
       - name: Cache Nuitka build artefacts
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9  # v6.1.0
@@ -333,8 +352,10 @@ jobs:
             --standalone \
             --python-flag=-m \
             --output-filename=thesisagents.exe \
-            --windows-icon-from-ico=assets/icon.ico \
+            --windows-icon-from-ico=thesisagents/gui/icon.ico \
             --include-package=thesisagents \
+            --include-distribution-metadata=thesisagents \
+            --include-package=keyring.backends \
             --enable-plugin=pyside6 \
             --nofollow-import-to=pymupdf \
             --nofollow-import-to=uvicorn \
@@ -344,6 +365,7 @@ jobs:
             --nofollow-import-to=streamlit \
             --nofollow-import-to=tornado \
             --lto=no \
+            --include-package-data=thesisagents \
             --include-package-data=pptx \
             --include-package-data=openpyxl \
             --assume-yes-for-downloads \
@@ -354,12 +376,22 @@ jobs:
             nuitka_build --jobs=2
           }
 
-      - name: Smoke-test the built executable
+      - name: Split into the windowed app and the console CLI
+        # thesisagents.exe becomes a windowed program, so opening the
+        # desktop app shows no console window, and thesisagents-cli.exe is
+        # the same build kept as a console program. The script's docstring
+        # says why Nuitka's --windows-console-mode is not used.
+        run: python scripts/split_windows_exe.py thesisagents.dist/thesisagents.exe
+
+      - name: Smoke-test the built executables
         # If the binary fails to load any of its bundled plugins, this
         # surfaces it immediately rather than at the user's first run.
+        # Bash waits for a windowed program and the redirect gives it a
+        # stdout, so both can be run the same way here.
         shell: bash
         run: |
-          ./thesisagents.dist/thesisagents.exe --version || true
+          ./thesisagents.dist/thesisagents-cli.exe --version || true
+          ./thesisagents.dist/thesisagents-cli.exe --help > /dev/null
           ./thesisagents.dist/thesisagents.exe --help > /dev/null
 
       - name: Zip the dist folder
@@ -374,11 +406,43 @@ jobs:
                            -DestinationPath $env:ASSET_NAME `
                            -CompressionLevel Optimal
 
-      - name: Compute SHA-256 checksum
-        # Attach the checksum file alongside the zip so users can
+      - name: Build the installer
+        # Inno Setup comes as a NuGet package: pinned, checked against its
+        # hash, and only unpacked, so nothing is installed on the runner.
+        # Its compiler is signed by the vendor, which is checked too. The
+        # zip is the release's main file, so a failing installer does not
+        # stop it.
+        continue-on-error: true
+        shell: pwsh
+        env:
+          INNO_VERSION: "6.7.3"
+          INNO_SHA256: f780898e402ff80612cc8d9fcb8c6e02932bd1cb4c900ffdaa31f9341cfb49f4
+          APP_VERSION: ${{ needs.bump-version.outputs.version }}
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $package = Join-Path $env:RUNNER_TEMP 'inno.zip'
+          $url = "https://api.nuget.org/v3-flatcontainer/tools.innosetup/$env:INNO_VERSION/tools.innosetup.$env:INNO_VERSION.nupkg"
+          Invoke-WebRequest -Uri $url -OutFile $package
+          if ((Get-FileHash $package -Algorithm SHA256).Hash -ne $env:INNO_SHA256) {
+            throw 'Inno Setup package does not match its pinned hash'
+          }
+          $inno = Join-Path $env:RUNNER_TEMP 'inno'
+          Expand-Archive -Path $package -DestinationPath $inno
+          $iscc = Join-Path $inno 'tools/ISCC.exe'
+          if ((Get-AuthenticodeSignature $iscc).Status -ne 'Valid') {
+            throw 'ISCC.exe is not validly signed'
+          }
+          & $iscc /Qp "/DAppVersion=$env:APP_VERSION" "/DSourceDir=$PWD\thesisagents.dist" "/DOutputDir=$PWD" packaging/windows/thesisagents.iss
+          if ($LASTEXITCODE -ne 0) { throw "ISCC failed with $LASTEXITCODE" }
+
+      - name: Compute SHA-256 checksums
+        # Attach the checksum files alongside the downloads so users can
         # verify what they downloaded matches what CI built.
         shell: bash
-        run: sha256sum "$ASSET_NAME" > "$ASSET_NAME.sha256"
+        run: |
+          for file in "$ASSET_NAME" "$INSTALLER_NAME"; do
+            if [ -f "$file" ]; then sha256sum "$file" > "$file.sha256"; fi
+          done
 
       - name: Attach binary + checksum to release
         uses: softprops/action-gh-release@efb35369e0ad2afab669f228072c1b0d510eae64  # v3.0.3
@@ -387,6 +451,8 @@ jobs:
           files: |
             ${{ env.ASSET_NAME }}
             ${{ env.ASSET_NAME }}.sha256
+            ${{ env.INSTALLER_NAME }}
+            ${{ env.INSTALLER_NAME }}.sha256
           # The release was created as a draft above; uploading does
           # not unmark it.
           draft: true

@@ -120,7 +120,7 @@ def _restore_environment():
             os.environ[name] = value
 
 
-@pytest.fixture()
+@pytest.fixture
 def sample_papers():
     from thesisagents.core.models import Paper
 
@@ -152,6 +152,6 @@ def sample_papers():
     ]
 
 
-@pytest.fixture()
+@pytest.fixture
 def arxiv_fixture_path():
     return Path(__file__).resolve().parent / "fixtures" / "arxiv" / "attention.xml"

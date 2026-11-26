@@ -193,7 +193,8 @@ def test_review_json_output(tmp_path, capsys):
     out = _export(tmp_path, _FULL_THESIS_SUMMARY, stem="jsondeck")
     code = review_mod.main(["--json", str(out)])
     payload = json.loads(capsys.readouterr().out)
-    assert isinstance(payload, list) and len(payload) == 1
+    assert isinstance(payload, list)
+    assert len(payload) == 1
     entry = payload[0]
     assert set(entry) >= {
         "path", "language", "ok", "overflow", "contrast",

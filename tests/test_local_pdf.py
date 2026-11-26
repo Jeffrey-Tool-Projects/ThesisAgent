@@ -52,7 +52,7 @@ def _pdf(path: Path, *lines: str) -> Path:
     return path
 
 
-@pytest.fixture()
+@pytest.fixture
 def thesis_pdf(tmp_path: Path) -> Path:
     return _pdf(
         tmp_path / "my_thesis.pdf",

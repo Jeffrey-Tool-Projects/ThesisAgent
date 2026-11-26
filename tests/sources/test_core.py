@@ -123,37 +123,37 @@ def test_missing_key_raises_config_error(monkeypatch):
 async def test_search_raises_on_bad_key(monkeypatch):
     transport = MockTransport(401, b"")
     _install(monkeypatch, transport)
+    fetcher = _make_fetcher()
+    query = Query(keywords="x", sources=("core",), max_results=1)
     with pytest.raises(ConfigError):
-        await _make_fetcher().search(
-            Query(keywords="x", sources=("core",), max_results=1)
-        )
+        await fetcher.search(query)
 
 
 async def test_search_raises_on_rate_limit(monkeypatch):
     transport = MockTransport(429, b"")
     _install(monkeypatch, transport)
+    fetcher = _make_fetcher()
+    query = Query(keywords="x", sources=("core",), max_results=1)
     with pytest.raises(RateLimitError):
-        await _make_fetcher().search(
-            Query(keywords="x", sources=("core",), max_results=1)
-        )
+        await fetcher.search(query)
 
 
 async def test_search_raises_on_server_error(monkeypatch):
     transport = MockTransport(503, b"oops")
     _install(monkeypatch, transport)
+    fetcher = _make_fetcher()
+    query = Query(keywords="x", sources=("core",), max_results=1)
     with pytest.raises(SourceUnavailableError):
-        await _make_fetcher().search(
-            Query(keywords="x", sources=("core",), max_results=1)
-        )
+        await fetcher.search(query)
 
 
 async def test_search_raises_on_bad_json(monkeypatch):
     transport = MockTransport(200, b"<html>not json</html>")
     _install(monkeypatch, transport)
+    fetcher = _make_fetcher()
+    query = Query(keywords="x", sources=("core",), max_results=1)
     with pytest.raises(ParseError):
-        await _make_fetcher().search(
-            Query(keywords="x", sources=("core",), max_results=1)
-        )
+        await fetcher.search(query)
 
 
 # ---------------------------------------------------------------------------

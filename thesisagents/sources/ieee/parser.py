@@ -8,19 +8,25 @@ from typing import Any
 
 from thesisagents.core.exceptions import ParseError
 from thesisagents.core.models import Paper
+from thesisagents.utils.markup import plain_text
 
 _SOURCE = "ieee"
 _DOC_URL = "https://ieeexplore.ieee.org/document/{arnumber}"
-_BLOB_RE = re.compile(r"xplGlobal\.document\.metadata\s*=\s*(\{.*?\});", re.S)
+#: Where the blob starts: the assignment, up to its opening brace. The JSON
+#: object itself is read by ``json.JSONDecoder.raw_decode``, which finds its
+#: real end in one pass. A lazy ``\{.*?\};`` scan backtracked over the whole
+#: page and stopped early at a ``};`` inside a string value.
+_BLOB_START_RE = re.compile(r"xplGlobal\.document\.metadata\s*=\s*(?=\{)")
+_JSON_DECODER = json.JSONDecoder()
 
 
 def parse_metadata_blob(html_text: str) -> Paper:
     """Extract a Paper from a document-page ``xplGlobal.document.metadata`` JS blob."""
-    match = _BLOB_RE.search(html_text)
+    match = _BLOB_START_RE.search(html_text)
     if not match:
         raise ParseError(_SOURCE, "xplGlobal.document.metadata blob not found")
     try:
-        meta = json.loads(match.group(1))
+        meta, _ = _JSON_DECODER.raw_decode(html_text, match.end())
     except json.JSONDecodeError as err:
         raise ParseError(_SOURCE, f"metadata blob is not JSON: {err}") from err
     return _paper_from_blob(meta)
@@ -160,8 +166,7 @@ def _author_name(author: dict[str, Any]) -> str:
 
 
 def _clean_html(value: str) -> str:
-    cleaned = re.sub(r"<[^>]+>", "", value)
-    return " ".join(cleaned.split())
+    return plain_text(value)
 
 
 def _to_int(value: Any) -> int | None:
@@ -176,7 +181,7 @@ def _to_int(value: Any) -> int | None:
 def _absolutise(path: str | None) -> str | None:
     if not path:
         return None
-    if path.startswith("http://") or path.startswith("https://"):
+    if path.startswith(("http://", "https://")):
         return path
     if path.startswith("/"):
         return f"https://ieeexplore.ieee.org{path}"

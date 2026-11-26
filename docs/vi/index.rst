@@ -50,7 +50,7 @@ Quy trình MCP 6 bước
    5. (bạn đọc mỗi PDF và tạo dict tóm tắt có cấu trúc)
    6. export(papers=[{...paper, "summary": {...}}], language="vi", ...)
 
-18 công cụ MCP đầy đủ: :doc:`/mcp`.
+25 công cụ MCP đầy đủ: :doc:`/mcp`.
 
 **Để tìm các kết quả lạc đề, hãy bắt đầu từ gợi ý của chính công cụ.**
 ``--diagnostics`` (CLI) hoặc ``diagnostics=true`` trên công cụ MCP
@@ -203,7 +203,7 @@ Tìm hiểu thêm
 -------------
 
 * Cờ CLI và biến môi trường: :doc:`/cli`
-* 18 công cụ máy chủ MCP: :doc:`/mcp`
+* 25 công cụ máy chủ MCP: :doc:`/mcp`
 * Toolkit chỉnh sửa PPTX: :doc:`/pptx_editing`
 * Tệp ``readmes/README.vi.md`` ở gốc repo có danh sách đầy đủ tính năng.
 * Tham chiếu kỹ thuật sâu (kiến trúc plugin, chính sách bảo mật,

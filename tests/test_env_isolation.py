@@ -25,7 +25,7 @@ _REMOVED = "THESISAGENTS_TEST_ENV_REMOVED"
 
 
 def test_a_variable_added_directly_is_set_inside_the_test():
-    os.environ[_ADDED] = "1"
+    os.environ[_ADDED] = "1"  # NOSONAR the direct write is under test
     assert os.environ[_ADDED] == "1"
 
 
@@ -35,7 +35,7 @@ def test_then_the_added_variable_is_gone():
 
 def test_a_variable_changed_directly_is_changed_inside_the_test(monkeypatch):
     monkeypatch.setenv(_CHANGED, "original")
-    os.environ[_CHANGED] = "overwritten"
+    os.environ[_CHANGED] = "overwritten"  # NOSONAR the direct write is under test
     assert os.environ[_CHANGED] == "overwritten"
 
 
@@ -45,7 +45,7 @@ def test_then_the_changed_variable_does_not_carry_over():
 
 def test_a_variable_removed_directly_is_absent_inside_the_test(monkeypatch):
     monkeypatch.setenv(_REMOVED, "kept")
-    del os.environ[_REMOVED]
+    del os.environ[_REMOVED]  # NOSONAR the direct delete is under test
     assert _REMOVED not in os.environ
 
 

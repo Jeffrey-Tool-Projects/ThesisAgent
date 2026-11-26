@@ -63,6 +63,19 @@ separator to worry about, because the plugins live inside the package
 The output binary lands at `dist/thesisagents` (or
 `dist/thesisagents.exe` on Windows).
 
+For the desktop app, build a second binary with `--windowed`, which
+opens no console window. Keep the console build for the CLI, because a
+shell does not wait for a windowed program:
+
+```powershell
+pyinstaller `
+  --onefile `
+  --windowed `
+  --name thesisagents-gui `
+  --collect-submodules thesisagents `
+  thesisagents/__main__.py
+```
+
 ## Build the MCP server (`thesisagents-mcp`)
 
 ```powershell

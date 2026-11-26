@@ -73,15 +73,27 @@ def _row(rank: int, paper: Paper, include_abstract: bool) -> list[str]:
     abstract = paper.short_abstract() if (include_abstract and paper.abstract) else ""
     return [
         str(rank),
-        paper.title,
-        "; ".join(paper.authors),
+        _as_text(paper.title),
+        _as_text("; ".join(paper.authors)),
         str(paper.year) if paper.year is not None else "",
-        paper.venue or "",
+        _as_text(paper.venue or ""),
         paper.source,
         paper.doi or "",
         paper.arxiv_id or "",
         str(paper.citation_count) if paper.citation_count is not None else "",
         paper.url,
         paper.pdf_url or "",
-        abstract,
+        _as_text(abstract),
     ]
+
+
+def _as_text(value: str) -> str:
+    """``value`` so that a spreadsheet shows it and does not run it.
+
+    The boundary this guards: text from outside in a file people open in
+    Excel, which takes a cell that begins with one of these characters for a
+    formula. An apostrophe in front makes it text there.
+
+    Example: ``_as_text("=HYPERLINK(1)") == "'=HYPERLINK(1)"``.
+    """
+    return f"'{value}" if value.startswith(("=", "+", "-", "@", "\t", "\r")) else value

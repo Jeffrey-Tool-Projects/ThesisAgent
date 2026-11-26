@@ -1,6 +1,7 @@
 """Settings page.
 
-Stores API keys / contact email / cookies-file path locally via
+Stores API keys in the system credential store (``gui/credentials.py``)
+and the rest (contact email, cookies-file path, appearance) locally via
 ``QSettings`` (native registry on Windows / plist on macOS / ini on
 Linux). On startup the values are also pushed into ``os.environ`` so
 the existing source plugins pick them up — saving here is equivalent
@@ -18,6 +19,7 @@ from pathlib import Path
 from typing import Final
 
 from PySide6.QtCore import QSettings, Qt, Signal
+from PySide6.QtGui import QWheelEvent
 from PySide6.QtWidgets import (
     QBoxLayout,
     QCheckBox,
@@ -28,16 +30,26 @@ from PySide6.QtWidgets import (
     QLabel,
     QLineEdit,
     QPushButton,
+    QSpinBox,
     QVBoxLayout,
     QWidget,
 )
 
+from thesisagents.gui import credentials
+from thesisagents.gui.font_size import (
+    MAX_FONT_PT,
+    MIN_FONT_PT,
+    clamp_font_size,
+    default_font_size,
+    layout_scale,
+)
 from thesisagents.gui.i18n import (
     LANGUAGE_DISPLAY_NAMES,
     SUPPORTED_LANGUAGES,
     t,
 )
 from thesisagents.gui.theme import STYLE_CHOICES, STYLE_CLASSIC, THEME_CHOICES, THEME_SYSTEM
+from thesisagents.gui.widgets.model_card import ModelCard, apply_saved_model
 from thesisagents.gui.widgets.responsive import Breakpoint, adapt_form_rows, make_card
 
 # QSettings key (under organization/app) → env var name. The page reads
@@ -76,6 +88,11 @@ _SETTINGS_FIELDS: Final[tuple[tuple[str, str, str], ...]] = (
     ),
 )
 
+#: The fields whose value is a secret and belongs in the credential store.
+_SECRET_KEYS: Final[frozenset[str]] = frozenset(
+    key for key, _env, _label in _SETTINGS_FIELDS if key.startswith("api/")
+)
+
 _COOKIES_KEY: Final[str] = "pdf/cookies_file"
 _COOKIES_ENV: Final[str] = "THESISAGENTS_PDF_COOKIES_FILE"
 _CHROME_PROFILE_KEY: Final[str] = "browser/chrome_profile_dir"
@@ -87,6 +104,11 @@ _THEME_KEY: Final[str] = "ui/theme"
 #: One of ``theme.STYLE_CHOICES`` (classic navy or Material 3), applied on
 #: save like the theme.
 _STYLE_KEY: Final[str] = "ui/style"
+#: Interface font size in points. Absent means the default size, so a
+#: user who never picked one keeps following the system's.
+_FONT_SIZE_KEY: Final[str] = "ui/font_size"
+#: Whether the app asks PyPI once a day for a newer release.
+_UPDATES_KEY: Final[str] = "updates/check"
 #: Whether the user has institutional / VPN access to paywalled publishers.
 #: The PDF stage (``gui/pdf_stage.py``) leaves IEEE PDFs out while it is off.
 _VPN_KEY: Final[str] = "access/vpn"
@@ -114,12 +136,14 @@ def apply_saved_env() -> None:
     the user typed in Settings without needing a shell restart.
     """
     store = settings_store()
+    credentials.migrate(store, _SECRET_KEYS)
     for key, env_var, _label in _SETTINGS_FIELDS:
-        value = store.value(key, "", type=str)
+        value = _saved_value(store, key)
         if value:
             os.environ[env_var] = value
         else:
             os.environ.pop(env_var, None)
+    apply_saved_model(store)
     cookies = store.value(_COOKIES_KEY, "", type=str)
     if cookies:
         os.environ[_COOKIES_ENV] = cookies
@@ -130,6 +154,13 @@ def apply_saved_env() -> None:
         os.environ[_CHROME_PROFILE_ENV] = chrome_profile
     else:
         os.environ.pop(_CHROME_PROFILE_ENV, None)
+
+
+def _saved_value(store: QSettings, key: str) -> str:
+    """The saved value of one form field, wherever it is kept."""
+    if key in _SECRET_KEYS:
+        return credentials.read(store, key)
+    return store.value(key, "", type=str)
 
 
 def saved_ui_language(default: str = "en") -> str:
@@ -159,6 +190,24 @@ def saved_style() -> str:
     return value if value in STYLE_CHOICES else STYLE_CLASSIC
 
 
+def saved_font_size() -> int:
+    """The interface font size in points, the default when none is saved.
+
+    A value outside the supported range (a hand-edited setting) is moved
+    into it, and one that is not a number counts as unset.
+    """
+    value = settings_store().value(_FONT_SIZE_KEY)
+    try:
+        return clamp_font_size(int(value))
+    except (TypeError, ValueError):
+        return default_font_size()
+
+
+def saved_update_check() -> bool:
+    """Whether the app may look for a newer release (on by default)."""
+    return bool(settings_store().value(_UPDATES_KEY, True, type=bool))
+
+
 def saved_vpn_access() -> bool:
     """Whether Settings declares institutional / VPN access (off by default).
 
@@ -169,12 +218,38 @@ def saved_vpn_access() -> bool:
     return bool(settings_store().value(_VPN_KEY, False, type=bool))
 
 
+class _FontSizeBox(QSpinBox):
+    """A spin box the mouse wheel only turns once it has the focus.
+
+    The page scrolls, and scrolling past an ordinary spin box changes it.
+    For this one that would resize the whole window by accident.
+    """
+
+    def __init__(self, parent: QWidget | None = None) -> None:
+        super().__init__(parent)
+        self.setRange(MIN_FONT_PT, MAX_FONT_PT)
+        self.setSuffix(" pt")
+        self.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
+        # Typing "16" must not apply the "1" on the way.
+        self.setKeyboardTracking(False)
+
+    def wheelEvent(self, event: QWheelEvent) -> None:  # noqa: N802 - Qt override
+        if self.hasFocus():
+            super().wheelEvent(event)
+        else:
+            event.ignore()
+
+
 class SettingsPage(QWidget):
-    """Form for API keys + cookies-file + UI language + theme."""
+    """Form for API keys + cookies-file + UI language + theme + font size."""
 
     #: The theme saved by the user, emitted on every save (after the theme
     #: and the style are stored) so the window repaints at once.
     theme_changed = Signal(str)
+    #: The interface font size in points, stored before it is emitted. Unlike
+    #: the rest of the page it needs no Save, since a size is found by
+    #: looking at it.
+    font_size_changed = Signal(int)
     #: A different interface language was saved. The main window rebuilds
     #: itself in it, carrying the current work over.
     language_changed = Signal(str)
@@ -186,6 +261,7 @@ class SettingsPage(QWidget):
         super().__init__(parent)
         self._ui_language = ui_language
         self._field_inputs: dict[str, QLineEdit] = {}
+        self._loaded_secrets: dict[str, str] = {}
         self._build_ui()
         self._load_from_store()
 
@@ -225,8 +301,13 @@ class SettingsPage(QWidget):
         for choice in STYLE_CHOICES:
             self._style_combo.addItem(t(f"settings.style_{choice}", language), choice)
         ui_form.addRow(t("settings.style_label", language), self._style_combo)
+        self._add_font_size_rows(ui_form)
+        self._updates_check = QCheckBox(t("settings.check_updates", language), self)
+        ui_form.addRow(self._updates_check)
         adapt_form_rows(ui_card, ui_form)
         left.addWidget(ui_card)
+        self._model_card = ModelCard(language, self)
+        left.addWidget(self._model_card)
 
         browser_card, browser_layout = make_card(t("settings.card_browser", language), self)
         browser_form = QFormLayout()
@@ -250,10 +331,15 @@ class SettingsPage(QWidget):
         for key, _env_var, label_key in _SETTINGS_FIELDS:
             edit = QLineEdit(self)
             # Mask secret-shaped fields; contact email stays plain.
-            if key.startswith("api/"):
+            if key in _SECRET_KEYS:
                 edit.setEchoMode(QLineEdit.PasswordEchoOnEdit)
             api_form.addRow(t(label_key, language), edit)
             self._field_inputs[key] = edit
+        self._storage_note = QLabel("", self)
+        self._storage_note.setObjectName("Muted")
+        self._storage_note.setWordWrap(True)
+        self._show_storage(credentials.available())
+        api_layout.addWidget(self._storage_note)
         adapt_form_rows(api_card, api_form)
         self._columns.addWidget(api_card, stretch=1, alignment=Qt.AlignmentFlag.AlignTop)
 
@@ -268,6 +354,26 @@ class SettingsPage(QWidget):
         save_row.addWidget(save_button)
         outer.addLayout(save_row)
         outer.addStretch(1)
+
+    def _add_font_size_rows(self, form: QFormLayout) -> None:
+        """The font size box, its Reset button and the keyboard hint."""
+        language = self._ui_language
+        row = QWidget(self)
+        layout = QHBoxLayout(row)
+        layout.setContentsMargins(0, 0, 0, 0)
+        self._font_size_box = _FontSizeBox(self)
+        self._font_size_box.setAccessibleName(t("settings.font_size_label", language))
+        self._font_size_box.setValue(saved_font_size())
+        self._font_size_box.valueChanged.connect(self.set_font_size)
+        reset = QPushButton(t("settings.font_size_reset", language), self)
+        reset.clicked.connect(self.reset_font_size)
+        layout.addWidget(self._font_size_box, stretch=1)
+        layout.addWidget(reset)
+        form.addRow(t("settings.font_size_label", language), row)
+        hint = QLabel(t("settings.font_size_hint", language), self)
+        hint.setObjectName("Muted")
+        hint.setWordWrap(True)
+        form.addRow(hint)
 
     def _path_row(self, form: QFormLayout, label_key: str, on_browse) -> QLineEdit:
         """A read-only path field with a Browse button, added to ``form``."""
@@ -284,10 +390,17 @@ class SettingsPage(QWidget):
         return field
 
     def apply_breakpoint(self, breakpoint: Breakpoint) -> None:
-        """Two columns side by side, or stacked on a compact window."""
+        """Two columns side by side, or stacked on a compact window.
+
+        Enlarged text stacks them on a medium window too: the long labels of
+        the two cards then need more than its width.
+        """
+        stacked = breakpoint is Breakpoint.COMPACT or (
+            breakpoint is Breakpoint.MEDIUM and layout_scale() > 1.0
+        )
         direction = (
             QBoxLayout.Direction.TopToBottom
-            if breakpoint is Breakpoint.COMPACT
+            if stacked
             else QBoxLayout.Direction.LeftToRight
         )
         self._columns.setDirection(direction)
@@ -295,8 +408,40 @@ class SettingsPage(QWidget):
     def columns_direction(self) -> QBoxLayout.Direction:
         return self._columns.direction()
 
+    def set_font_size(self, points: int) -> None:
+        """Store ``points`` as the interface font size and announce it.
+
+        The box calls this while the user turns it, and the window for its
+        ``Ctrl++`` / ``Ctrl+-`` shortcuts, so the two never disagree.
+        """
+        points = clamp_font_size(points)
+        settings_store().setValue(_FONT_SIZE_KEY, points)
+        self._show_font_size(points)
+        self.font_size_changed.emit(points)
+
+    def reset_font_size(self) -> None:
+        """Forget the picked size, so the default applies again."""
+        settings_store().remove(_FONT_SIZE_KEY)
+        points = default_font_size()
+        self._show_font_size(points)
+        self.font_size_changed.emit(points)
+
+    def _show_font_size(self, points: int) -> None:
+        self._font_size_box.blockSignals(True)
+        self._font_size_box.setValue(points)
+        self._font_size_box.blockSignals(False)
+
+    def font_size_box(self) -> QSpinBox:
+        return self._font_size_box
+
     def theme_combo(self) -> QComboBox:
         return self._theme_combo
+
+    def model_card(self) -> ModelCard:
+        return self._model_card
+
+    def updates_checkbox(self) -> QCheckBox:
+        return self._updates_check
 
     def vpn_checkbox(self) -> QCheckBox:
         return self._vpn_check
@@ -306,6 +451,14 @@ class SettingsPage(QWidget):
 
     def style_combo(self) -> QComboBox:
         return self._style_combo
+
+    def _show_storage(self, in_store: bool) -> None:
+        """Say where the keys are kept, in particular when that is plain text."""
+        key = "settings.keys_in_store" if in_store else "settings.keys_plain"
+        self._storage_note.setText(t(key, self._ui_language))
+
+    def storage_note(self) -> str:
+        return self._storage_note.text()
 
     def _on_browse_cookies(self) -> None:
         start = self._cookies_input.text() or str(Path.home())
@@ -330,13 +483,25 @@ class SettingsPage(QWidget):
 
     def _on_save(self) -> None:
         store = settings_store()
+        in_store = credentials.available()
         for key, env_var, _label in _SETTINGS_FIELDS:
             value = self._field_inputs[key].text().strip()
-            store.setValue(key, value)
+            if key in _SECRET_KEYS:
+                # Empty now and empty before is no change: a credential store that
+                # was locked when the page was filled shows every key as empty,
+                # and writing that back would delete them.
+                if value or self._loaded_secrets.get(key):
+                    in_store = credentials.write(store, key, value) and in_store
+                    self._loaded_secrets[key] = value
+            else:
+                store.setValue(key, value)
             if value:
                 os.environ[env_var] = value
             else:
                 os.environ.pop(env_var, None)
+        # The Anthropic key was just stored above, which the card reads.
+        self._model_card.save(store)
+        self._show_storage(in_store)
         cookies = self._cookies_input.text().strip()
         store.setValue(_COOKIES_KEY, cookies)
         if cookies:
@@ -355,6 +520,7 @@ class SettingsPage(QWidget):
         store.setValue(_THEME_KEY, theme)
         store.setValue(_STYLE_KEY, self._style_combo.currentData() or STYLE_CLASSIC)
         store.setValue(_VPN_KEY, self._vpn_check.isChecked())
+        store.setValue(_UPDATES_KEY, self._updates_check.isChecked())
         store.sync()
         self.theme_changed.emit(theme)
         self.access_changed.emit(self._vpn_check.isChecked())
@@ -367,7 +533,10 @@ class SettingsPage(QWidget):
     def _load_from_store(self) -> None:
         store = settings_store()
         for key, _env_var, _label in _SETTINGS_FIELDS:
-            self._field_inputs[key].setText(store.value(key, "", type=str))
+            value = _saved_value(store, key)
+            self._field_inputs[key].setText(value)
+            if key in _SECRET_KEYS:
+                self._loaded_secrets[key] = value
         self._cookies_input.setText(store.value(_COOKIES_KEY, "", type=str))
         self._chrome_profile_input.setText(
             store.value(_CHROME_PROFILE_KEY, "", type=str),
@@ -379,7 +548,9 @@ class SettingsPage(QWidget):
                 break
         theme_index = self._theme_combo.findData(saved_theme())
         self._theme_combo.setCurrentIndex(max(0, theme_index))
+        self._model_card.load(store)
         self._vpn_check.setChecked(saved_vpn_access())
+        self._updates_check.setChecked(saved_update_check())
         style_index = self._style_combo.findData(saved_style())
         self._style_combo.setCurrentIndex(max(0, style_index))
 

@@ -25,14 +25,16 @@ pip install thesisagents[gui,intelligence,mcp]
 Three equivalent entry points:
 
 ```powershell
-thesisagents-gui                    # PyPI console script
+thesisagents-gui                    # PyPI window program, no console on Windows
 thesisagents gui                    # CLI subcommand
 py -m thesisagents gui              # module entry, useful while developing
 ```
 
-The Windows release `.exe` also accepts `thesisagents.exe gui` —
-the bundle includes PySide6 and the source plugins so no extra
-install is needed.
+In the Windows release zip, opening `thesisagents.exe` (or running
+`thesisagents.exe gui`) starts the app without a console window. The
+bundle includes PySide6 and the source plugins, so no extra install is
+needed. `thesisagents-cli.exe gui` starts the same app from a terminal
+and shows its log there, which is the way to see why a start failed.
 
 ## Window layout
 
@@ -48,6 +50,19 @@ subtitle saying what it does.
   opening it.
 - `Ctrl+1` … `Ctrl+5` switch to Search, Library, Enrich, Deck and
   Settings.
+- `Ctrl++` (or `Ctrl+=`) makes the text larger, `Ctrl+-` smaller, and
+  `Ctrl+0` puts it back to the default, see **Font size** under Settings.
+- **Log** in the status bar (`Ctrl+L`) opens the activity log, live, with
+  **Copy** and **Open log folder**. The same lines go to
+  `%LOCALAPPDATA%\ThesisAgents\logs\thesisagents.log` on Windows
+  (`~/.local/share` on Linux, `~/Library/Application Support` on macOS),
+  three files of 1 MB. API keys are replaced with `***` in both.
+- When a page in the visible Chrome window asks whether you are human, a
+  banner above the page says which site, counts down how long the search
+  waits, and flashes the taskbar entry. If time runs out, it says that this
+  source returned nothing.
+- An error nobody caught is shown in the status bar and logged. One during
+  start-up is shown in a dialog that names the log file.
 - While a search, an enrichment run or an export is working, the status
   bar at the bottom shows `Working…` and a moving progress bar. The page
   that started the work keeps its own detailed status line.
@@ -193,12 +208,12 @@ Press **Export…**, pick an output directory, and the standard
 
 ### Library
 
-A read-only view of a literature library file, the SQLite file the
-Search page's **Library** field and the CLI `--library` flag fill. The
+The papers of a literature library file, with what you record about them.
+It is the SQLite file the Search page's **Library** field and the CLI `--library` flag fill. The
 path follows the Search page's library field, and **Browse…** picks
 another file. Press **Open library** (or Enter in either field) to read
-it. The file is opened read-only and is never created: a path with no
-library behind it reports `Could not open the library: …` instead of
+it. Opening never creates a file: a path with no library behind it
+reports `Could not open the library: …` instead of
 making an empty one.
 
 - The **find** box narrows the list the way **Search library** does
@@ -213,18 +228,45 @@ making an empty one.
   library papers it cites and that cite it, and its stored DOI / URL
   checks with their date. Every value there is shown as plain text, a
   title with markup in it is not rendered.
+- **Filter** narrows the list by tag, reading status and screening
+  decision. What is listed is also what **Send to Enrich and Deck** sends.
+- **My notes**, below the list, records tags (separated by commas), a
+  reading status, a note, and a screening decision with its reason at one
+  of two stages: title and abstract, or full text. With several papers
+  selected, tags are added to all of them and notes are left alone.
+  Searching again never changes any of it.
+- **Delete** and **Merge** act on the selected papers after asking. A merge
+  keeps the first paper's fields and fills its gaps from the others.
+- **Import…** reads a BibTeX or RIS file (Zotero, Mendeley, EndNote,
+  JabRef) and creates the library when there is none yet. **Find
+  duplicates** lists papers an import could not decide on, such as a
+  preprint and its journal version.
+- The **Saved searches** tab saves the search described on the Search page
+  under a name. **Run** repeats it, adds what it finds and selects the
+  papers the library did not hold before.
+- The **Citations** tab draws the citation links: papers in columns by
+  year, an arrow from each to what it cites, circles sized by citation
+  count. Click one to select it in the list. Dragging pans, `Ctrl` with
+  the wheel zooms.
+- The **Review** tab shows the PRISMA 2020 flow of the recorded decisions
+  and saves it as an SVG drawing in the interface language.
 - The **Searches** tab lists every import, newest first: date, kind,
   keywords and how many papers it brought.
 - **Send to Enrich and Deck** hands the listed papers (with the citation
   links between them) on, as a search result would be.
 
-The page never writes to the file. Adding papers stays on the Search
-page (**Add results to the library**), the CLI and MCP.
+Every change is made on a worker thread and in one transaction, so one
+that fails leaves the library as it was. The same actions are available as
+`thesisagents library` on the command line (`docs/cli.md`) and as MCP
+tools (`docs/mcp.md`).
 
 ### Settings
 
-Interface language, theme, style, API keys, contact email, cookies file and
-Chrome profile directory are stored locally via Qt's
+API keys are kept in the system credential store (Windows Credential
+Manager, macOS Keychain, Secret Service), see
+[`configuration.md`](configuration.md) "API keys". Interface language,
+theme, style, contact email, cookies file and Chrome profile directory are
+stored locally via Qt's
 [`QSettings`](https://doc.qt.io/qtforpython-6/PySide6/QtCore/QSettings.html)
 (Windows registry, macOS plist, Linux ini). Saving a value also
 exports the matching environment variable into the current process,
@@ -278,6 +320,37 @@ Both styles are drawn by the app's own stylesheet
 (`thesisagents/gui/theme.py`), so neither needs an extra package. Every
 palette is tested for WCAG AA contrast (4.5:1) on body, secondary,
 sidebar and button text.
+
+**Check for a new version once a day** (on by default, QSettings key
+`updates/check`) asks PyPI for the latest version number and nothing else.
+A newer release shows as a button in the status bar that opens the download
+page. The app downloads and installs nothing itself.
+
+**AI model** chooses who writes the summaries on the Enrich page: Anthropic,
+another service, a program on this computer, or an AI program on the
+command line (Claude Code, Gemini CLI, Codex, Ollama, or any command),
+which shows a **Command** field in place of the address. Every provider
+keeps its own model, address or command, and key, so switching back and
+forth loses nothing. **List models** asks the provider what it offers.
+Of the command-line programs only Ollama can say: for the others, type
+the model name the program knows or leave it empty for its own default. The note under the fields
+says whether a paper's text leaves the computer. See
+[`configuration.md`](configuration.md) "Language models".
+
+**Font size** sets the text of the whole app, from 8 to 24 pt (QSettings
+key `ui/font_size`). It is applied as you change it and needs no
+**Save**, since the right size is found by looking at it. **Reset**
+forgets the choice, so the default applies again: the system's size, at
+least 10 pt. The mouse wheel changes the box only after you click into
+it, so scrolling the page past it does not resize the window. What
+follows the size, beyond the text itself (`thesisagents/gui/font_size.py`):
+
+- Page titles, table rows, buttons, fields and the sidebar grow with it.
+- The window widths at which the layout changes grow with it. A 1280 px
+  window at 16 pt is laid out like an 800 px one at 10 pt.
+- A page that no longer fits scrolls instead of squeezing its widgets.
+
+The exported decks are not affected.
 
 On a wide window the cards sit in two columns (interface and browser
 access on the left, API keys on the right). On a compact window they
@@ -338,6 +411,13 @@ A file that is not a hand-off, from a newer version, larger than 20 MB
 or with a summary that cannot be read is refused with the reason on the
 status line, and nothing changes. Format: `thesisagents/gui/handoff.py`
 (`format: "thesisagents-agent-handoff"`, `version: 1`).
+
+**Edit summary** below the list (or a double click on a row) opens the
+summary as text, one tab per thesis section, whether or not a model wrote
+it. The line above the tabs names the sections that have nothing yet. Lists
+take one statement per line, `#` starts a heading, `|` separates columns.
+Figures and tables taken from the paper are kept as they are. The Library
+page has the same button and stores what you save in the library.
 
 ### Deck
 
@@ -410,6 +490,15 @@ The PPTX inspector / editor surface (drives `pptx_inspect` /
 produces — `title`, `meta`, `body`, `kpi`, `rq_question`, `figure`,
 `accent_top`, `accent_left` — so the editor list view labels each
 slide by its semantic role rather than by raw shape index.
+
+**Edit slides…** opens the deck selected in the list of written files, or
+one you pick. Thumbnails on the left can be dragged into another order. On
+the right is the selected slide and its texts, which keep their colour and
+size when you change them. Slides can be added in the deck's own look and
+deleted, every step can be undone, and the page numbers are counted again.
+The file on disk changes only with **Save** (`Ctrl+S`) or **Save as…**. The
+preview is drawn from the file without PowerPoint, so fonts and line breaks
+differ a little, and charts are not drawn.
 
 ## i18n
 
@@ -528,8 +617,6 @@ leaves that field at its default.
 
 ## Known limitations
 
-- The Library page only reads. Removing a paper from a library, or
-  editing one, is not possible from the GUI.
 - The Settings page does not validate keys against the live API —
   validation would leak the key into HTTP logs and slow down save.
   An invalid key surfaces later as a `ConfigError` / 401 from the

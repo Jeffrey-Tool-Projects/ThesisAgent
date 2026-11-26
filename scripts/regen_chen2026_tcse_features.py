@@ -146,13 +146,17 @@ def _build_summary() -> PaperSummary:
         contributions_detailed=(
             (
                 "一、多階段 CoT 審查流程",
-                "思維鏈(Chain-of-Thought, CoT)把審查結構化為五個可逐步推理且可追溯之"
-                "循序步驟:摘要 → 初步審查 → 靜態分析 → 異味偵測 → 總結,每步留檔。",
+                (
+                    "思維鏈(Chain-of-Thought, CoT)把審查結構化為五個可逐步推理且可追溯之"
+                    "循序步驟:摘要 → 初步審查 → 靜態分析 → 異味偵測 → 總結,每步留檔。"
+                ),
             ),
             (
                 "二、KD + QLoRA 輕量化部署",
-                "知識蒸餾(KD)結合 QLoRA(4-bit 量化低秩微調),把教師模型之審查能力"
-                "轉移至學生模型 gemma-4-31B-it,於有限運算資源下部署。",
+                (
+                    "知識蒸餾(KD)結合 QLoRA(4-bit 量化低秩微調),把教師模型之審查能力"
+                    "轉移至學生模型 gemma-4-31B-it,於有限運算資源下部署。"
+                ),
             ),
             (
                 "三、RAG 動態注入專案規則",
@@ -388,7 +392,7 @@ def _slide_title_text(slide) -> str:
     return ""
 
 
-def _restyle_deck(out_path: str) -> None:
+def _restyle_deck(out_path: str) -> None:  # NOSONAR one-shot post-pass for one manuscript, branchy by design like the ruff C901 scripts exemption
     """Post-export pass for this deck's ten-minute cut + candidate styling.
 
     1. Remove the tail「貢獻總結」slide — the exporter renders

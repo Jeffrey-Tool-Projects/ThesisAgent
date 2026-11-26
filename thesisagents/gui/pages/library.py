@@ -1,4 +1,4 @@
-"""Library page: a read-only view of a literature library file.
+"""Library page: a view of a literature library file, and the place to edit it.
 
 Closes ``progress.md`` #20. Before this page a library (``thesisagents/library/``)
 could only be *searched* from the GUI. Its statistics, the searches that
@@ -10,33 +10,43 @@ worker thread:
 
 * an **Overview** card: papers, searches, citation links, year span, papers
   per source, identifier checks per status;
-* a **Papers** tab: every stored paper (or those matching the find box), and
-  for the selected one its citation neighbours inside the library and its
-  stored identifier verdicts;
-* a **Searches** tab: every import, newest first.
+* a **Filter** card: by tag, reading status and screening decision;
+* a **Papers** tab: every stored paper (or those matching the find box and
+  the filter), for the selected one its citation neighbours inside the
+  library and its stored identifier verdicts, and below it the editor for
+  tags, status, note and screening (``widgets/paper_editor.py``);
+* a **Saved searches** tab, a **Citations** tab (``widgets/citation_graph.py``),
+  a **Review** tab (the PRISMA flow) and a **Searches** tab: every import.
 
-The page never writes: the file is opened with ``create=False`` so a typo in
-the path says "no library there" instead of creating an empty one. **Send to
-Enrich and Deck** hands the listed papers on like a search result.
+Every write goes through :meth:`LibraryPage.run_edit`: a function of an open
+``Library`` runs on a worker thread and a fresh snapshot comes back, so the
+UI thread never touches the database. The file is opened with
+``create=False`` except by an import, so a typo in the path says "no library
+there" instead of creating an empty one. **Send to Enrich and Deck** hands
+the listed papers on like a search result.
 """
 
 from __future__ import annotations
 
 import html
-from collections.abc import Mapping
-from dataclasses import dataclass
+from collections.abc import Callable, Mapping
+from dataclasses import dataclass, field, replace
 from pathlib import Path
 
-from PySide6.QtCore import QModelIndex, QSettings, Qt, QThreadPool, Signal
+from PySide6.QtCore import QItemSelectionModel, QSettings, Qt, QThreadPool, Signal
 from PySide6.QtGui import QStandardItem, QStandardItemModel
 from PySide6.QtWidgets import (
+    QComboBox,
     QFileDialog,
     QFormLayout,
+    QFrame,
     QHBoxLayout,
     QHeaderView,
     QLabel,
     QLineEdit,
+    QMessageBox,
     QPushButton,
+    QScrollArea,
     QSplitter,
     QTableView,
     QTabWidget,
@@ -45,20 +55,47 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from thesisagents.core.bib_import import ImportedBibliography, read_bibliography
+from thesisagents.core.constants import SOURCE_IEEE
 from thesisagents.core.diagnostics import PaperRelation
+from thesisagents.core.exceptions import ThesisAgentsError
 from thesisagents.core.export_validation import KIND_DOI, KIND_URL
 from thesisagents.core.identifiers import canonical_doi
-from thesisagents.core.models import Paper, PaperCollection
+from thesisagents.core.models import Paper, PaperCollection, Query
 from thesisagents.gui.i18n import t
+from thesisagents.gui.pages.settings import saved_vpn_access
+from thesisagents.gui.widgets.citation_graph import CitationGraph, GraphNode
+from thesisagents.gui.widgets.library_tabs import (
+    DuplicatesDialog,
+    ReviewTab,
+    SavedSearchesTab,
+    prisma_labels,
+)
+from thesisagents.gui.widgets.paper_editor import EditRequest, PaperEditor
 from thesisagents.gui.widgets.responsive import (
     AdaptiveSplit,
     Breakpoint,
     adapt_form_rows,
     make_card,
 )
-from thesisagents.gui.workers import BlockingWorker
-from thesisagents.library import Library, LibraryEntry, LibraryRun, LibraryStats
+from thesisagents.gui.widgets.summary_editor import SummaryEditor
+from thesisagents.gui.workers import AsyncWorker, BlockingWorker
+from thesisagents.library import (
+    DECISIONS,
+    READING_STATUSES,
+    Library,
+    LibraryEntry,
+    LibraryRun,
+    LibraryStats,
+    PrismaFlow,
+    SavedSearch,
+    SavedSearchOutcome,
+    prisma_flow,
+    prisma_svg,
+    run_saved_search,
+)
 
+_BIBLIOGRAPHY_FILTER = "BibTeX / RIS (*.bib *.ris *.txt);;All files (*)"
 _LIBRARY_FILE_FILTER = "SQLite (*.db *.sqlite *.sqlite3);;All files (*)"
 _FORM_GROUP = "form/library"
 _NO_VALUE = "—"
@@ -66,6 +103,9 @@ _NO_VALUE = "—"
 #: -1), case-folded text otherwise. A display column mixing ``2024`` and
 #: ``"—"`` cannot be compared directly.
 _SORT_ROLE = int(Qt.ItemDataRole.UserRole) + 2
+#: The paper's id. Edits go by it and not by ``dedup_key``, which two stored
+#: papers can share, so a delete could hit the other one.
+_ID_ROLE = int(Qt.ItemDataRole.UserRole) + 1
 
 
 @dataclass(frozen=True)
@@ -76,6 +116,23 @@ class IdentifierVerdict:
     value: str
     status: str
     checked_at: str
+
+
+@dataclass(frozen=True)
+class LibraryFilter:
+    """The reader's filter. Empty means "any"."""
+
+    tag: str = ""
+    status: str = ""
+    decision: str = ""
+
+    def criteria(self) -> dict[str, object]:
+        """As keyword arguments of ``Library.search``."""
+        return {
+            "tags": (self.tag,) if self.tag else (),
+            "status": self.status,
+            "decision": self.decision,
+        }
 
 
 @dataclass(frozen=True)
@@ -98,20 +155,27 @@ class LibrarySnapshot:
     relations: tuple[PaperRelation, ...]
     verdicts: Mapping[str, tuple[IdentifierVerdict, ...]]
     collection: PaperCollection
+    shown: LibraryFilter = field(default_factory=LibraryFilter)
+    tags: Mapping[str, int] = field(default_factory=dict)
+    saved: tuple[SavedSearch, ...] = ()
+    flow: PrismaFlow | None = None
 
     def paper_titles(self) -> dict[str, str]:
         """``dedup_key`` → title for every listed paper."""
         return {entry.paper.dedup_key(): entry.paper.title for entry in self.entries}
 
 
-def load_snapshot(path: str, query: str = "") -> LibrarySnapshot:
+def load_snapshot(
+    path: str, query: str = "", shown: LibraryFilter | None = None
+) -> LibrarySnapshot:
     """Read a library file into a :class:`LibrarySnapshot`. Blocking.
 
-    Raises ``FileNotFoundError`` (from ``Library(create=False)``) when there
-    is no library at ``path``, which the page reports on its status line.
+    Raises ``LibraryError`` (from ``Library(create=False)``) when there is
+    no library at ``path``, which the page reports on its status line.
     """
+    shown = shown or LibraryFilter()
     with Library(path, create=False) as library:
-        entries = tuple(library.search(query, limit=None))
+        entries = tuple(library.search(query, limit=None, **shown.criteria()))
         keys = {entry.paper.dedup_key() for entry in entries}
         relations = tuple(
             relation
@@ -130,7 +194,11 @@ def load_snapshot(path: str, query: str = "") -> LibrarySnapshot:
             runs=tuple(library.runs()),
             relations=relations,
             verdicts=verdicts,
-            collection=library.collection(query),
+            collection=library.collection(query, **shown.criteria()),
+            shown=shown,
+            tags=library.tags(),
+            saved=tuple(library.saved_searches()),
+            flow=prisma_flow(library),
         )
 
 
@@ -156,8 +224,18 @@ def _stored_verdicts(library: Library, paper: Paper) -> tuple[IdentifierVerdict,
     return tuple(found)
 
 
+@dataclass(frozen=True)
+class _EditOutcome:
+    """What a worker brought back: the edit's own result, the new state, and
+    what turns the result into the status line."""
+
+    value: object
+    snapshot: LibrarySnapshot
+    done: Callable[[object], str] | None = None
+
+
 class LibraryPage(QWidget):
-    """Read-only browser for a library file. See the module docstring."""
+    """Browser and editor for a library file. See the module docstring."""
 
     #: The listed papers, sent on to Enrich and Deck like a search result.
     collection_ready = Signal(object)
@@ -168,7 +246,8 @@ class LibraryPage(QWidget):
         super().__init__(parent)
         self._ui_language = ui_language
         self._snapshot: LibrarySnapshot | None = None
-        self._papers_model = QStandardItemModel(0, 5, self)
+        self._query_provider: Callable[[], Query | None] = lambda: None
+        self._papers_model = QStandardItemModel(0, 8, self)
         self._runs_model = QStandardItemModel(0, 4, self)
         self._build_ui()
 
@@ -201,6 +280,8 @@ class LibraryPage(QWidget):
         file_layout.addWidget(self._query_input)
         controls_layout.addWidget(file_card)
 
+        controls_layout.addWidget(self._build_filter_card(controls))
+
         overview_card, overview_layout = make_card(
             t("library.card_overview", language), controls
         )
@@ -227,7 +308,14 @@ class LibraryPage(QWidget):
         self._send_button = QPushButton(t("library.send_button", language), self)
         self._send_button.setEnabled(False)
         self._send_button.clicked.connect(self._on_send_clicked)
+        self._import_button = QPushButton(t("library.action_import", language), self)
+        self._import_button.clicked.connect(self._on_import)
+        self._duplicates_button = QPushButton(t("library.action_duplicates", language), self)
+        self._duplicates_button.clicked.connect(self._on_duplicates)
+        self._duplicates_button.setEnabled(False)
         buttons.addWidget(self._open_button, stretch=1)
+        buttons.addWidget(self._import_button)
+        buttons.addWidget(self._duplicates_button)
         buttons.addWidget(self._send_button)
 
         results = QWidget(self)
@@ -239,6 +327,17 @@ class LibraryPage(QWidget):
         # mode); the stylesheet's pane border draws the line instead.
         self._tabs.tabBar().setDrawBase(False)
         self._tabs.addTab(self._build_papers_tab(), t("library.tab_papers", language))
+        self._saved_tab = SavedSearchesTab(language, self)
+        self._saved_tab.run_requested.connect(self._on_run_saved)
+        self._saved_tab.delete_requested.connect(
+            lambda name: self.run_edit(lambda library: library.delete_saved_search(name))
+        )
+        self._saved_tab.save_requested.connect(self._on_save_search)
+        self._tabs.addTab(self._saved_tab, t("library.tab_saved", language))
+        self._tabs.addTab(self._build_graph_tab(), t("library.tab_graph", language))
+        self._review_tab = ReviewTab(language, self)
+        self._review_tab.save_requested.connect(self._on_save_diagram)
+        self._tabs.addTab(self._review_tab, t("library.tab_review", language))
         self._tabs.addTab(self._build_runs_tab(), t("library.tab_runs", language))
         results_layout.addWidget(self._tabs, stretch=1)
         self._status_label = QLabel("", self)
@@ -255,25 +354,97 @@ class LibraryPage(QWidget):
         self._papers_model.setHorizontalHeaderLabels([
             t("results.col_title", language),
             t("results.col_year", language),
+            t("library.filter_status", language),
+            t("library.col_tags", language),
+            t("library.filter_decision", language),
             t("library.col_sources", language),
             t("library.col_seen", language),
             t("library.col_last_seen", language),
         ])
         self._papers_table = _table(self._papers_model, self)
+        self._papers_table.setSelectionMode(QTableView.SelectionMode.ExtendedSelection)
         header = self._papers_table.horizontalHeader()
         header.setSectionResizeMode(0, QHeaderView.ResizeMode.Interactive)
         header.resizeSection(0, 320)
-        self._papers_table.selectionModel().currentRowChanged.connect(self._on_paper_selected)
+        self._papers_table.selectionModel().selectionChanged.connect(
+            lambda *_: self._on_selection_changed()
+        )
         self._detail = QTextBrowser(self)
         self._detail.setOpenLinks(False)
         self._detail.setPlaceholderText(t("library.detail_hint", language))
         split = QSplitter(Qt.Orientation.Vertical, self)
         split.setChildrenCollapsible(False)
         split.addWidget(self._papers_table)
-        split.addWidget(self._detail)
+        below = QTabWidget(self)
+        below.setDocumentMode(True)
+        below.tabBar().setDrawBase(False)
+        self._editor = PaperEditor(language, below)
+        self._editor.requested.connect(self.apply_edit)
+        # The form scrolls on its own, so a short window does not squash it.
+        form_scroll = QScrollArea(below)
+        form_scroll.setWidget(self._editor)
+        form_scroll.setWidgetResizable(True)
+        form_scroll.setFrameShape(QFrame.Shape.NoFrame)
+        below.addTab(form_scroll, t("library.tab_notes", language))
+        below.addTab(self._detail, t("library.tab_details", language))
+        corner = QWidget(below)
+        actions = QHBoxLayout(corner)
+        actions.setContentsMargins(0, 0, 0, 4)
+        self._summary_button = QPushButton(t("summary.button", language), below)
+        self._summary_button.clicked.connect(self._on_edit_summary)
+        self._merge_button = QPushButton(t("library.action_merge", language), below)
+        self._merge_button.clicked.connect(self._on_merge)
+        self._delete_button = QPushButton(t("library.action_delete", language), below)
+        self._delete_button.clicked.connect(self._on_delete)
+        for button in (self._summary_button, self._merge_button, self._delete_button):
+            button.setObjectName("StatusButton")  # the compact look
+            button.setEnabled(False)
+            actions.addWidget(button)
+        below.setCornerWidget(corner)
+        split.addWidget(below)
         split.setStretchFactor(0, 3)
         split.setStretchFactor(1, 2)
         return split
+
+    def _build_filter_card(self, parent: QWidget) -> QWidget:
+        """Combos for tag, reading status and decision. Changing one reloads."""
+        language = self._ui_language
+        card, layout = make_card(t("library.card_filter", language), parent)
+        form = QFormLayout()
+        layout.addLayout(form)
+        self._tag_filter = QComboBox(card)
+        self._tag_filter.addItem(t("library.filter_any", language), "")
+        self._status_filter = QComboBox(card)
+        self._status_filter.addItem(t("library.filter_any", language), "")
+        for status in READING_STATUSES:
+            self._status_filter.addItem(t(f"library.status_{status}", language), status)
+        self._decision_filter = QComboBox(card)
+        self._decision_filter.addItem(t("library.filter_any", language), "")
+        for decision in (*DECISIONS, "none"):
+            self._decision_filter.addItem(t(f"library.decision_{decision}", language), decision)
+        for key, combo in (
+            ("library.filter_tag", self._tag_filter),
+            ("library.filter_status", self._status_filter),
+            ("library.filter_decision", self._decision_filter),
+        ):
+            # ``activated`` is the user's choice only, not a refill.
+            combo.activated.connect(lambda _index: self._reload_if_open())
+            form.addRow(t(key, language), combo)
+        adapt_form_rows(card, form, threshold=300)
+        return card
+
+    def _build_graph_tab(self) -> QWidget:
+        tab = QWidget(self)
+        layout = QVBoxLayout(tab)
+        layout.setContentsMargins(0, 8, 0, 0)
+        self._graph_hint = QLabel(t("library.graph_empty", self._ui_language), tab)
+        self._graph_hint.setObjectName("Muted")
+        self._graph_hint.setWordWrap(True)
+        layout.addWidget(self._graph_hint)
+        self._graph = CitationGraph(tab)
+        self._graph.node_clicked.connect(self._on_graph_node)
+        layout.addWidget(self._graph, stretch=1)
+        return tab
 
     def _build_runs_tab(self) -> QWidget:
         language = self._ui_language
@@ -296,6 +467,17 @@ class LibraryPage(QWidget):
 
     def split(self) -> AdaptiveSplit:
         return self._split
+
+    def set_query_provider(self, provider: Callable[[], Query | None]) -> None:
+        """Where a new saved search takes its query from (the Search page's form)."""
+        self._query_provider = provider
+
+    def shown_filter(self) -> LibraryFilter:
+        return LibraryFilter(
+            self._tag_filter.currentData() or "",
+            self._status_filter.currentData() or "",
+            self._decision_filter.currentData() or "",
+        )
 
     def set_library_path(self, path: str) -> None:
         """Follow the library file named on the Search page."""
@@ -351,37 +533,59 @@ class LibraryPage(QWidget):
             self._on_open_clicked()
 
     def _on_open_clicked(self) -> None:
+        if not self._open_button.isEnabled():
+            return  # Enter in a field while a read or an edit is running
         path = self.library_path()
         if not path:
             self._status_label.setText(t("search.error_no_library", self._ui_language))
             return
         query = self._query_input.text().strip()
-        self._open_button.setEnabled(False)
-        self._send_button.setEnabled(False)
-        self.busy_changed.emit(True)
-        worker = BlockingWorker(lambda: load_snapshot(path, query))
+        shown = self.shown_filter()
+        self._set_working(True)
+        worker = BlockingWorker(lambda: load_snapshot(path, query, shown))
         worker.signals.finished.connect(self._on_loaded)
         worker.signals.failed.connect(self._on_failed)
         QThreadPool.globalInstance().start(worker)
 
+    def _reload_if_open(self) -> None:
+        if self._snapshot is not None:
+            self._on_open_clicked()
+
+    def _set_working(self, working: bool) -> None:
+        """Lock everything that would start a second read or write."""
+        self.busy_changed.emit(working)
+        opened = self._snapshot is not None and not working
+        self._open_button.setEnabled(not working)
+        for combo in (self._tag_filter, self._status_filter, self._decision_filter):
+            combo.setEnabled(not working)
+        self._import_button.setEnabled(not working)
+        self._duplicates_button.setEnabled(opened)
+        self._send_button.setEnabled(opened and bool(self._snapshot.entries))
+        self._saved_tab.set_busy(working)
+        self._editor.setEnabled(opened and bool(self.selected_entries()))
+        self._refresh_actions(opened)
+
     def _on_failed(self, err: object) -> None:
-        self.busy_changed.emit(False)
-        self._open_button.setEnabled(True)
-        self._send_button.setEnabled(self._snapshot is not None)
+        self._set_working(False)
         self._status_label.setText(t("library.error", self._ui_language, error=str(err)))
 
     def _on_loaded(self, result: object) -> None:
-        self.busy_changed.emit(False)
-        self._open_button.setEnabled(True)
         if not isinstance(result, LibrarySnapshot):  # pragma: no cover - defensive
             self._on_failed(RuntimeError(f"unexpected result {type(result)!r}"))
             return
+        selected = {entry.paper_id for entry in self.selected_entries()}
         self._snapshot = result
         self._show_stats(result.stats)
+        self._fill_tags(result)
         self._fill_papers(result.entries)
         self._fill_runs(result.runs)
+        self._saved_tab.show_searches(result.saved)
+        self._fill_graph(result)
+        if result.flow is not None:
+            self._review_tab.show_flow(result.flow)
         self._detail.clear()
-        self._send_button.setEnabled(bool(result.entries))
+        self._select_ids(selected)
+        self._set_working(False)
         self._status_label.setText(
             t(
                 "library.status_loaded", self._ui_language,
@@ -413,9 +617,13 @@ class LibraryPage(QWidget):
             year = entry.paper.year
             title = _item(entry.paper.title)
             title.setData(entry.paper.dedup_key(), Qt.ItemDataRole.UserRole)
+            title.setData(entry.paper_id, _ID_ROLE)
             self._papers_model.appendRow([
                 title,
                 _item(str(year) if year is not None else _NO_VALUE, -1 if year is None else year),
+                _item(t(f"library.status_{entry.status}", self._ui_language)),
+                _item(", ".join(entry.tags)),
+                _item(self._decision_text(entry)),
                 _item(", ".join(entry.sources)),
                 _item(str(entry.times_seen), entry.times_seen),
                 _item(entry.last_seen[:10]),
@@ -433,13 +641,364 @@ class LibraryPage(QWidget):
 
     # --- selection detail ------------------------------------------------------
 
-    def _on_paper_selected(self, current: QModelIndex, _previous: QModelIndex) -> None:
-        if self._snapshot is None or not current.isValid():
+    def selected_entries(self) -> list[LibraryEntry]:
+        """The papers selected in the table, in its order."""
+        if self._snapshot is None:
+            return []
+        by_id = {entry.paper_id: entry for entry in self._snapshot.entries}
+        rows = sorted(i.row() for i in self._papers_table.selectionModel().selectedRows())
+        ids = (self._papers_model.item(row, 0).data(_ID_ROLE) for row in rows)
+        return [by_id[paper_id] for paper_id in ids if paper_id in by_id]
+
+    def _on_selection_changed(self) -> None:
+        entries = self.selected_entries()
+        self._editor.show_entries(entries)
+        self._refresh_actions(self._open_button.isEnabled())
+        if len(entries) == 1:
+            self._detail.setHtml(self._detail_html(entries[0]))
+            self._graph.select(entries[0].paper.dedup_key())
+        else:
+            self._detail.clear()
+
+    def _refresh_actions(self, allowed: bool) -> None:
+        count = len(self.selected_entries())
+        self._summary_button.setEnabled(allowed and count == 1)
+        self._delete_button.setEnabled(allowed and count > 0)
+        self._merge_button.setEnabled(allowed and count > 1)
+
+    def _select_ids(self, paper_ids: set[int]) -> None:
+        """Select the papers again after a reload replaced the rows."""
+        if not paper_ids or self._snapshot is None:
+            self._on_selection_changed()
             return
-        key = self._papers_model.item(current.row(), 0).data(Qt.ItemDataRole.UserRole)
-        entry = next((e for e in self._snapshot.entries if e.paper.dedup_key() == key), None)
-        if entry is not None:
-            self._detail.setHtml(self._detail_html(entry))
+        self._select_where(_ID_ROLE, paper_ids)
+
+    def _select_keys(self, keys: set[str]) -> None:
+        self._select_where(int(Qt.ItemDataRole.UserRole), keys)
+
+    def _select_where(self, role: int, values: set[int] | set[str]) -> None:
+        selection = self._papers_table.selectionModel()
+        selection.clearSelection()
+        for row in range(self._papers_model.rowCount()):
+            item = self._papers_model.item(row, 0)
+            if item.data(role) in values:
+                selection.select(
+                    item.index(),
+                    QItemSelectionModel.SelectionFlag.Select
+                    | QItemSelectionModel.SelectionFlag.Rows,
+                )
+                self._papers_table.scrollTo(item.index())
+
+    def _on_graph_node(self, key: str) -> None:
+        self._select_keys({key})
+
+    def _decision_text(self, entry: LibraryEntry) -> str:
+        language = self._ui_language
+        return ", ".join(
+            f"{t(f'library.stage_{s.stage}', language)}: "
+            f"{t(f'library.decision_{s.decision}', language)}"
+            for s in entry.screening
+        )
+
+    def _fill_tags(self, snapshot: LibrarySnapshot) -> None:
+        self._tag_filter.clear()
+        self._tag_filter.addItem(t("library.filter_any", self._ui_language), "")
+        for tag, count in snapshot.tags.items():
+            self._tag_filter.addItem(f"{tag} ({count})", tag)
+        if snapshot.shown.tag and self._tag_filter.findData(snapshot.shown.tag) < 0:
+            # The last paper lost the tag: keep it listed, it is the filter in force.
+            self._tag_filter.addItem(snapshot.shown.tag, snapshot.shown.tag)
+        for combo, value in (
+            (self._tag_filter, snapshot.shown.tag),
+            (self._status_filter, snapshot.shown.status),
+            (self._decision_filter, snapshot.shown.decision),
+        ):
+            combo.setCurrentIndex(max(0, combo.findData(value)))
+
+    def _fill_graph(self, snapshot: LibrarySnapshot) -> None:
+        nodes = [
+            GraphNode(
+                entry.paper.dedup_key(), entry.paper.title, entry.paper.year,
+                entry.paper.citation_count,
+            )
+            for entry in snapshot.entries
+        ]
+        listed = {node.key for node in nodes}
+        edges = [
+            (relation.citing_key, relation.cited_key)
+            for relation in snapshot.relations
+            if relation.citing_key in listed and relation.cited_key in listed
+        ]
+        self._graph_hint.setVisible(not edges)
+        self._graph.show_graph(nodes, edges)
+        self._graph.fit()
+
+    # --- editing ----------------------------------------------------------------
+
+    def run_edit(
+        self,
+        edit: Callable[[Library], object],
+        done: Callable[[object], str] | None = None,
+        *,
+        create: bool = False,
+        before: Callable[[], None] | None = None,
+    ) -> None:
+        """Apply ``edit`` to the open library on a worker and show the new state.
+
+        ``done`` turns the edit's result into the status line. A failing edit
+        changes nothing (each is one transaction) and its message is shown.
+        ``before`` runs first, so what it refuses creates no library.
+        """
+        path = self.library_path() if create else self._edited_path()
+        if not path:
+            self._status_label.setText(t("search.error_no_library", self._ui_language))
+            return
+        query = self._query_input.text().strip()
+        shown = self.shown_filter()
+
+        def call() -> _EditOutcome:
+            if before is not None:
+                before()
+            with Library(path, create=create) as library:
+                value = edit(library)
+            return _EditOutcome(value, load_snapshot(path, query, shown), done)
+
+        self._set_working(True)
+        worker = BlockingWorker(call)
+        worker.signals.finished.connect(self._on_edited)
+        worker.signals.failed.connect(self._on_failed)
+        QThreadPool.globalInstance().start(worker)
+
+    def _edited_path(self) -> str:
+        """The library whose papers are on screen.
+
+        Not the path field: it can name another file that is not open yet (it
+        follows the Search page), and the ids of the listed papers belong to
+        other papers there. A delete would remove those.
+        """
+        return self._snapshot.path if self._snapshot is not None else self.library_path()
+
+    def _on_edited(self, outcome: object) -> None:
+        if not isinstance(outcome, _EditOutcome):  # pragma: no cover - defensive
+            return
+        self._on_loaded(outcome.snapshot)
+        self._status_label.setText(
+            outcome.done(outcome.value)
+            if outcome.done
+            else t("library.status_saved", self._ui_language)
+        )
+
+    def apply_edit(self, request: object) -> None:
+        """Carry out an :class:`EditRequest` of the editor."""
+        if isinstance(request, EditRequest):
+            self.run_edit(request.apply)
+
+    def _on_edit_summary(self) -> None:
+        entries = self.selected_entries()
+        if len(entries) != 1:
+            return
+        paper_id = entries[0].paper_id
+        self._summary_editor = SummaryEditor(entries[0].paper, self._ui_language, self)
+        self._summary_editor.saved.connect(
+            lambda paper: self.run_edit(
+                lambda library: library.set_summary(paper_id, paper.summary)
+            )
+        )
+        self._summary_editor.open()
+
+    def summary_editor(self) -> SummaryEditor:
+        return self._summary_editor
+
+    def _on_delete(self) -> None:
+        ids = [entry.paper_id for entry in self.selected_entries()]
+        if ids and self._confirmed(t("library.confirm_delete", self._ui_language, count=len(ids))):
+            self.run_edit(
+                lambda library: library.delete(ids),
+                lambda count: t("library.status_deleted", self._ui_language, count=count),
+            )
+
+    def _on_merge(self) -> None:
+        entries = self.selected_entries()
+        if len(entries) < 2:
+            return
+        question = t(
+            "library.confirm_merge", self._ui_language,
+            count=len(entries), title=entries[0].paper.title,
+        )
+        if self._confirmed(question):
+            self.merge([entry.paper_id for entry in entries])
+
+    def merge(self, ids: object) -> None:
+        """Fold the papers ``ids`` into the first one."""
+        survivor, *others = list(ids)  # type: ignore[call-overload]
+        self.run_edit(lambda library: library.merge(survivor, others))
+
+    def _confirmed(self, question: str) -> bool:
+        box = QMessageBox(self)
+        box.setIcon(QMessageBox.Icon.Warning)
+        box.setText(question)
+        # Plain text: the question quotes a title, which comes from a remote API.
+        box.setTextFormat(Qt.TextFormat.PlainText)
+        box.setStandardButtons(QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No)
+        box.setDefaultButton(QMessageBox.StandardButton.No)
+        return box.exec() == QMessageBox.StandardButton.Yes
+
+    def _on_import(self) -> None:
+        file, _ = QFileDialog.getOpenFileName(
+            self, t("library.action_import", self._ui_language), "", _BIBLIOGRAPHY_FILTER
+        )
+        if file:
+            self.import_bibliography(file)
+
+    def import_bibliography(self, file: str) -> None:
+        """Add the papers of a ``.bib`` or ``.ris`` file, creating the library if needed."""
+
+        read: list[ImportedBibliography] = []
+
+        def edit(library: Library) -> tuple[int, int, int]:
+            result = read[0]
+            report = library.add_papers(
+                result.papers, keywords=Path(file).name, kind="import"
+            )
+            return report.added, report.merged, len(result.skipped)
+
+        def done(value: object) -> str:
+            added, merged, skipped = value  # type: ignore[misc]
+            return t(
+                "library.status_imported", self._ui_language,
+                added=added, merged=merged, skipped=skipped,
+            )
+
+        self.run_edit(
+            edit, done, create=True, before=lambda: read.append(read_bibliography(file))
+        )
+
+    def _on_duplicates(self) -> None:
+        self.run_edit(lambda library: library.duplicate_candidates(), self._show_duplicates)
+
+    def _show_duplicates(self, groups: object) -> str:
+        entries = {e.paper_id: e for e in (self._snapshot.entries if self._snapshot else ())}
+        # A group is shown when the filter leaves at least two of it.
+        shown = [
+            [entries[i] for i in group if i in entries] for group in groups  # type: ignore[attr-defined]
+        ]
+        shown = [group for group in shown if len(group) > 1]
+        self._duplicates = DuplicatesDialog(shown, self._ui_language, self)
+        self._duplicates.merge_requested.connect(self.merge)
+        self._duplicates.open()
+        return "" if shown else t("library.duplicates_none", self._ui_language)
+
+    def duplicates_dialog(self) -> DuplicatesDialog:
+        return self._duplicates
+
+    def _on_save_search(self, name: str) -> None:
+        try:
+            query = self._query_provider()
+        except ValueError as err:
+            self._status_label.setText(t("library.error", self._ui_language, error=str(err)))
+            return
+        if query is None:
+            self._status_label.setText(t("search.error_empty_query", self._ui_language))
+            return
+        self.run_edit(lambda library: library.save_search(name, query), create=True)
+
+    def _on_run_saved(self, name: str) -> None:
+        """Run a saved search (network) and show the library with what it found."""
+        path = self._edited_path()
+        query = self._query_input.text().strip()
+        shown = self.shown_filter()
+        vpn_access = saved_vpn_access()
+        locked = t("search.ieee_locked_note", self._ui_language)
+
+        async def search(wanted: Query) -> PaperCollection:
+            """Like the Search page: ``ieee`` is not asked without declared access."""
+            from thesisagents.core.pipeline import run_search
+
+            if not vpn_access:
+                allowed = tuple(name for name in wanted.sources if name != SOURCE_IEEE)
+                if not allowed:
+                    raise ThesisAgentsError(locked)
+                wanted = replace(  # NOSONAR dataclasses.replace returns the same type
+                    wanted, sources=allowed
+                )
+            return await run_search(wanted)
+
+        async def call() -> _EditOutcome:
+            from thesisagents.fetchers.http import shutdown_clients
+
+            try:
+                with Library(path, create=False) as library:
+                    outcome = await run_saved_search(library, name, search)
+            finally:
+                await shutdown_clients()
+            return _EditOutcome(outcome, load_snapshot(path, query, shown), self._saved_result)
+
+        self._set_working(True)
+        worker = AsyncWorker(call)
+        worker.signals.finished.connect(self._on_edited)
+        worker.signals.failed.connect(self._on_failed)
+        QThreadPool.globalInstance().start(worker)
+
+    def _saved_result(self, value: object) -> str:
+        assert isinstance(value, SavedSearchOutcome)  # noqa: S101 # nosec B101  # set by call()
+        # What is new is what the user came for, so it is selected.
+        self._select_keys({key for p in value.new_papers for key in p.identity_keys()})
+        self._tabs.setCurrentIndex(0)
+        return t(
+            "library.saved_result", self._ui_language,
+            new=len(value.new_papers), found=len(value.collection.papers),
+        )
+
+    def _on_save_diagram(self) -> None:
+        file, _ = QFileDialog.getSaveFileName(
+            self, t("library.review_save", self._ui_language), "prisma.svg", "SVG (*.svg)"
+        )
+        if file:
+            self.save_diagram(file)
+
+    def save_diagram(self, file: str) -> None:
+        """Write the PRISMA diagram, worded in the interface language."""
+        if self._snapshot is None or self._snapshot.flow is None:
+            return
+        try:
+            Path(file).write_text(
+                prisma_svg(self._snapshot.flow, prisma_labels(self._ui_language)),
+                encoding="utf-8",
+            )
+        except OSError as err:
+            self._status_label.setText(t("library.error", self._ui_language, error=str(err)))
+            return
+        self._status_label.setText(t("library.status_saved", self._ui_language))
+
+    # --- more accessors used by tests ---------------------------------------------
+
+    def editor(self) -> PaperEditor:
+        return self._editor
+
+    def graph(self) -> CitationGraph:
+        return self._graph
+
+    def saved_tab(self) -> SavedSearchesTab:
+        return self._saved_tab
+
+    def review_tab(self) -> ReviewTab:
+        return self._review_tab
+
+    def filter_combo(self, name: str) -> QComboBox:
+        """``tag`` / ``status`` / ``decision``."""
+        return {
+            "tag": self._tag_filter, "status": self._status_filter,
+            "decision": self._decision_filter,
+        }[name]
+
+    def action_button(self, name: str) -> QPushButton:
+        """``delete`` / ``merge`` / ``import`` / ``duplicates`` / ``send``."""
+        return {
+            "delete": self._delete_button, "merge": self._merge_button,
+            "summary": self._summary_button,
+            "import": self._import_button, "duplicates": self._duplicates_button,
+            "send": self._send_button,
+        }[name]
 
     def _detail_html(self, entry: LibraryEntry) -> str:
         """The selected paper's links and verdicts. Every value is escaped:

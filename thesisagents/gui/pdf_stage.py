@@ -100,7 +100,11 @@ def run_pdf_stage(
 
     async def download() -> list[PdfDownloadResult]:
         try:
-            return await download_pdfs(replace(collection, papers=batch), out_dir)
+            subset = replace(collection, papers=batch)
+            return await download_pdfs(
+                subset,  # NOSONAR dataclasses.replace returns the same dataclass type
+                out_dir,
+            )
         finally:
             await shutdown_clients()
 

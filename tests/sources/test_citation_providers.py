@@ -168,8 +168,10 @@ async def test_s2_without_any_identifier_asks_nothing(monkeypatch):
     transport = MockTransport(200, '{"data": []}')
     install_mock(monkeypatch, _TARGET, transport)
 
+    provider = SemanticScholarCitations()
+    paper = _paper(doi=None)
     with pytest.raises(CitationNotAvailableError, match="no DOI, arXiv ID"):
-        await SemanticScholarCitations().references(_paper(doi=None), limit=5)
+        await provider.references(paper, limit=5)
 
     assert transport.received_url is None
 
@@ -225,8 +227,10 @@ async def test_s2_sends_the_api_key_when_set(monkeypatch):
 async def test_http_outcomes_map_to_the_right_error(monkeypatch, status, body, error):
     install_mock(monkeypatch, _TARGET, MockTransport(status, body))
 
+    provider = SemanticScholarCitations()
+    paper = _paper()
     with pytest.raises(error):
-        await SemanticScholarCitations().references(_paper(), limit=5)
+        await provider.references(paper, limit=5)
 
 
 # ---------------------------------------------------------------------------
@@ -296,10 +300,10 @@ async def test_openalex_cannot_resolve_a_paper_without_a_doi(monkeypatch):
     transport = RoutingTransport([])
     install_mock(monkeypatch, _TARGET, transport)
 
+    provider = OpenAlexCitations()
+    paper = _paper(source="arxiv", doi=None, arxiv_id="1706.03762")
     with pytest.raises(CitationNotAvailableError, match="no DOI"):
-        await OpenAlexCitations().references(
-            _paper(source="arxiv", doi=None, arxiv_id="1706.03762"), limit=5
-        )
+        await provider.references(paper, limit=5)
 
     assert transport.requests == []
 
@@ -308,15 +312,19 @@ async def test_openalex_unknown_doi_is_not_available(monkeypatch):
     html = "<!doctype html><title>404 Not Found</title>"
     install_mock(monkeypatch, _TARGET, RoutingTransport([("/works/doi:", 404, html)]))
 
+    provider = OpenAlexCitations()
+    paper = _paper()
     with pytest.raises(CitationNotAvailableError):
-        await OpenAlexCitations().cited_by(_paper(), limit=5)
+        await provider.cited_by(paper, limit=5)
 
 
 async def test_openalex_answer_without_an_id_is_not_available(monkeypatch):
     install_mock(monkeypatch, _TARGET, RoutingTransport([("/works/doi:", 200, "{}")]))
 
+    provider = OpenAlexCitations()
+    paper = _paper()
     with pytest.raises(CitationNotAvailableError, match="no work ID"):
-        await OpenAlexCitations().references(_paper(), limit=5)
+        await provider.references(paper, limit=5)
 
 
 async def test_openalex_caps_per_page_and_truncates(monkeypatch):
@@ -403,8 +411,10 @@ async def test_crossref_needs_a_doi(monkeypatch):
     transport = RoutingTransport([])
     install_mock(monkeypatch, _TARGET, transport)
 
+    provider = CrossrefCitations()
+    paper = _paper(doi=None)
     with pytest.raises(CitationNotAvailableError, match="by DOI"):
-        await CrossrefCitations().references(_paper(doi=None), limit=5)
+        await provider.references(paper, limit=5)
 
     assert transport.requests == []
 
@@ -413,8 +423,10 @@ async def test_crossref_has_no_citing_works(monkeypatch):
     transport = RoutingTransport([])
     install_mock(monkeypatch, _TARGET, transport)
 
+    provider = CrossrefCitations()
+    paper = _paper()
     with pytest.raises(CitationNotAvailableError, match="not the works citing it"):
-        await CrossrefCitations().cited_by(_paper(), limit=5)
+        await provider.cited_by(paper, limit=5)
 
     assert transport.requests == []
 
@@ -425,8 +437,10 @@ async def test_crossref_unknown_doi_is_not_available(monkeypatch):
         RoutingTransport([("/works/", 404, "Resource not found.")]),
     )
 
+    provider = CrossrefCitations()
+    paper = _paper()
     with pytest.raises(CitationNotAvailableError):
-        await CrossrefCitations().references(_paper(), limit=5)
+        await provider.references(paper, limit=5)
 
 
 async def test_crossref_sends_contact_and_plus_token_when_set(monkeypatch):

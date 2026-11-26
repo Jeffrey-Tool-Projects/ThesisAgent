@@ -7,7 +7,7 @@ executable and the desktop GUI's window/taskbar/Alt-Tab icon.
 
 | File | Purpose |
 |---|---|
-| `icon.ico` | Multi-resolution Windows icon (16, 32, 48, 64, 128, 256 px). Wired into Nuitka via `--windows-icon-from-ico=` and into PySide6 via `QApplication.setWindowIcon`. |
+| `../thesisagents/gui/icon.ico` | Multi-resolution Windows icon (16, 32, 48, 64, 128, 256 px). Wired into Nuitka via `--windows-icon-from-ico=` and into PySide6 via `QApplication.setWindowIcon`. |
 | `icon-256.png` | Single 256×256 PNG. Used by docs / READMEs and as a fallback for platforms that don't read `.ico`. |
 | `generate_icon.py` | The reproducible Pillow recipe that produces both files. Re-run when the design changes. |
 
@@ -43,7 +43,7 @@ the transformation read at a glance.
 Output:
 
 ```
-wrote D:\...\assets\icon.ico (~19 KB, 6 embedded sizes)
+wrote D:\...\thesisagents\gui\icon.ico (~19 KB, 6 embedded sizes)
 wrote D:\...\assets\icon-256.png (~8 KB)
 ```
 
@@ -75,7 +75,8 @@ To produce a Windows ICO from a new design:
 1. Edit the geometry / colours in `generate_icon.py`.
 2. Re-run the script.
 3. Commit both `icon.ico` and `icon-256.png`. The build pipeline
-   reads `icon.ico` from the repo, so it must be checked in.
+   reads `icon.ico` from the repo, so it must be checked in. It lives in
+   the package, so a pip install and the release zip contain it.
 
 To produce a macOS `.icns` (for a future macOS bundle):
 

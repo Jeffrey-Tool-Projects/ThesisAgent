@@ -12,7 +12,7 @@ shared `Paper` record, deduplicates by DOI / arXiv-ID / fuzzy
 title, ranks by recency + citation count, optionally enriches
 each paper with a structured `PaperSummary`, and hands the
 resulting `PaperCollection` to one or more **Exporter** plugins
-(`.pptx`, `.xlsx`, `.bib`, `.md`, `.json`, `.ris`, `.csv`, `.csl.json`).
+(`.pptx`, `.xlsx`, `.bib`, `.md`, `.json`, `.ris`, `.csv`, `.csl.json`, `.docx`, `.tex`).
 All outbound HTTP
 goes through one HTTPS-only client per source, all per-source
 rate limits live in a token bucket, and every fetcher test uses
@@ -52,11 +52,11 @@ ThesisAgents/
 ├── thesisagents/                 # main package — core runtime
 │   ├── core/                       # domain (Paper, Query, dedup, rank, pipeline)
 │   ├── fetchers/                   # HTTPS-only http client + Fetcher base
-│   ├── exporters/                  # pptx / xlsx / bib / md / json / ris / csv / csl + pptx_edit + i18n
+│   ├── exporters/                  # pptx / xlsx / bib / md / json / ris / csv / csl / docx / tex + pptx_edit + i18n
 │   ├── intelligence/               # PDF + Anthropic summariser ([intelligence] extra)
 │   ├── library/                    # SQLite literature library kept across runs
 │   ├── evaluation/                 # offline search-quality benchmark (see docs/search-quality.md)
-│   ├── mcp/                        # FastMCP server registering 18 tools ([mcp] extra)
+│   ├── mcp/                        # FastMCP server registering 25 tools ([mcp] extra)
 │   ├── gui/                        # PySide6 desktop UI ([gui] extra)
 │   ├── utils/                      # logging, path safety, async helpers
 │   ├── cli.py                      # argparse CLI
@@ -462,7 +462,7 @@ library APIs return coroutines.
 
 ### MCP server (`thesisagents.mcp`)
 
-FastMCP registers eighteen tools. The agent calls them in sequence
+FastMCP registers twenty-five tools. The agent calls them in sequence
 (`list_sources` → `search` → optionally `snowball` → `fetch_pdf_text`
 per paper → `export`). The server is stateless across tool calls, so
 state lives in the agent's context, or, when it should outlast the

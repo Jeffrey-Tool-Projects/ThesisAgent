@@ -6,31 +6,36 @@ Agricola, preprint servers and patents. With ``resultType=core`` each hit in
 DOI, an abstract, a cited-by count and (for open-access records) full-text URLs
 — enough to populate every ``Paper`` field including ``pdf_url``.
 
-The author list has two representations and we prefer the structured one:
-``authorList.author[].fullName`` gives clean "First Last" names, whereas the
-flat ``authorString`` ("Smith J, Doe A.") is an abbreviated fallback used only
-when the structured list is absent.
+The author list has two representations and we prefer the structured one,
+``authorList.author[]`` with ``firstName`` and ``lastName``. Its ``fullName`` is
+the index form "Smith J", like the flat ``authorString`` ("Smith J, Doe A.") that
+is used when the structured list is absent. Both are turned into "J Smith", because
+the rest of the program takes the last word for the surname.
 """
 
 from __future__ import annotations
 
+import re
 from typing import Any
 
 from thesisagents.core.models import Paper
+from thesisagents.utils.markup import plain_text
 
 _SOURCE = "europepmc"
+#: "Kim JY" or "van der Berg A": a surname and, last, up to four initials.
+_INDEX_NAME_RE = re.compile(r"^(?P<family>.*\S)\s+(?P<initials>[A-Z]{1,4})$")
 
 
 def parse_result(result: dict[str, Any]) -> Paper:
     """Map one entry from ``resultList.result[]`` to a ``Paper``."""
-    title = (result.get("title") or "").strip().rstrip(".")
+    title = plain_text(result.get("title")).rstrip(".")
     authors = tuple(_authors(result))
     year = _to_int(result.get("pubYear")) or _to_int(
         (result.get("journalInfo") or {}).get("yearOfPublication")
     )
     venue = _venue(result)
     doi = (result.get("doi") or "").strip() or None
-    abstract = (result.get("abstractText") or "").strip()
+    abstract = plain_text(result.get("abstractText"))
     citation_count = _to_int(result.get("citedByCount"))
     url = _article_url(result, doi)
     pdf_url = _pdf_url(result)
@@ -74,11 +79,7 @@ def in_year_range(year: int | None, year_from: int | None, year_to: int | None) 
 def _authors(result: dict[str, Any]) -> list[str]:
     author_block = (result.get("authorList") or {}).get("author")
     if isinstance(author_block, list):
-        names = [
-            (item.get("fullName") or "").strip()
-            for item in author_block
-            if isinstance(item, dict)
-        ]
+        names = [_author_name(item) for item in author_block if isinstance(item, dict)]
         names = [n for n in names if n]
         if names:
             return names
@@ -86,7 +87,23 @@ def _authors(result: dict[str, Any]) -> list[str]:
     flat = (result.get("authorString") or "").strip().rstrip(".")
     if not flat:
         return []
-    return [part.strip() for part in flat.split(",") if part.strip()]
+    return [_given_first(part.strip()) for part in flat.split(",") if part.strip()]
+
+
+def _author_name(author: dict[str, Any]) -> str:
+    """"First Last" of a structured author, or the name of a group."""
+    given = (author.get("firstName") or author.get("initials") or "").strip()
+    family = (author.get("lastName") or "").strip()
+    if given and family:
+        return f"{given} {family}"
+    full = (author.get("fullName") or "").strip()
+    return _given_first(full) or family or (author.get("collectiveName") or "").strip()
+
+
+def _given_first(name: str) -> str:
+    """``"Kim JY"`` as ``"JY Kim"``. A name in any other form is kept."""
+    match = _INDEX_NAME_RE.match(name)
+    return f"{match['initials']} {match['family']}" if match else name
 
 
 def _venue(result: dict[str, Any]) -> str | None:

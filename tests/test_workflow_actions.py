@@ -8,7 +8,8 @@ from lingering unnoticed: GitHub removed Node 20 from its runners on 2026-09-23.
 
 The rest of the workflow supply chain is guarded here too: Dependabot's
 settings, checkout credentials, job timeouts, the Nuitka cache, and the
-hash-locked tooling and build backend of the job that holds the PyPI token.
+hash-locked tooling and build backend of the job that holds the PyPI token,
+and the hash-locked dependencies the CI test job installs.
 """
 from __future__ import annotations
 
@@ -25,7 +26,10 @@ _WORKFLOWS = sorted((_ROOT / ".github" / "workflows").glob("*.yml"))
 _USES = re.compile(r"^\s*(?:-\s*)?uses:\s*(\S+)(.*)$")
 _PINNED = re.compile(r"^[\w.-]+/[\w./-]+@[0-9a-f]{40}$")
 _LOCAL = re.compile(r"^\./")
-_VERSION_COMMENT = re.compile(r"^\s+#\s*v\d+(\.\d+)*\s*$")
+#: The version comment, optionally followed by a SonarCloud suppression with
+#: its reason (``# v7.0.1  NOSONAR sha is this repo's own commit``): Sonar
+#: only honours NOSONAR on the flagged line, which is the ``uses:`` line.
+_VERSION_COMMENT = re.compile(r"^\s+#\s*v\d+(\.\d+)*(\s+NOSONAR\s+\S.*)?\s*$")
 
 
 def _uses(path: Path) -> list[tuple[int, str, str]]:
@@ -79,7 +83,8 @@ def test_dependabot_waits_a_week_before_proposing_a_release():
     text = (_ROOT / ".github" / "dependabot.yml").read_text(encoding="utf-8")
     blocks = re.split(r"^\s*-\s*package-ecosystem:", text, flags=re.MULTILINE)[1:]
     days = [re.search(r"^\s*default-days:\s*(\d+)", block, re.MULTILINE) for block in blocks]
-    assert blocks and all(match and int(match.group(1)) >= 7 for match in days)
+    assert blocks
+    assert all(match and int(match.group(1)) >= 7 for match in days)
 
 
 def test_dependabot_watches_the_hash_locked_requirements():
@@ -144,7 +149,7 @@ def test_every_checkout_decides_on_persisted_credentials(workflow):
 def test_nuitka_cache_step_saves_the_directory_nuitka_uses():
     # Nuitka's compiler cache lives under NUITKA_CACHE_DIR. The release
     # cached ~/.nuitka and ~/.cache/Nuitka instead, which Nuitka does not
-    # use on Windows, so every release compiled all ~2700 C files cold
+    # use on Windows, so every release compiled every C file cold
     # ("0 cache hits") and ran within minutes of its 90 min cap.
     text = (_ROOT / ".github" / "workflows" / "release.yml").read_text(encoding="utf-8")
     env = re.search(r"^\s*NUITKA_CACHE_DIR:\s*(\S+)\s*$", text, re.MULTILINE)
@@ -152,6 +157,20 @@ def test_nuitka_cache_step_saves_the_directory_nuitka_uses():
     cache_step = next(step for _number, step in _steps_using(text, "actions/cache")
                       if "nuitka-" in step)
     assert re.search(rf"^\s*path:\s*{re.escape(env.group(1))}\s*$", cache_step, re.MULTILINE)
+
+
+def test_release_splits_the_executable_before_testing_and_zipping_it():
+    # Built as one console program, thesisagents.exe opened a console window
+    # behind the desktop app. The split must precede the smoke test, which
+    # runs both programs, and the zip, which ships them.
+    text = (_ROOT / ".github" / "workflows" / "release.yml").read_text(encoding="utf-8")
+    split = text.index("python scripts/split_windows_exe.py thesisagents.dist/thesisagents.exe")
+    console_test = text.index("./thesisagents.dist/thesisagents-cli.exe --help")
+    windowed_test = text.index("./thesisagents.dist/thesisagents.exe --help")
+    assert text.index("nuitka_build --jobs=2") < split < console_test < windowed_test
+    assert windowed_test < text.index("Compress-Archive -Path")
+    assert "--windows-console-mode=" not in text
+    assert "--disable-console" not in text
 
 
 _JOB_HEAD = re.compile(r"^  [A-Za-z0-9_-]+:\s*(#.*)?$")
@@ -320,3 +339,139 @@ def test_publish_lock_is_resolved_for_the_python_and_runner_of_the_job():
     assert set_up == {locked_python}
     assert locked_platform.startswith("x86_64-manylinux")
     assert runners == {"ubuntu-latest"}
+
+
+_CI_LOCK = "ci.txt"
+_CI_INSTALLS = [
+    "python -m pip install --require-hashes --only-binary :all: -r .github/requirements/ci.txt",
+    "python -m pip install --no-deps --no-build-isolation -e .",
+]
+
+
+def _ci_test_job() -> str:
+    """Return the ``test`` job of ``ci.yml`` with comment lines dropped.
+
+    A command quoted in a comment is not an install, e.g. the result holds
+    ``pip install --require-hashes ...`` once, from the run block.
+    """
+    body = dict(_jobs(_ROOT / ".github" / "workflows" / "ci.yml"))["test"]
+    return "\n".join(line for line in body.splitlines() if not line.lstrip().startswith("#"))
+
+
+def _ci_locked_versions() -> dict[str, str]:
+    """Return ``{distribution: version}`` for every pin in ``ci.txt``.
+
+    A pin that differs by platform carries an environment marker after the
+    version, which is not part of it, e.g. ``_ci_locked_versions()["pywin32"]``
+    is ``"312"`` from ``pywin32==312 ; sys_platform == 'win32'``.
+    """
+    text = (_REQUIREMENTS / _CI_LOCK).read_text(encoding="utf-8")
+    pins = re.findall(r"^([A-Za-z0-9][\w.-]*)==([^\s;]+)", text, re.MULTILINE)
+    return {_distribution(name): version for name, version in pins}
+
+
+def _project_requirements() -> list[Requirement]:
+    """Return what CI tests the project with: ``[project] dependencies`` and the ``dev`` extra.
+
+    Each has to be pinned in ``ci.txt`` at a version its specifier accepts,
+    e.g. ``httpx>=0.27`` is met by a locked ``httpx==0.28.1``.
+    """
+    project = tomllib.loads((_ROOT / "pyproject.toml").read_text(encoding="utf-8"))["project"]
+    entries = [*project["dependencies"], *project["optional-dependencies"]["dev"]]
+    return [Requirement(entry) for entry in entries]
+
+
+def test_ci_installs_only_the_hash_locked_dependencies():
+    # An unpinned `pip install -e ".[dev]"` takes the newest upload of that day
+    # into CI, the supply-chain risk SonarCloud text:S8565 names. The project
+    # itself comes in with --no-deps, so nothing unlocked rides along, and
+    # --no-build-isolation, so the locked setuptools builds it.
+    installs = [command.strip() for command in _PIP_INSTALL.findall(_ci_test_job())]
+    installs = [command.split("  #")[0].strip() for command in installs]
+    assert installs == _CI_INSTALLS
+
+
+def test_ci_lock_pins_every_project_and_dev_requirement_within_its_range():
+    # ci.txt is generated from pyproject.toml. A requirement added or a floor
+    # raised there without regenerating the lock has to fail here, on dev,
+    # not as a missing import in the middle of the test run.
+    locked = _ci_locked_versions()
+    unmet = [str(requirement) for requirement in _project_requirements()
+             if _distribution(requirement.name) not in locked
+             or not requirement.specifier.contains(locked[_distribution(requirement.name)])]
+    assert unmet == []
+
+
+def test_ci_lock_holds_a_build_backend_that_satisfies_build_system_requires():
+    # --no-build-isolation checks [build-system] requires instead of installing it.
+    locked = _ci_locked_versions()
+    backend = _build_requires()
+    assert {_distribution(requirement.name) for requirement in backend} <= _requirements("ci.in")
+    unmet = [str(requirement) for requirement in backend
+             if _distribution(requirement.name) not in locked
+             or not requirement.specifier.contains(locked[_distribution(requirement.name)])]
+    assert unmet == []
+
+
+def test_ci_lock_is_one_universal_file_for_the_whole_matrix():
+    # The test job runs on Linux and Windows and on every supported Python. A
+    # lock resolved for one of them can miss a platform-only package (pywin32,
+    # colorama) or a wheel another cell needs. --universal resolves for all of
+    # them, with environment markers where they differ.
+    header = (_REQUIREMENTS / _CI_LOCK).read_text(encoding="utf-8").splitlines()[1]
+    assert "--universal" in header.split()
+    assert "--generate-hashes" in header.split()
+    floor = tomllib.loads((_ROOT / "pyproject.toml").read_text(encoding="utf-8"))
+    minimum = floor["project"]["requires-python"].removeprefix(">=")
+    assert re.search(r"--python-version (\S+)", header).group(1) == minimum
+
+
+def _ci_step(action: str) -> str:
+    """Return the one step of the CI ``test`` job that uses ``action``, from its ``uses:`` line.
+
+    E.g. ``_ci_step("actions/cache/save")`` starts with
+    ``uses: actions/cache/save@<sha>`` and holds that step's ``if:`` and ``with:``.
+    """
+    steps = _steps_using(_ci_test_job(), action)
+    assert len(steps) == 1, f"the CI test job should use {action} exactly once"
+    return steps[0][1]
+
+
+def test_ci_pip_cache_is_saved_only_from_main():
+    # A run reads caches of its own ref and of main, never a sibling
+    # branch's. setup-python's `cache: pip` saved a full ~450 MB set of six
+    # on dev, every PR merge ref and every Dependabot branch: 17.3 GB on
+    # 2026-11-21 against the 10 GB store, with the 54 MB Nuitka cache next
+    # in line for eviction. main's set alone serves every ref.
+    setup = _ci_step("actions/setup-python")
+    assert not re.search(r"^\s*cache:", setup, re.MULTILINE)
+    restore = _ci_step("actions/cache/restore")
+    assert "hashFiles('.github/requirements/ci.txt')" in restore
+    assert "pyproject.toml" not in restore
+    save = _ci_step("actions/cache/save")
+    condition = re.search(r"^\s*if:\s*(.+)$", save, re.MULTILINE)
+    assert condition, "the save step needs an if: that limits it to main"
+    assert "github.ref == 'refs/heads/main'" in condition.group(1)
+    assert "||" not in condition.group(1)
+    assert re.search(r"^\s*key:\s*\$\{\{\s*steps\.pip-cache\.outputs\.cache-primary-key\s*\}\}\s*$",
+                     save, re.MULTILINE)
+    path = re.compile(r"^\s*path:\s*(.+?)\s*$", re.MULTILINE)
+    assert path.search(save).group(1) == path.search(restore).group(1)
+
+
+def test_no_ci_job_caches_pip_on_every_ref():
+    # The same eviction applies to any job ci.yml gains later, since ci.yml
+    # runs on every branch. release.yml is not checked: its jobs run on main
+    # alone, so setup-python's own cache saves only main's copy there.
+    text = (_ROOT / ".github" / "workflows" / "ci.yml").read_text(encoding="utf-8")
+    assert not re.search(r"^\s*cache:\s*pip\b", text, re.MULTILINE)
+
+
+def test_every_ci_pin_carries_a_hash():
+    # --require-hashes refuses the whole install when one pin has no hash, so a
+    # hand edit that drops one would break every CI run, caught here first.
+    text = (_REQUIREMENTS / _CI_LOCK).read_text(encoding="utf-8")
+    blocks = re.split(r"\n(?=[A-Za-z0-9])", text)
+    pins = [block for block in blocks if re.match(r"[A-Za-z0-9][\w.-]*==", block)]
+    assert pins
+    assert [block.split()[0] for block in pins if "--hash=sha256:" not in block] == []

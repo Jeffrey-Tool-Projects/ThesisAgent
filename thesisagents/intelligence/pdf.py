@@ -1,7 +1,7 @@
 """Fetch a paper's PDF over HTTPS-only and extract its text.
 
-We reuse the shared per-source HTTPS-only client so the same rate limiter
-and TLS guardrails apply. Output is plain text, joined per page, capped at
+We reuse the shared per-source HTTPS-only client so the same TLS and
+local-network guardrails apply. Output is plain text, joined per page, capped at
 ``MAX_PDF_CHARS`` so a malicious 1000-page PDF cannot blow out the LLM
 context window.
 """
@@ -80,11 +80,12 @@ def _extract_text(body: bytes, source: str) -> tuple[str, int]:
             "pypdf is not installed; run `pip install thesisagents[intelligence]`",
         ) from err
     try:
-        reader = PdfReader(io.BytesIO(body))
+        # Reading the page list is what fails for an encrypted file. Outside
+        # the ``try`` its error ended the enrichment of every other paper.
+        pages = list(PdfReader(io.BytesIO(body)).pages)[:MAX_PDF_PAGES]
     except Exception as err:
         raise ParseError(source, f"pypdf could not open the file: {err}") from err
     chunks: list[str] = []
-    pages = list(reader.pages)[:MAX_PDF_PAGES]
     for page in pages:
         try:
             text = page.extract_text() or ""

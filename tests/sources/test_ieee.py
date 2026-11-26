@@ -55,7 +55,8 @@ async def test_search_parses_rest_response(monkeypatch):
     assert "Securing LLM Workloads" in papers[0].title
     assert papers[0].year == 2025
     assert papers[0].doi == "10.1109/ACCESS.2025.3561235"
-    assert papers[0].pdf_url and papers[0].pdf_url.startswith("https://ieeexplore.ieee.org/")
+    assert papers[0].pdf_url
+    assert papers[0].pdf_url.startswith("https://ieeexplore.ieee.org/")
     # HTML <mark> tag was stripped from title 2
     assert papers[1].title == "Another paper on robotics"
     assert transport.received_method == "POST"
@@ -75,24 +76,26 @@ async def test_fetch_by_id_metadata_blob(monkeypatch):
 async def test_fetch_by_id_non_digit_raises(monkeypatch):
     transport = MockTransport(200, "")
     install_mock(monkeypatch, "thesisagents.sources.ieee.fetcher", transport)
+    fetcher = _new_fetcher()
     with pytest.raises(ParseError):
-        await _new_fetcher().fetch_by_id("not-arnumber")
+        await fetcher.fetch_by_id("not-arnumber")
 
 
 async def test_fetch_blocked_response_surfaces_unavailable(monkeypatch):
     transport = MockTransport(418, "I'm a teapot")
     install_mock(monkeypatch, "thesisagents.sources.ieee.fetcher", transport)
+    fetcher = _new_fetcher()
     with pytest.raises(SourceUnavailableError):
-        await _new_fetcher().fetch_by_id("10965643")
+        await fetcher.fetch_by_id("10965643")
 
 
 async def test_search_blocked_surfaces_unavailable(monkeypatch):
     transport = MockTransport(403, "forbidden")
     install_mock(monkeypatch, "thesisagents.sources.ieee.fetcher", transport)
+    fetcher = _new_fetcher()
+    query = Query(keywords="x", sources=("ieee",), max_results=1)
     with pytest.raises(SourceUnavailableError):
-        await _new_fetcher().search(
-            Query(keywords="x", sources=("ieee",), max_results=1)
-        )
+        await fetcher.search(query)
 
 
 async def test_search_sends_referer_and_origin(monkeypatch):
@@ -150,6 +153,8 @@ async def test_api_search_uses_api_endpoint_and_key(monkeypatch):
     assert transport.received_url.params.get("querytext") == "LLM security"
     assert transport.received_url.params.get("start_year") == "2025"
     assert transport.received_url.params.get("end_year") == "2026"
+    # Sorted by article number a page held the newest matches, not the best.
+    assert "sort_field" not in transport.received_url.params
     # Fixture has 2 articles
     assert len(papers) == 2
     first = papers[0]
@@ -157,7 +162,8 @@ async def test_api_search_uses_api_endpoint_and_key(monkeypatch):
     assert first.title == "Securing LLM Workloads at Edge"
     assert first.year == 2025
     assert first.doi == "10.1109/ACCESS.2025.3561235"
-    assert first.pdf_url and "stamp.jsp" in first.pdf_url
+    assert first.pdf_url
+    assert "stamp.jsp" in first.pdf_url
     # Author parsing covers full_name / first+last / preferred_name variants
     assert first.authors == ("Hassan Karim", "Deepti Gupta", "Sai Sitharaman")
     # Citation count from citing_paper_count

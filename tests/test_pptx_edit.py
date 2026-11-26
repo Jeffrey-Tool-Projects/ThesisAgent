@@ -27,7 +27,7 @@ from thesisagents.core.models import ExportOptions, PaperCollection, Query
 from thesisagents.exporters import export_collection, pptx_edit
 
 
-@pytest.fixture()
+@pytest.fixture
 def deck(tmp_path: Path, sample_papers) -> Path:
     collection = PaperCollection(
         query=Query(keywords="attention", sources=("arxiv",), max_results=10),
@@ -152,3 +152,101 @@ def test_update_saves_to_out_path(deck: Path, tmp_path: Path):
     ]
     assert title_shapes, "slide 3 has no shape named 'title'"
     assert title_shapes[0].text_frame.text == "Copied"
+
+
+# --- an edit keeps the look -------------------------------------------------------
+
+
+def _deck(tmp_path, *, dark: bool):
+    from thesisagents.core.models import ExportOptions, Paper, PaperCollection, PaperSummary, Query
+    from thesisagents.exporters import export_collection
+
+    paper = Paper(
+        source="a", source_id="1", title="A paper", authors=("A",), year=2020, venue="V",
+        abstract="Words. " * 40, url="https://example.org",
+        summary=PaperSummary(
+            language="en", motivation=("m1", "m2"), limitations=("l",),
+            technique_table=(("a", "b"),), core_observation="c",
+        ),
+    )
+    return export_collection(
+        PaperCollection(query=Query("x", ("arxiv",)), papers=(paper,)),
+        ExportOptions(
+            formats=("pptx",), out_dir=str(tmp_path), filename_stem="deck",
+            verify_identifiers=False, dark_mode=dark,
+        ),
+    )["pptx"]
+
+
+@pytest.mark.parametrize("dark", [False, True])
+def test_edited_and_added_text_stays_visible_and_formatted(tmp_path, dark):
+    from pptx import Presentation
+
+    from thesisagents.exporters.audit import audit_prs
+
+    path = _deck(tmp_path, dark=dark)
+    before = Presentation(str(path))
+    title = next(s for s in before.slides[1].shapes if s.name == "title")
+    look = title.text_frame.paragraphs[0].runs[0].font
+    expected = (look.size, look.bold, look.color.rgb)
+    view = pptx_edit.inspect(path)[1]
+    updates = {
+        s.index: f"changed\n{s.text}" for s in view.shapes if s.text and s.name != "page_number"
+    }
+    pptx_edit.update_slide(path, 1, shape_updates=updates)
+    pptx_edit.add_slide(path, title="Added", body="one\ntwo", position=2)
+    after = Presentation(str(path))
+    assert [i for i in audit_prs(after) if i.hard] == []
+    title = next(s for s in after.slides[1].shapes if s.name == "title")
+    for paragraph in title.text_frame.paragraphs:
+        font = paragraph.runs[0].font
+        assert (font.size, font.bold, font.color.rgb) == expected
+    names = [s.name for s in after.slides[2].shapes]
+    assert "accent_top" in names
+    assert names.count("title") == 1
+
+
+def test_page_numbers_are_counted_again(tmp_path):
+    def numbers():
+        return [
+            s.text.split("/")
+            for view in pptx_edit.inspect(path)
+            for s in view.shapes
+            if s.name == "page_number"
+        ]
+
+    path = _deck(tmp_path, dark=False)
+    count = len(numbers())
+    pptx_edit.add_slide(path, title="Added", body="x", position=2)
+    pptx_edit.delete_slide(path, 4)
+    pptx_edit.delete_slide(path, 4)
+    slides = len(pptx_edit.inspect(path))
+    pptx_edit.reorder_slides(path, [0, 2, 1, *range(3, slides)])
+    found = [(int(n), int(total)) for n, total in numbers()]
+    assert found == [(i + 1, count - 1) for i in range(count - 1)]
+
+
+def test_shape_indices_are_the_ones_inspect_reports(tmp_path):
+    from pptx import Presentation
+    from pptx.util import Inches
+
+    path = tmp_path / "p.pptx"
+    presentation = Presentation()
+    slide = presentation.slides.add_slide(presentation.slide_layouts[6])
+    slide.shapes.add_table(1, 1, 0, 0, Inches(1), Inches(1))
+    for text in ("first", "second"):
+        slide.shapes.add_textbox(0, 0, Inches(1), Inches(1)).text_frame.text = text
+    presentation.save(str(path))
+    shapes = pptx_edit.inspect(path)[0].shapes
+    target = next(s for s in shapes if s.text == "second")
+    pptx_edit.update_slide(path, 0, shape_updates={target.index: "changed"})
+    assert [s.text for s in pptx_edit.inspect(path)[0].shapes] == ["first", "changed"]
+    with pytest.raises(ExportError, match="holds no text"):
+        pptx_edit.update_slide(path, 0, shape_updates={0: "x"})
+
+
+def test_a_file_that_is_no_deck_is_named(tmp_path):
+    path = tmp_path / "x.pptx"
+    path.write_bytes(b"not a zip")
+    with pytest.raises(ExportError, match="not a PowerPoint file"):
+        pptx_edit.inspect(path)

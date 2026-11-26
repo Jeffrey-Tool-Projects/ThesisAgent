@@ -118,7 +118,8 @@ def _load_document(target: Path) -> dict[str, Any]:
     if target.stat().st_size > MAX_HANDOFF_BYTES:
         raise HandoffError(f"{target.name} is larger than {MAX_HANDOFF_BYTES // 2**20} MB")
     try:
-        document = json.loads(target.read_text(encoding="utf-8"))
+        # "-sig": an editor on Windows may have put a byte order mark in front.
+        document = json.loads(target.read_text(encoding="utf-8-sig"))
     except (UnicodeDecodeError, json.JSONDecodeError) as err:
         raise HandoffError(f"{target.name} is not a JSON file: {err}") from err
     except RecursionError as err:
@@ -142,27 +143,53 @@ def _summaries(
     if not isinstance(entries, list):
         raise HandoffError("`papers` must be a list")
     for entry in entries:
-        if (
-            not isinstance(entry, dict)
-            or not isinstance(entry.get("key"), str)
-            or not isinstance(entry.get("paper"), dict)
-        ):
-            raise HandoffError("every entry in `papers` needs a text `key` and a `paper` object")
-        key = entry["key"]
+        key, paper = _checked_entry(entry)
         if key not in known:
             unmatched += 1
             continue
-        raw = entry["paper"].get("summary")
-        if not raw:
-            continue
-        if not isinstance(raw, dict):
-            raise HandoffError(f"the summary for {key} must be an object")
-        try:
-            summary = Paper.from_dict(entry["paper"]).summary
-        # The file is untrusted: any shape the model cannot read is a refusal
-        # with a reason, never a traceback out of a Qt slot.
-        except (ThesisAgentsError, KeyError, TypeError, ValueError, AttributeError) as err:
-            raise HandoffError(f"the summary for {key} cannot be read: {err}") from err
+        summary = _entry_summary(key, paper)
         if summary is not None:
             summaries[key] = summary
     return summaries, unmatched
+
+
+def _checked_entry(entry: object) -> tuple[str, dict[str, Any]]:
+    """Return ``(key, paper)`` of one ``papers`` entry, or refuse its shape.
+
+    Guards the untrusted file: an entry that is not an object, has no text
+    ``key`` or no ``paper`` object raises :class:`HandoffError` instead of a
+    ``KeyError`` / ``TypeError`` further down.
+
+    Example: ``_checked_entry({"key": "doi:10.1/x", "paper": {}})`` returns
+    ``("doi:10.1/x", {})``, ``_checked_entry([])`` raises.
+    """
+    if (
+        not isinstance(entry, dict)
+        or not isinstance(entry.get("key"), str)
+        or not isinstance(entry.get("paper"), dict)
+    ):
+        raise HandoffError("every entry in `papers` needs a text `key` and a `paper` object")
+    return entry["key"], entry["paper"]
+
+
+def _entry_summary(key: str, paper: dict[str, Any]) -> PaperSummary | None:
+    """Parse the summary of one entry's ``paper`` object, or ``None`` when empty.
+
+    Guards the untrusted file: a summary that is not an object, or one the
+    model cannot read, raises :class:`HandoffError` with the entry's ``key``
+    instead of letting a traceback escape a Qt slot.
+
+    Example: ``_entry_summary("k", {"summary": None})`` returns ``None``,
+    ``_entry_summary("k", {"summary": "text"})`` raises.
+    """
+    raw = paper.get("summary")
+    if not raw:
+        return None
+    if not isinstance(raw, dict):
+        raise HandoffError(f"the summary for {key} must be an object")
+    try:
+        return Paper.from_dict(paper).summary
+    # The file is untrusted: any shape the model cannot read is a refusal
+    # with a reason, never a traceback out of a Qt slot.
+    except (ThesisAgentsError, KeyError, TypeError, ValueError, AttributeError) as err:
+        raise HandoffError(f"the summary for {key} cannot be read: {err}") from err

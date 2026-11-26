@@ -14,7 +14,7 @@ from thesisagents.core.models import PaperCollection, Query
 from thesisagents.mcp.server import ToolError, _as_tool_error
 
 
-@pytest.fixture()
+@pytest.fixture
 def server():
     return mcp_pkg.build_server()
 
@@ -266,16 +266,15 @@ def test_search_exclude_all_sources_errors(monkeypatch, server):
         return None
 
     monkeypatch.setattr("thesisagents.mcp.server.shutdown_clients", fake_shutdown)
+    call = _call(
+        server,
+        "search",
+        keywords="x",
+        sources=["arxiv"],
+        exclude_sources=["arxiv"],
+    )
     with pytest.raises(ToolError, match="exclude_sources removed every source"):
-        asyncio.run(
-            _call(
-                server,
-                "search",
-                keywords="x",
-                sources=["arxiv"],
-                exclude_sources=["arxiv"],
-            )
-        )
+        asyncio.run(call)
 
 
 def test_search_defaults_to_full_source_mix(monkeypatch, server, sample_papers):
@@ -458,17 +457,16 @@ def test_export_ignores_the_pdf_pseudo_format(server, sample_papers, tmp_path):
 def test_export_with_only_pdf_points_at_the_download_tool(server, sample_papers, tmp_path):
     """``formats=["pdf"]`` alone has nothing to render — say so, by name."""
     papers = [p.to_dict() for p in sample_papers]
+    call = _call(
+        server,
+        "export",
+        papers=papers,
+        keywords="attention",
+        formats=["pdf"],
+        out_dir=str(tmp_path),
+    )
     with pytest.raises(ToolError, match="download_pdfs"):
-        asyncio.run(
-            _call(
-                server,
-                "export",
-                papers=papers,
-                keywords="attention",
-                formats=["pdf"],
-                out_dir=str(tmp_path),
-            )
-        )
+        asyncio.run(call)
 
 
 def test_export_accepts_more_papers_than_the_page_size_cap(server, sample_papers, tmp_path):
@@ -504,8 +502,9 @@ def test_as_tool_error_turns_a_sync_tool_error_into_tool_error():
     def failing():
         raise ThesisAgentsError("nothing to render")
 
+    wrapped = _as_tool_error(failing)
     with pytest.raises(ToolError, match="nothing to render") as caught:
-        _as_tool_error(failing)()
+        wrapped()
     assert isinstance(caught.value.__cause__, ThesisAgentsError)
 
 
@@ -513,8 +512,9 @@ def test_as_tool_error_turns_an_async_tool_error_into_tool_error():
     async def failing():
         raise ThesisAgentsError("no paper found")
 
+    call = _as_tool_error(failing)()
     with pytest.raises(ToolError, match="no paper found"):
-        asyncio.run(_as_tool_error(failing)())
+        asyncio.run(call)
 
 
 def test_as_tool_error_passes_results_and_other_errors_through():
@@ -525,8 +525,9 @@ def test_as_tool_error_passes_results_and_other_errors_through():
         raise KeyError("bug")
 
     assert asyncio.run(_as_tool_error(ok)(3)) == {"value": 3}
+    wrapped = _as_tool_error(broken)
     with pytest.raises(KeyError):
-        _as_tool_error(broken)()
+        wrapped()
 
 
 # ---------------------------------------------------------------------------
@@ -557,13 +558,12 @@ def test_export_fails_on_a_bad_identifier_and_writes_nothing(
     client only ever sees the message."""
     papers = [p.to_dict() for p in sample_papers]
     papers[1]["doi"] = "10.x/composed-by-hand"
+    call = _call(
+        server, "export", papers=papers, keywords="attention",
+        formats=["bib", "json"], out_dir=str(tmp_path),
+    )
     with pytest.raises(ToolError) as raised:
-        asyncio.run(
-            _call(
-                server, "export", papers=papers, keywords="attention",
-                formats=["bib", "json"], out_dir=str(tmp_path),
-            )
-        )
+        asyncio.run(call)
     message = str(raised.value)
     assert "identifier verification failed" in message
     assert "10.x/composed-by-hand is invalid" in message
@@ -797,7 +797,7 @@ def _found(sid: str, title: str):
     )
 
 
-@pytest.fixture()
+@pytest.fixture
 def citation_graph(monkeypatch, sample_papers):
     """Install an in-memory citation provider as the only default provider."""
     seed_id = sample_papers[0].source_id
@@ -879,16 +879,16 @@ def test_snowball_tool_does_not_rediscover_known_papers(
 def test_snowball_tool_reports_a_bad_bound_as_a_tool_error(
     server, sample_papers, citation_graph
 ):
+    call = _call(server, "snowball", papers=[sample_papers[0].to_dict()], depth=9)
     with pytest.raises(ToolError, match=r"depth must be in \[1, 3\]"):
-        asyncio.run(
-            _call(server, "snowball", papers=[sample_papers[0].to_dict()], depth=9)
-        )
+        asyncio.run(call)
     assert citation_graph.calls == []
 
 
 def test_snowball_tool_needs_a_seed(server, citation_graph):
+    call = _call(server, "snowball", papers=[])
     with pytest.raises(ToolError, match="at least one seed paper"):
-        asyncio.run(_call(server, "snowball", papers=[]))
+        asyncio.run(call)
 
 
 def test_snowball_tool_reports_provider_errors_without_failing(
@@ -987,8 +987,33 @@ def test_search_snowball_bad_direction_is_a_tool_error(
         return PaperCollection(query=query, papers=tuple(sample_papers))
 
     monkeypatch.setattr("thesisagents.mcp.server.run_search", fake_run_search)
+    call = _call(server, "search", keywords="attention", sources=["arxiv"],
+                 snowball="sideways")
     with pytest.raises(ToolError, match="direction must be one of"):
-        asyncio.run(
-            _call(server, "search", keywords="attention", sources=["arxiv"],
-                  snowball="sideways")
-        )
+        asyncio.run(call)
+
+
+def test_a_bad_argument_reaches_the_client_with_its_reason(server):
+    """The core reports a bad argument as ValueError, which the SDK would hide."""
+    with pytest.raises(ToolError, match=r"max_results must be in \[1, 200\]"):
+        asyncio.run(_call(server, "search", keywords="x", sources=["arxiv"], max_results=500))
+    with pytest.raises(ToolError, match="empty after normalisation"):
+        asyncio.run(_call(server, "search", keywords="   "))
+
+
+def test_export_names_the_sources_of_the_papers(server, sample_papers, tmp_path):
+    """The workbook and the cover said "arxiv", wherever the papers came from."""
+    import dataclasses
+
+    from openpyxl import load_workbook
+
+    papers = [
+        dataclasses.replace(paper, source=source).to_dict()
+        for paper, source in zip(sample_papers, ("openalex", "dblp"), strict=False)
+    ]
+    written = asyncio.run(_call(
+        server, "export", papers=papers, keywords="x", formats=["xlsx"], out_dir=str(tmp_path),
+        verify_identifiers=False,
+    ))["written"]
+    sheet = load_workbook(written["xlsx"])["Query"]
+    assert {row[0].value: row[1].value for row in sheet.iter_rows()}["Sources"] == "dblp, openalex"

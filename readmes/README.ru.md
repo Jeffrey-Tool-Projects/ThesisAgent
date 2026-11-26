@@ -1,10 +1,10 @@
 # ThesisAgents
 
-[![CI](https://github.com/Integration-Automation/ThesisAgents/actions/workflows/ci.yml/badge.svg)](https://github.com/Integration-Automation/ThesisAgents/actions/workflows/ci.yml)
-[![Release](https://github.com/Integration-Automation/ThesisAgents/actions/workflows/release.yml/badge.svg?branch=main)](https://github.com/Integration-Automation/ThesisAgents/actions/workflows/release.yml)
+[![CI](https://github.com/Jeffrey-Tool-Projects/ThesisAgent/actions/workflows/ci.yml/badge.svg)](https://github.com/Jeffrey-Tool-Projects/ThesisAgent/actions/workflows/ci.yml)
+[![Release](https://github.com/Jeffrey-Tool-Projects/ThesisAgent/actions/workflows/release.yml/badge.svg?branch=main)](https://github.com/Jeffrey-Tool-Projects/ThesisAgent/actions/workflows/release.yml)
 [![PyPI](https://img.shields.io/pypi/v/thesisagents.svg)](https://pypi.org/project/thesisagents/)
 [![Python](https://img.shields.io/pypi/pyversions/thesisagents.svg)](https://pypi.org/project/thesisagents/)
-[![License: MIT](https://img.shields.io/github/license/Integration-Automation/ThesisAgents.svg)](https://github.com/Integration-Automation/ThesisAgents/blob/main/LICENSE)
+[![License: MIT](https://img.shields.io/github/license/Jeffrey-Tool-Projects/ThesisAgent.svg)](https://github.com/Jeffrey-Tool-Projects/ThesisAgent/blob/main/LICENSE)
 [![Docs](https://readthedocs.org/projects/thesisagents/badge/?version=latest)](https://thesisagents.readthedocs.io/en/latest/)
 
 > **Языки**: [English](../README.md) · [繁體中文](README.zh-TW.md) · [简体中文](README.zh-CN.md) · [日本語](README.ja.md) · [Español](README.es.md) · [Français](README.fr.md) · [Deutsch](README.de.md) · [한국어](README.ko.md) · [Português](README.pt.md) · **Русский** · [Italiano](README.it.md) · [Tiếng Việt](README.vi.md) · [हिन्दी](README.hi.md) · [Bahasa Indonesia](README.id.md)
@@ -247,7 +247,7 @@ for key in irrelevant_keys:
   работает с любым деком, произведённым экспортёром, плюс эквивалентные
   MCP-инструменты `pptx_*`, чтобы LLM-агент мог итеративно дорабатывать
   сгенерированный дек.
-- **MCP-сервер**: 18 инструментов — `list_sources` + `list_exports`
+- **MCP-сервер**: 25 инструментов — `list_sources` + `list_exports`
   (обнаружение), `search`, `snowball`, `library_add`, `library_search`, `library_stats`, `fetch_paper`, `fetch_pdf_text`,
   `download_pdfs`, `pptx_validate_template`, `export` и шесть инструментов дека `pptx_*`
   (`inspect`, `review`, `update_slide`, `delete_slide`,
@@ -260,7 +260,7 @@ for key in irrelevant_keys:
     PDF через `fetch_pdf_text`, пишет структурированную сводку в контексте
     и передаёт её в `export`.
   - **Python pipeline (`--enrich`)** — CLI сам вызывает API Anthropic;
-    модель по умолчанию `claude-opus-4-7`.
+    модель по умолчанию `claude-opus-5-5`.
 - **Потоки издателей через видимый Chrome**: SERP Scholar, IEEE `/rest/search`
   и каждая загрузка PDF из-за пейвола (ieeexplore / dl.acm / link.springer
   / sciencedirect / wiley / oup / nature / science / …) выполняются внутри
@@ -399,14 +399,15 @@ py -m thesisagents --paper "https://arxiv.org/abs/1706.03762" `
 | `--source` / `-s` | Список источников через запятую. По умолчанию `arxiv`. |
 | `--max` / `-n` | Макс. результатов на источник (1..200). По умолчанию 25. |
 | `--year-from` / `--year-to` | Фильтр по годам включительно. |
-| `--export` / `-e` | Форматы: любые из `pptx,xlsx,md,bib,json,ris,csv,csl`. По умолчанию зависит от режима (см. ниже). |
+| `--export` / `-e` | Форматы: любые из `pptx,xlsx,md,bib,json,ris,csv,csl,docx,tex`. По умолчанию зависит от режима (см. ниже). |
 | `--out` / `-o` | Каталог вывода. По умолчанию `./exports`. |
 | `--filename-stem` | Переопределить сгенерированную основу имени файла. |
 | `--no-abstract` | Опустить содержимое аннотации из экспорта. |
 | `--lang` / `-l` | Язык дека: один из 14 — `en`, `zh-tw`, `zh-cn`, `ja`, `es`, `fr`, `de`, `ko`, `pt`, `ru`, `it`, `vi`, `hi`, `id`. По умолчанию `en`. |
 | `--enrich` | Явно-падающий вариант авто-обогащения. Нужны `ANTHROPIC_API_KEY` и extra `[intelligence]`. (Авто-обогащение по умолчанию, когда ключ задан.) |
 | `--lightweight` | Пропустить обогащение + принудительно дек только с аннотацией. Используйте только для быстрых / без присмотра запусков; **когда управляет LLM-агент, предпочитайте поток LLM-as-agent** ниже. |
-| `--llm-model` | Переопределить модель по умолчанию `claude-opus-4-7` для обогащения. |
+| `--llm-model` | Переопределить модель по умолчанию `claude-opus-5-5` для обогащения. |
+| `--llm-command COMMAND` | Командная строка провайдера командной строки (`claude-cli`, `cli`, …), статья на стандартный ввод. |
 | `--no-pdf` | Пропустить автоматическую загрузку PDF. Также отключает гейт PPT на каждую статью (нет PDF → нет полного содержимого). |
 | `--no-oa-resolve` | Пропустить пост-дедупликационный резолвер OA PDF (Unpaywall + S2 + arXiv + CORE.ac.uk). |
 | `--top-tier-only` | Ограничить результаты arXiv + курируемым белым списком CS-флагманов (S&P, CCS, NDSS, USENIX Security, NeurIPS, ICML, ICSE, …). Выключено по умолчанию. |
@@ -431,7 +432,10 @@ py -m thesisagents --paper "https://arxiv.org/abs/1706.03762" `
 | Переменная | Используется | Назначение |
 |---|---|---|
 | `ANTHROPIC_API_KEY` | `--enrich` | Аутентификация LLM. Не нужна для пути LLM-as-agent через MCP. |
-| `THESISAGENTS_LLM_MODEL` | `--enrich` | Переопределить модель по умолчанию `claude-opus-4-7`. |
+| `THESISAGENTS_LLM_PROVIDER` | `--enrich` | Где работает модель: `anthropic`, `openai`, `gemini`, `mistral`, `deepseek`, `xai`, `groq`, `openrouter`, `together`, `fireworks`, `dashscope`, `moonshot`, на этом компьютере `ollama`, `lmstudio`, `llamacpp`, `vllm`, или `custom` с `THESISAGENTS_LLM_BASE_URL`. Или ИИ-программа в командной строке: `claude-cli`, `gemini-cli`, `codex-cli`, `ollama-cli` или `cli` с `THESISAGENTS_LLM_COMMAND`. |
+| `THESISAGENTS_LLM_COMMAND` | `--enrich` | Командная строка провайдера командной строки, который получает статью на стандартный ввод (например `claude -p --model opus`). Заменяет команду провайдера. |
+| `THESISAGENTS_LLM_CLI_TIMEOUT` | `--enrich` | Сколько секунд может занять одна статья у провайдера командной строки (по умолчанию 600). |
+| `THESISAGENTS_LLM_MODEL` | `--enrich` | Переопределить модель по умолчанию `claude-opus-5-5`. |
 | `THESISAGENTS_S2_API_KEY` | Semantic Scholar + резолвер OA | Более высокий лимит скорости; также используется шагом `openAccessPdf` S2 резолвера OA. Бесплатный ключ на <https://www.semanticscholar.org/product/api>. |
 | `THESISAGENTS_NCBI_API_KEY` | PubMed | Поднимает анонимный лимит NCBI (3/с) до 10/с. Опционально. |
 | `THESISAGENTS_CONTACT_EMAIL` | PubMed, ACM, Crossref, OpenAlex, **Unpaywall** | Тег polite-pool + включает шаг Unpaywall резолвера OA (наибольший выигрыш по покрытию PDF для статей из-за пейвола IEEE / ACM / Springer / Elsevier; типичный прирост 40-70 пп). |
@@ -492,10 +496,11 @@ claude mcp add thesisagents -- ".venv\Scripts\python.exe" -m thesisagents.mcp
 | `library_add` | Статьи → библиотека литературы (файл SQLite по пути `library`), сохраняемая для следующих сеансов. Добавление означает слияние: уже имеющаяся статья обновляется и не дублируется. В `relations` передаются связи цитирования, которые возвращает `snowball`. |
 | `library_search` | Запрос → статьи, уже лежащие в библиотеке, оценённые так же, как при поиске, без обращения к сети. У каждой есть история: когда она была увидена впервые и в последний раз и какие источники её вернули. |
 | `library_stats` | Библиотека → сколько в ней статей, запусков и связей цитирования, число статей по источникам и последние импорты. |
+| `library_update`, `library_delete`, `library_import`, `library_duplicates`, `library_merge`, `library_saved_search`, `library_prisma` | Библиотека → теги, заметки, статус чтения и решения отбора, удаление и объединение статей, импорт BibTeX / RIS, поиски, сообщающие только о новом, и схема PRISMA. |
 | `fetch_paper` | Идентификатор arXiv / DOI / PMID / IEEE → одна статья. |
 | `fetch_pdf_text` | Загрузить один PDF, вернуть извлечённый текст тела. **MCP-путь к «я прочитал статью».** |
 | `download_pdfs` | Пакетно загрузить PDF из списка статей в `{out_dir}/pdfs/`. Возвращает результаты по каждой статье с ключами по ключу BibTeX. |
-| `export` | Список статей + форматы → пишет `.pptx/.xlsx/.md/.bib/.json/.ris/.csv/.csl.json`. Принимает поле `summary` на статью для насыщенной схемы в стиле дипломной презентации, `max_slides_per_paper` (по умолчанию 25) и `dark_mode` (по умолчанию `false` — по умолчанию проекта светлый дек с тёмно-синей полосой, передайте `true` для тёмного пост-прохода OLED / при слабом свете). Перед записью проверяет каждый DOI / URL (`verify_identifiers`, по умолчанию `true`): неверный или недоступный идентификатор приводит к ошибке вызова с указанием статьи, а ответ содержит отчёт `verification`. `library` задаёт библиотеку литературы, в которой хранятся результаты проверки идентификаторов, поэтому идентификатор, подтверждённый при прошлом вызове, повторно не проверяется. `pptx_template` (с необязательным `pptx_template_config`) строит презентацию на вашем собственном шаблоне PowerPoint. |
+| `export` | Список статей + форматы → пишет `.pptx/.xlsx/.md/.bib/.json/.ris/.csv/.csl.json/.docx/.tex`. Принимает поле `summary` на статью для насыщенной схемы в стиле дипломной презентации, `max_slides_per_paper` (по умолчанию 25) и `dark_mode` (по умолчанию `false` — по умолчанию проекта светлый дек с тёмно-синей полосой, передайте `true` для тёмного пост-прохода OLED / при слабом свете). Перед записью проверяет каждый DOI / URL (`verify_identifiers`, по умолчанию `true`): неверный или недоступный идентификатор приводит к ошибке вызова с указанием статьи, а ответ содержит отчёт `verification`. `library` задаёт библиотеку литературы, в которой хранятся результаты проверки идентификаторов, поэтому идентификатор, подтверждённый при прошлом вызове, повторно не проверяется. `pptx_template` (с необязательным `pptx_template_config`) строит презентацию на вашем собственном шаблоне PowerPoint. |
 | `pptx_validate_template` | Шаблон → можно ли использовать его в `export(pptx_template=...)`: макет для каждого вида слайда, а также ошибки и предупреждения, в которых сказано, что изменить. Ничего не создаётся. |
 | `pptx_inspect` | Прочитать структуру слайдов / фигур существующего дека. |
 | `pptx_review` | Проверить дек за один вызов — переполнение + цветовые контракты + полнота секций `paper_rule`. Автоопределяет язык дека; также CLI `python -m thesisagents review <deck.pptx>`. |
@@ -525,11 +530,11 @@ ThesisAgents/
 ├── thesisagents/                 # main package
 │   ├── core/                        # Paper / PaperSummary / RqResult / dedup / ranking / pipeline
 │   ├── fetchers/                    # HTTPS-only async client, token-bucket rate limit
-│   ├── exporters/                   # pptx (thesis-style) · xlsx · bib · md · json · ris · csv · csl · pptx_edit · i18n
+│   ├── exporters/                   # pptx (thesis-style) · xlsx · bib · md · json · ris · csv · csl · docx · tex · pptx_edit · i18n
 │   ├── intelligence/                # PDF fetch + Anthropic summariser  ([intelligence] extra)
 │   ├── library/                     # SQLite literature library kept across runs
 │   ├── evaluation/                  # offline search-quality benchmark (docs/search-quality.md)
-│   ├── mcp/                         # FastMCP server (18 tools)
+│   ├── mcp/                         # FastMCP server (25 tools)
 │   ├── sources/<name>/              # plugin folders: arxiv, semantic_scholar,
 │   │                                #   openalex, pubmed, acm, ieee, scholar,
 │   │                                #   dblp, crossref, openaire, springer,
@@ -564,13 +569,14 @@ pip install thesisagents[gui]
 thesisagents-gui                 # or: thesisagents gui
 ```
 
-У окна есть боковая панель с пятью страницами: **Search**, **Library** (просмотр файла библиотеки только для чтения: обзор, её статьи со связями цитирования и проверками идентификаторов, а также поиски, которые её наполнили), **Enrich**
+У окна есть боковая панель с пятью страницами: **Search**, **Library** (файл библиотеки с вашими тегами, заметками и решениями отбора, импортом BibTeX / RIS, объединением дубликатов, сохранёнными поисками, показывающими только новое, графом цитирований и схемой PRISMA: обзор, её статьи со связями цитирования и проверками идентификаторов, а также поиски, которые её наполнили), **Enrich**
 (управляет обогащением LLM-as-agent / Python-pipeline через сигнал
 `collection_ready`), **Deck** (переключатель Dark mode, ограничение слайдов,
 проверка идентификаторов и шаблон дека проходят в `ExportOptions`) и
-**Settings** (сохраняет ключи API через QSettings). Windows-релизный zip поставляет скомпилированный Nuitka
-бандл с включённым PySide6, так что `thesisagents.exe gui` работает
-без отдельной установки Python.
+**Settings** (ключи API и настройки). Windows-релизный zip поставляет скомпилированный Nuitka
+бандл с включённым PySide6: `thesisagents.exe` открывает настольное приложение
+без окна консоли и без отдельной установки Python, а
+`thesisagents-cli.exe` в той же папке предназначен для работы из командной строки.
 Страница Search также умеет идти по цитированиям от верхних результатов
 («снежный ком»), сохранять результаты в файле библиотеки и искать в этой
 библиотеке без сети, а страница Deck может строить презентацию на вашем
@@ -587,7 +593,7 @@ language** позволяет его сменить. Язык вывода де�
 сворачивается до значков и подписи форм переходят над своими полями. Окно
 уменьшается до 640×480, с масштабированием HiDPI, включённым по умолчанию.
 **Settings → Theme** выбирает светлую, тёмную или системную тему, применяется
-сразу и не зависит от собственного тёмного режима дека. Результаты можно сортировать, фильтровать и отмечать, чтобы дальше в Enrich, Deck и Export шли только выбранные статьи, границы снежного кома настраиваются, идущий поиск или обогащение можно отменить, а форма сохраняется между запусками. Страница Deck может проверить шаблон до экспорта и проверить любую готовую презентацию, а без ключа API страница Enrich передаёт статьи LLM-агенту в виде JSON-файла и импортирует его резюме. Страница Deck также скачивает PDF, пропуская IEEE, пока в Settings не указан институциональный / VPN-доступ, а новый язык интерфейса применяется сразу с сохранением работы. Тот же переключатель исключает `ieee` и из поиска. Страница Search также умеет читать локальные PDF в результаты, как `--pdf` в CLI. Строка состояния показывает, сколько PDF пришло через Chrome, и предупреждает, если PDF издательства не удалось получить через него. **Settings → Style** переключает классический тёмно-синий вид и Material 3. `Ctrl+1` … `Ctrl+5`
+сразу и не зависит от собственного тёмного режима дека. Результаты можно сортировать, фильтровать и отмечать, чтобы дальше в Enrich, Deck и Export шли только выбранные статьи, границы снежного кома настраиваются, идущий поиск или обогащение можно отменить, а форма сохраняется между запусками. Страница Deck может проверить шаблон до экспорта и проверить любую готовую презентацию, а без ключа API страница Enrich передаёт статьи LLM-агенту в виде JSON-файла и импортирует его резюме. Страница Deck также скачивает PDF, пропуская IEEE, пока в Settings не указан институциональный / VPN-доступ, а новый язык интерфейса применяется сразу с сохранением работы. Тот же переключатель исключает `ieee` и из поиска. Страница Search также умеет читать локальные PDF в результаты, как `--pdf` в CLI. Строка состояния показывает, сколько PDF пришло через Chrome, и предупреждает, если PDF издательства не удалось получить через него. **Settings → Style** переключает классический тёмно-синий вид и Material 3. **Settings → Font size** сразу меняет размер текста во всём приложении в пределах от 8 до 24 pt, в том числе через `Ctrl++`, `Ctrl+-` и `Ctrl+0` (вернуть размер по умолчанию), и раскладка под него подстраивается. **Log** в строке состояния (`Ctrl+L`) показывает, что делает приложение, и ведёт файл журнала для отчёта об ошибке, а баннер сообщает, когда Chrome ждёт, пока вы решите капчу. Ключи API хранятся в системном хранилище (диспетчер учётных данных Windows, связка ключей macOS, Secret Service), а не в файле настроек. Для Windows есть установщик без прав администратора, а приложение сообщает о новых версиях (раз в день, можно отключить). **Settings → AI model** выбирает, кто пишет резюме: Anthropic, ещё одиннадцать сервисов или модель на вашем компьютере (Ollama, LM Studio, llama.cpp, vLLM), и текст может его не покидать. **Edit summary** на страницах Enrich и Library позволяет править резюме статьи вручную и показывает, какие из семи разделов ещё пусты. **Word draft** и **LaTeX draft** выгружают обзор литературы со ссылками в формате APA, сравнительной таблицей и списком литературы, в том числе в шаблон Word вашего вуза. **Edit slides…** на странице Deck меняет тексты, порядок и число слайдов готовой презентации, с предпросмотром и отменой. **Settings → AI model** также предлагает ИИ-программы командной строки (Claude Code, Gemini CLI, Codex, Ollama или любая команда), которые составляют резюме под вашей учётной записью, без ключа API. `Ctrl+1` … `Ctrl+5`
 переключают страницы.
 
 Полный справочник: [`docs/gui.md`](../docs/gui.md).

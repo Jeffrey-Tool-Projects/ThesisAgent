@@ -102,7 +102,7 @@ Contributing
 Quick links
 -----------
 
-* `GitHub repo <https://github.com/Integration-Automation/ThesisAgents>`_
+* `GitHub repo <https://github.com/Jeffrey-Tool-Projects/ThesisAgent>`_
 * `PyPI package <https://pypi.org/project/thesisagents/>`_
-* `Latest release <https://github.com/Integration-Automation/ThesisAgents/releases/latest>`_
-* `Issue tracker <https://github.com/Integration-Automation/ThesisAgents/issues>`_
+* `Latest release <https://github.com/Jeffrey-Tool-Projects/ThesisAgent/releases/latest>`_
+* `Issue tracker <https://github.com/Jeffrey-Tool-Projects/ThesisAgent/issues>`_

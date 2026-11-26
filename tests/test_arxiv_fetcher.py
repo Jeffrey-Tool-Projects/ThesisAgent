@@ -17,7 +17,7 @@ from thesisagents.fetchers import http as http_module
 from thesisagents.sources.arxiv.fetcher import ArxivFetcher
 
 
-@pytest.fixture()
+@pytest.fixture
 def fixture_xml(arxiv_fixture_path: Path) -> str:
     return arxiv_fixture_path.read_text(encoding="utf-8")
 

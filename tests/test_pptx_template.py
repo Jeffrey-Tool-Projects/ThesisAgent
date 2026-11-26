@@ -8,7 +8,8 @@ from pathlib import Path
 
 import pytest
 from pptx import Presentation
-from pptx.util import Inches
+from pptx.oxml.ns import qn
+from pptx.util import Inches, Pt
 
 from thesisagents import cli as cli_module
 from thesisagents import mcp as mcp_pkg
@@ -19,7 +20,7 @@ from thesisagents.core.models import (
     PaperSummary,
     Query,
 )
-from thesisagents.exporters import export_collection, pptx, pptx_edit, template
+from thesisagents.exporters import export_collection, pptx, pptx_edit, pptx_text, template
 from thesisagents.exporters.audit import audit_deck
 from thesisagents.exporters.review import review_deck
 from thesisagents.exporters.template import (
@@ -144,7 +145,7 @@ def test_the_built_in_deck_is_unchanged(tmp_path):
 def test_the_shared_title_area_constant_matches_the_exporter():
     # The contract's limit for a title placeholder is where the exporter puts
     # the line under the title, and the canvas is the exporter's canvas.
-    assert pptx.TITLE_AREA_BOTTOM is template.TITLE_AREA_BOTTOM
+    assert pptx_text.TITLE_AREA_BOTTOM is template.TITLE_AREA_BOTTOM
     assert (template.SLIDE_WIDTH, template.SLIDE_HEIGHT) == (pptx._SLIDE_WIDTH, pptx._SLIDE_HEIGHT)
     assert Inches(1.24) < template.TITLE_AREA_BOTTOM <= pptx._BODY_TOP
 
@@ -155,7 +156,9 @@ def test_the_shared_title_area_constant_matches_the_exporter():
 def test_a_stock_16_9_template_is_valid_and_every_role_falls_back_to_blank(tmp_path):
     report = validate_template(_make_template(tmp_path / "t.pptx"))
 
-    assert report.ok and report.errors == () and report.warnings == ()
+    assert report.ok
+    assert report.errors == ()
+    assert report.warnings == ()
     assert (report.slide_width_in, report.slide_height_in) == (13.333, 7.5)
     assert report.layouts == dict.fromkeys(ROLES, "Blank")
     assert "Title Only" in report.available_layouts
@@ -192,7 +195,8 @@ def test_a_layout_name_that_does_not_exist_is_an_actionable_error(tmp_path):
     assert _codes(report.errors) == ["layout-not-found"]
     message = report.errors[0].message
     assert '[layouts] table = "Data"' in message
-    assert "'Title Only'" in message and "'Blank'" in message      # what there is
+    assert "'Title Only'" in message                               # what there is
+    assert "'Blank'" in message
 
 
 def test_a_template_with_no_layout_for_content_is_refused(tmp_path):
@@ -371,8 +375,9 @@ def test_a_light_primary_says_why_it_must_be_dark():
     ],
 )
 def test_an_unreadable_config_says_what_is_wrong(tmp_path, name, text, fragment):
+    config_path = _config(tmp_path, text, name=name)
     with pytest.raises(TemplateError) as raised:
-        load_template_config(_config(tmp_path, text, name=name))
+        load_template_config(config_path)
     assert fragment in str(raised.value)
 
 
@@ -384,7 +389,7 @@ def test_a_missing_config_file_is_a_template_error(tmp_path):
 # ---------------------------------------------------------------- rendering
 
 
-@pytest.fixture()
+@pytest.fixture
 def mapped(tmp_path):
     """A template with a layout per role and the config that maps them."""
     path = _make_template(tmp_path / "thesis.pptx")
@@ -460,9 +465,10 @@ def test_the_title_goes_into_the_templates_title_placeholder_when_asked(tmp_path
 
     assert slide.slide_layout.name == "Title Only"
     assert (title.top, title.height) == (Inches(0.25), Inches(0.8))     # the template's box
-    assert title.has_text_frame and title.text_frame.text.strip()
+    assert title.has_text_frame
+    assert title.text_frame.text.strip()
     assert _run_colours(title) == {NAVY}                                # explicit, not white
-    assert title.text_frame.paragraphs[0].runs[0].font.size == pptx.Pt(pptx._SECTION_TITLE_PT)
+    assert title.text_frame.paragraphs[0].runs[0].font.size == Pt(pptx._SECTION_TITLE_PT)
     assert _shape(slide, "accent_top") is None                  # the template owns the header
     assert [p for p in slide.placeholders] == [title]                   # and nothing else is left
     # The cover is not a title-placeholder role: it keeps its own text box.
@@ -499,7 +505,7 @@ def test_custom_fonts_are_applied_to_every_run(tmp_path):
     assert runs
     assert {run.font.name for run in runs} == {"Source Sans 3"}
     east_asian = {
-        run._r.get_or_add_rPr().find(pptx.qn("a:ea")).get("typeface") for run in runs
+        run._r.get_or_add_rPr().find(qn("a:ea")).get("typeface") for run in runs
     }
     assert east_asian == {"Noto Sans TC"}
 
@@ -513,7 +519,7 @@ def test_a_latin_only_font_override_keeps_the_languages_east_asian_font(tmp_path
     run = _shape(prs.slides[0], "title").text_frame.paragraphs[0].runs[0]
 
     assert run.font.name == "Source Sans 3"
-    assert run._r.get_or_add_rPr().find(pptx.qn("a:ea")).get("typeface") == "Microsoft JhengHei UI"
+    assert run._r.get_or_add_rPr().find(qn("a:ea")).get("typeface") == "Microsoft JhengHei UI"
 
 
 def test_custom_colours_replace_the_palette_as_text_and_as_fill(tmp_path):
@@ -531,8 +537,10 @@ def test_custom_colours_replace_the_palette_as_text_and_as_fill(tmp_path):
             if shape.has_text_frame:
                 text_colours |= _run_colours(shape)
 
-    assert GREEN in text_colours and (0x0E, 0x7C, 0x61) in text_colours
-    assert NAVY not in text_colours and (0x25, 0x63, 0xEB) not in text_colours
+    assert GREEN in text_colours
+    assert (0x0E, 0x7C, 0x61) in text_colours
+    assert NAVY not in text_colours
+    assert (0x25, 0x63, 0xEB) not in text_colours
     assert fills == {GREEN, (0x0E, 0x7C, 0x61)}             # band, cover, table header, rule
     assert WHITE in text_colours                                    # titles stay white on the fill
 
@@ -545,7 +553,8 @@ def test_custom_colours_are_not_applied_in_dark_mode_and_that_is_reported(tmp_pa
         tmp_path, pptx_template=str(path), pptx_template_config=str(config), dark_mode=True
     )
 
-    assert report.ok and _codes(report.warnings) == ["colors-ignored-in-dark-mode"]
+    assert report.ok
+    assert _codes(report.warnings) == ["colors-ignored-in-dark-mode"]
     assert _codes(validate_template(path, config).warnings) == []
     colours = {
         colour
@@ -553,7 +562,8 @@ def test_custom_colours_are_not_applied_in_dark_mode_and_that_is_reported(tmp_pa
         for shape in slide.shapes if shape.has_text_frame
         for colour in _run_colours(shape)
     }
-    assert GREEN not in colours and NAVY not in colours             # the dark palette won
+    assert GREEN not in colours                                     # the dark palette won
+    assert NAVY not in colours
 
 
 def test_switching_the_chrome_off_leaves_readable_text(tmp_path):
@@ -596,7 +606,8 @@ def test_export_stops_before_writing_when_the_template_does_not_meet_the_contrac
     message = str(raised.value)
     assert message.startswith("[pptx] template ")
     assert "does not meet the template contract" in message
-    assert "Design > Slide Size" in message and '[layouts] table = "Data"' in message
+    assert "Design > Slide Size" in message
+    assert '[layouts] table = "Data"' in message
     assert not list((tmp_path / "out").glob("*.pptx"))
 
 
@@ -635,7 +646,7 @@ def test_a_slide_can_be_added_to_a_template_deck_with_few_layouts(tmp_path):
 # ---------------------------------------------------------------------- CLI
 
 
-@pytest.fixture()
+@pytest.fixture
 def stub_search(monkeypatch):
     calls: list[str] = []
 
@@ -717,7 +728,8 @@ def test_validate_template_subcommand_can_emit_json(tmp_path, capsys):
     path = _make_template(tmp_path / "t.pptx")
     assert cli_module.main(["validate-template", "--json", str(path)]) == 0
     payload = json.loads(capsys.readouterr().out)
-    assert payload["ok"] is True and payload["layouts"]["qa"] == "Blank"
+    assert payload["ok"] is True
+    assert payload["layouts"]["qa"] == "Blank"
 
 
 def test_validate_template_subcommand_needs_one_template(capsys):
@@ -739,7 +751,7 @@ def _call(name: str, **kwargs):
 def test_mcp_lists_eighteen_tools_including_the_template_check():
     names = [tool.name for tool in asyncio.run(mcp_pkg.build_server().list_tools())]
     assert "pptx_validate_template" in names
-    assert len(names) == 18
+    assert len(names) == 25
 
 
 def test_mcp_validate_template_returns_the_report(tmp_path):
@@ -749,8 +761,10 @@ def test_mcp_validate_template_returns_the_report(tmp_path):
     usable = _call("pptx_validate_template", path=str(path))
     broken = _call("pptx_validate_template", path=str(path), config=str(config))
 
-    assert usable["ok"] is True and usable["layouts"]["content"] == "Blank"
-    assert broken["ok"] is False and broken["errors"][0]["code"] == "layout-not-found"
+    assert usable["ok"] is True
+    assert usable["layouts"]["content"] == "Blank"
+    assert broken["ok"] is False
+    assert broken["errors"][0]["code"] == "layout-not-found"
 
 
 def test_mcp_export_builds_on_a_template_or_fails_with_the_report(tmp_path, mapped):

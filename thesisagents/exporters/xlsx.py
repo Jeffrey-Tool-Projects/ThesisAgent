@@ -16,9 +16,11 @@ from openpyxl import Workbook
 from openpyxl.styles import Alignment, Font, PatternFill
 from openpyxl.utils import get_column_letter
 
+from thesisagents.core.comparison import comparison_rows
 from thesisagents.core.constants import EXPORT_XLSX
 from thesisagents.core.exceptions import ExportError
 from thesisagents.core.models import ExportOptions, Paper, PaperCollection
+from thesisagents.exporters.apa import citation_labels
 from thesisagents.exporters.base import Exporter
 
 #: Characters the XLSX format forbids inside a cell. OOXML allows only tab,
@@ -75,8 +77,35 @@ class XlsxExporter(Exporter):
     def _build(self, collection: PaperCollection, include_abstract: bool) -> Workbook:
         workbook = Workbook()
         self._write_papers_sheet(workbook, collection, include_abstract)
+        self._write_comparison_sheet(workbook, collection)
         self._write_meta_sheet(workbook, collection)
+        _as_text(workbook)
         return workbook
+
+    def _write_comparison_sheet(self, workbook: Workbook, collection: PaperCollection) -> None:
+        """The comparison table of thesis section 2.3, when any paper has a summary."""
+        rows = [row for row in comparison_rows(collection.papers) if not row.is_empty]
+        if not rows:
+            return
+        sheet = workbook.create_sheet("Comparison")
+        labels = citation_labels([row.paper for row in rows])
+        sheet.append(["Author", "Title", "Method", "Strengths", "Weaknesses"])
+        for cell in sheet[1]:
+            cell.font = Font(bold=True)
+        for row, label in zip(rows, labels, strict=True):
+            sheet.append([
+                _sheet_safe(text)
+                for text in (
+                    label.narrative, row.paper.title, "\n".join(row.method),
+                    "\n".join(row.strengths), "\n".join(row.weaknesses),
+                )
+            ])
+        for column, width in zip("ABCDE", (24, 44, 40, 48, 48), strict=True):
+            sheet.column_dimensions[column].width = width
+        for cells in sheet.iter_rows(min_row=2):
+            for cell in cells:
+                cell.alignment = Alignment(wrap_text=True, vertical="top")
+        sheet.freeze_panes = "A2"
 
     @staticmethod
     def _write_papers_sheet(
@@ -111,6 +140,20 @@ class XlsxExporter(Exporter):
             sheet.cell(row=index, column=2, value=value)
         sheet.column_dimensions["A"].width = 22
         sheet.column_dimensions["B"].width = 60
+
+
+def _as_text(workbook: Workbook) -> None:
+    """Make every cell that begins with ``=`` text again.
+
+    openpyxl stores such a string as a formula. Titles and summaries come
+    from outside, and this export writes no formula of its own, so a cell
+    like ``=HYPERLINK(...)`` must be shown and not run.
+    """
+    for sheet in workbook.worksheets:
+        for row in sheet.iter_rows():
+            for cell in row:
+                if cell.data_type == "f":
+                    cell.data_type = "s"
 
 
 def _write_header(sheet) -> None:

@@ -164,8 +164,9 @@ class IeeeFetcher(Fetcher):
             "max_records": str(min(query.max_results, 200)),
             "start_record": "1",
             "format": "json",
-            "sort_field": "article_number",
-            "sort_order": "desc",
+            # No sort: the API's own order. ``sort_field`` takes only
+            # article_number, article_title or publication_title, and sorted by
+            # the article number a page held the newest matches, not the best.
         }
         if query.year_from is not None:
             params["start_year"] = str(query.year_from)

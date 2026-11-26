@@ -23,7 +23,7 @@ thesisagents (--query KEYWORDS | --paper IDENTIFIER | --pdf PATH |
                 [--no-abstract]
                 [--lang LANG]
                 [--enrich] [--lightweight]
-                [--llm-model MODEL]
+                [--llm-model MODEL] [--llm-provider NAME] [--llm-base-url URL]
                 [--top-tier-only]
                 [--paywall-threshold FLOAT] [--yes]
                 [--max-slides N] [--dark-mode]
@@ -48,7 +48,7 @@ thesisagents (--query KEYWORDS | --paper IDENTIFIER | --pdf PATH |
 | `--max` / `-n` | `25` | Range 1..200. |
 | `--year-from`, `--year-to` | — | Inclusive year filter. |
 | `--min-citations` | — | Drop papers below this citation count, enforced across **all** sources (not just Semantic Scholar). Papers whose source reports no count are kept. Omit for no minimum. |
-| `--export` / `-e` | mode-specific | Any of `pptx`, `xlsx`, `md`, `bib`, `json`, `ris`, `csv`, `csl`. **Default with `--query` is `pptx,xlsx,bib`; default with `--paper` is `pptx,bib`** (one-row Excel is busy work). Explicit `--export` always wins. `ris` (Zotero/Mendeley/EndNote), `csv` (flat table) and `csl` (CSL-JSON for Pandoc, written as `<stem>.csl.json`) are the interchange formats. |
+| `--export` / `-e` | mode-specific | Any of `pptx`, `xlsx`, `md`, `bib`, `json`, `ris`, `csv`, `csl`, `docx`, `tex`. **Default with `--query` is `pptx,xlsx,bib`; default with `--paper` is `pptx,bib`** (one-row Excel is busy work). Explicit `--export` always wins. `ris` (Zotero/Mendeley/EndNote), `csv` (flat table) and `csl` (CSL-JSON for Pandoc, written as `<stem>.csl.json`) are the interchange formats. |
 | `--list-sources`, `--list-exports` | — | Print the available search sources / export formats and exit (no query needed). |
 | `--out` / `-o` | `./exports` | Created if missing. |
 | `--filename-stem` | auto | `{first-32-chars-of-query}-{YYYYMMDD-HHMMSS}` by default. |
@@ -56,7 +56,10 @@ thesisagents (--query KEYWORDS | --paper IDENTIFIER | --pdf PATH |
 | `--lang` / `-l` | `en` | Slide-deck template language. Supported: `en`, `zh-tw`, `zh-cn`, `ja`, `es`, `fr`, `de`, `ko`, `pt`, `ru`, `it`, `vi`, `hi`, `id` (14 in total). When combined with `--enrich`, also instructs the LLM to write its bullets in this language. |
 | `--enrich` | auto-on when `ANTHROPIC_API_KEY` is set | Fetch each paper's PDF and have the Anthropic API write a structured summary; the deck switches to thesis-style layout. Requires `ANTHROPIC_API_KEY` and the `[intelligence]` extra. **Not needed when running over MCP** — an LLM agent can call `fetch_pdf_text` + `export` directly with a hand-crafted summary. |
 | `--lightweight` | off | Force the abstract-only deck even when `ANTHROPIC_API_KEY` is set. Useful for unattended runs where you do not want to spend tokens. **When an LLM agent is in the editor session**, prefer the LLM-as-agent flow under `scripts/llm_*.py` (the LLM authors a rich `PaperSummary` per paper) over `--lightweight`. |
-| `--llm-model` | `claude-opus-4-7` | Override the default model used when `--enrich` is on. Also reads `THESISAGENTS_LLM_MODEL`. |
+| `--llm-provider NAME` | `anthropic` | Who runs the model that writes the summaries, see `docs/configuration.md` "Language models". Also reads `THESISAGENTS_LLM_PROVIDER`. |
+| `--llm-model` | `claude-opus-5-5` with Anthropic, none otherwise | The model. Also reads `THESISAGENTS_LLM_MODEL`. |
+| `--llm-base-url URL` | the provider's own | Address of an OpenAI-compatible server, up to `/v1`. Also reads `THESISAGENTS_LLM_BASE_URL`. |
+| `--llm-command COMMAND` | the provider's own | Command line of a command-line provider (`claude-cli`, `gemini-cli`, `codex-cli`, `ollama-cli`, `cli`). The paper goes in on standard input. Also reads `THESISAGENTS_LLM_COMMAND`. |
 | `--top-tier-only` | off | Restrict results to the curated top-tier CS venue whitelist (S&P / CCS / NDSS / USENIX Security / NeurIPS / ICML / ICSE / SIGMOD / SIGCOMM / CHI / etc.) + arXiv pass-through. **Off by default** so IEEE / ACM workshop papers (which dominate "LLM × security" / "LLM × X" topics) survive. |
 | `--no-oa-resolve` | off | Skip the open-access PDF resolver step that runs after dedup. By default the pipeline looks up every paper without `pdf_url` in Unpaywall (needs `THESISAGENTS_CONTACT_EMAIL`) and falls back to an arXiv title search — typical lift of 40-70% for IEEE / ACM / Springer / Elsevier paywalled papers. Use this flag if you want raw source output without OA enrichment, or to skip the extra HTTP round-trips on a tight latency budget. |
 | `--paywall-threshold` | `0.30` | Fraction of paywalled results above which the search-mode pipeline asks the user before generating per-paper PPTs. |
@@ -146,7 +149,7 @@ thesisagents --paper "https://arxiv.org/abs/1706.03762" \
 ```
 
 When `--enrich` is on, ThesisAgents downloads the PDF, sends the body
-text + paper metadata to Claude (`claude-opus-4-7` by default), parses
+text + paper metadata to Claude (`claude-opus-5-5` by default), parses
 back a structured `PaperSummary` (motivation, contributions, method,
 results, limitations, takeaways — plus the rich tier: pain points,
 research question, KPI metrics, technique table, literature
@@ -437,6 +440,69 @@ place when it is opened. A path that is not a library (a directory,
 another application's database, a text file) is refused and left
 untouched. `--library-search` and `--library-export` on a path that
 does not exist are an error, not an empty result.
+
+### Literature review drafts: `docx` and `tex`
+
+```powershell
+thesisagents --library thesis.db --library-export --export docx,tex --lang zh-tw
+thesisagents --library thesis.db --library-export --export docx --docx-template school.docx
+```
+
+Both formats write thesis section 2.3 (each paper in the words of its
+summary, or its abstract, and the comparison table), section 2.4 (the
+limitations and open questions the papers name) and the references. Nothing
+is added that is not in the papers' records: connecting the papers and
+naming the gap is yours to write, and every statement should be checked
+against the paper.
+
+- `docx` cites in APA 7. `--docx-template` writes into a copy of a Word
+  document, whose styles decide the look and whose content stays. Without
+  one, Traditional Chinese drafts follow the thesis handbook (14 pt 標楷體
+  with Times New Roman, bold 20 pt headings).
+- `tex` cites with `\citep` and writes its `.bib` beside it, with the keys
+  of the `bib` export. Compile with XeLaTeX or LuaLaTeX.
+- The `xlsx` export has the same comparison table on a sheet of its own.
+
+### Editing a library: `thesisagents library`
+
+The flags above fill a library and read it back. This subcommand records
+what you decide about the papers in it:
+
+```powershell
+thesisagents library thesis.db list "graph" --tag "chapter 2" --status unread
+thesisagents library thesis.db show 3
+thesisagents library thesis.db tag 3 7 --add "chapter 2" --remove later
+thesisagents library thesis.db note 3 "cite in 2.3"
+thesisagents library thesis.db status read 3 7
+thesisagents library thesis.db screen 7 exclude --reason "off topic"
+thesisagents library thesis.db screen 3 include --stage full_text
+thesisagents library thesis.db duplicates
+thesisagents library thesis.db merge 3 9
+thesisagents library thesis.db delete 12
+thesisagents library thesis.db import zotero.bib --tag "from zotero"
+thesisagents library thesis.db save-search tf "transformer" --source arxiv,dblp
+thesisagents library thesis.db run-search tf
+thesisagents library thesis.db searches
+thesisagents library thesis.db prisma --svg prisma.svg
+```
+
+The numbers are the ones `list` prints in brackets. They stay the same
+until a paper is deleted or merged into another. Searching again never
+changes a tag, a note or a decision.
+
+- `import` reads BibTeX and RIS (Zotero, Mendeley, EndNote, JabRef) and
+  says why a record was left out.
+- `run-search` adds what it finds and prints only the papers the library
+  did not hold before.
+- `duplicates` lists near misses an import cannot decide on, such as a
+  preprint and its journal version. `merge` keeps the first paper's fields
+  and fills its gaps from the others.
+- `screen … --stage full_text exclude` needs a `--reason`, which PRISMA
+  asks to be reported. `undo` takes a decision back.
+- `prisma` counts what was recorded and estimates nothing. Records a
+  search returned and did not keep (a filter, `--max`) are listed apart
+  from duplicates. `--svg` takes a path that ends with `.svg`.
+- `delete` and `merge` cannot be undone. `delete` asks unless `--yes`.
 
 ## Source statistics
 

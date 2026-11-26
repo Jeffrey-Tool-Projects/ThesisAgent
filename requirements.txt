@@ -4,6 +4,7 @@ pydantic-settings>=2.3
 defusedxml>=0.7
 python-pptx>=0.6.23
 openpyxl>=3.1
+python-docx>=1.1
 bibtexparser>=1.4
 beautifulsoup4>=4.12
 lxml>=5.2

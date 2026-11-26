@@ -66,11 +66,13 @@ from thesisagents.core.pipeline import (
 )
 from thesisagents.core.query import normalize_query
 from thesisagents.exporters import export_collection
+from thesisagents.exporters.bibtex import unique_keys
 from thesisagents.exporters.i18n import DEFAULT_LANGUAGE, SUPPORTED_LANGUAGES
 from thesisagents.fetchers.http import shutdown_clients
 from thesisagents.library import Library
 from thesisagents.utils.logging import get_logger
 from thesisagents.utils.path_safety import safe_filename
+from thesisagents.utils.windows_console import borrow_parent_console, show_error
 
 _LOG = get_logger(__name__)
 _DEFAULT_OUT_DIR = "./exports"
@@ -267,10 +269,12 @@ def build_parser() -> argparse.ArgumentParser:
         "--enrich",
         action="store_true",
         help=(
-            "Explicitly enable PDF + Claude enrichment. Errors out when "
-            "ANTHROPIC_API_KEY is unset. By default the CLI now auto-enriches "
-            "when the env var is set, so you only need this flag when you "
-            "want to fail-loud instead of fall-back-quietly. Requires "
+            "Explicitly enable summaries written by a language model. Errors "
+            "out when the model cannot be used (no key, no model chosen). By "
+            "default the CLI enriches when ANTHROPIC_API_KEY is set or "
+            "THESISAGENTS_LLM_PROVIDER names a usable provider, so you only "
+            "need this flag when you want to fail-loud instead of "
+            "fall-back-quietly. Requires "
             "`pip install thesisagents[intelligence]`."
         ),
     )
@@ -279,8 +283,8 @@ def build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help=(
             "Force the lightweight (abstract-only) deck even when the "
-            "environment has ANTHROPIC_API_KEY set. Skips Anthropic API "
-            "calls entirely. Use this for fast, free runs."
+            "environment names a language model. Makes no model calls at "
+            "all. Use this for fast, free runs."
         ),
     )
     parser.add_argument(
@@ -301,8 +305,42 @@ def build_parser() -> argparse.ArgumentParser:
         "--llm-model",
         default=None,
         help=(
-            "Override the Anthropic model used when --enrich is on. "
-            "Default: claude-opus-4-7 (or THESISAGENTS_LLM_MODEL)."
+            "The model that writes the summaries. Default: "
+            "THESISAGENTS_LLM_MODEL, or claude-opus-5-5 with Anthropic. The "
+            "other providers need one."
+        ),
+    )
+    parser.add_argument(
+        "--llm-provider",
+        default=None,
+        metavar="NAME",
+        help=(
+            "Who runs the model: anthropic (default), a hosted service "
+            "(openai, gemini, mistral, deepseek, xai, groq, openrouter, "
+            "together, fireworks, dashscope, moonshot), a program on this "
+            "computer (ollama, lmstudio, llamacpp, vllm), custom with "
+            "--llm-base-url, or an AI program on the command line "
+            "(claude-cli, gemini-cli, codex-cli, ollama-cli, or cli with "
+            "--llm-command). Default: THESISAGENTS_LLM_PROVIDER."
+        ),
+    )
+    parser.add_argument(
+        "--llm-base-url",
+        default=None,
+        metavar="URL",
+        help=(
+            "Address of an OpenAI-compatible server, up to /v1. Overrides the "
+            "provider's own. Default: THESISAGENTS_LLM_BASE_URL."
+        ),
+    )
+    parser.add_argument(
+        "--llm-command",
+        default=None,
+        metavar="COMMAND",
+        help=(
+            "Command line of a command-line provider, which gets the paper "
+            "on standard input, for example \"claude -p\". Replaces the "
+            "provider's own. Default: THESISAGENTS_LLM_COMMAND."
         ),
     )
     parser.add_argument(
@@ -536,6 +574,7 @@ async def _run_stages(args: argparse.Namespace, library: Library | None) -> int:
         dark_mode=args.dark_mode,
         verify_identifiers=args.verify_identifiers,
         pptx_template=args.pptx_template,
+        docx_template=args.docx_template,
         pptx_template_config=args.pptx_template_config,
     )
     # One cache for the whole run: the identifiers are checked once, right
@@ -736,6 +775,24 @@ def _synthetic_pdf_results(
     ]
 
 
+def _papers_with_pdf(collection: PaperCollection, pdf_results: list) -> list[Paper]:
+    """The papers whose PDF is on disk.
+
+    The downloader returns one result per paper in order, so they are paired
+    by position: a BibTeX key can belong to two papers, and one's PDF must
+    not count for the other. Results that do not line up (a caller with a
+    subset) are matched by key.
+    """
+    if len(pdf_results) == len(collection.papers):
+        return [
+            paper
+            for paper, result in zip(collection.papers, pdf_results, strict=True)
+            if result.path is not None
+        ]
+    saved = {result.paper_key for result in pdf_results if result.path is not None}
+    return [paper for paper in collection.papers if paper.bibtex_key() in saved]
+
+
 def _emit_per_paper(
     collection: PaperCollection,
     options: ExportOptions,
@@ -748,12 +805,7 @@ def _emit_per_paper(
     Non-PPT formats (xlsx, bib, md, json) aggregate over the accessible
     subset so the bibliography file matches the slides on disk.
     """
-    saved_by_key = {
-        r.paper_key: r for r in pdf_results if r.path is not None
-    }
-    accessible_papers: list[Paper] = [
-        p for p in collection.papers if p.bibtex_key() in saved_by_key
-    ]
+    accessible_papers = _papers_with_pdf(collection, pdf_results)
     if not accessible_papers:
         print(
             "error: no PDF could be downloaded; no slides were generated.",
@@ -771,20 +823,25 @@ def _emit_per_paper(
     if aggregate_formats:
         agg_options = dataclasses.replace(options, formats=aggregate_formats)
         written_aggregate = export_collection(
-            accessible_collection, agg_options,
+            accessible_collection,  # NOSONAR dataclasses.replace returns the same dataclass type
+            agg_options,  # NOSONAR dataclasses.replace returns the same dataclass type
             verification_cache=verification_cache,
         )
 
     per_paper_written: list[tuple[Paper, Path]] = []
-    for paper in accessible_papers:
+    # Unique: two papers with one BibTeX key would write the same deck.
+    stems = unique_keys(accessible_papers)
+    for paper, stem in zip(accessible_papers, stems, strict=True):
         single = PaperCollection(query=collection.query, papers=(paper,))
         per_options = dataclasses.replace(
             options,
             formats=(EXPORT_PPTX,),
-            filename_stem=paper.bibtex_key(),
+            filename_stem=stem,
         )
         emitted = export_collection(
-            single, per_options, verification_cache=verification_cache
+            single,
+            per_options,  # NOSONAR dataclasses.replace returns the same dataclass type
+            verification_cache=verification_cache,
         )
         per_paper_written.append((paper, emitted[EXPORT_PPTX]))
 
@@ -844,21 +901,55 @@ def _resolve_enrich_mode(args: argparse.Namespace) -> str:
     """Decide whether to enrich, and why. Returns one of:
 
     * ``"explicit"`` — user passed ``--enrich``; any failure surfaces.
-    * ``"auto"`` — ``ANTHROPIC_API_KEY`` is set and ``--lightweight`` is not;
-      enrichment runs, failures fall back to lightweight.
+    * ``"auto"`` — the chosen model can be used (``ANTHROPIC_API_KEY`` is set,
+      or another provider is named and complete) and ``--lightweight`` is not
+      given. Enrichment runs, failures fall back to lightweight.
     * ``"skip-lightweight"`` — user passed ``--lightweight``; no API call,
       no notice (they asked for it).
     * ``"skip-no-key"`` — no API key, no ``--enrich``; lightweight with a
       one-line hint about how to upgrade.
     """
-    import os as _os
     if args.enrich:
         return "explicit"
     if args.lightweight:
         return "skip-lightweight"
-    if _os.environ.get("ANTHROPIC_API_KEY"):
-        return "auto"
-    return "skip-no-key"
+    from thesisagents.intelligence import providers
+
+    try:
+        settings = providers.resolve(
+            getattr(args, "llm_provider", None),
+            model=getattr(args, "llm_model", None),
+            base_url=getattr(args, "llm_base_url", None),
+            command=getattr(args, "llm_command", None),
+        )
+    except ConfigError as err:
+        if getattr(args, "llm_provider", None):
+            raise
+        # A misspelt THESISAGENTS_LLM_PROVIDER: nobody asked for a summary in
+        # this run, so it must not cost the search that has already finished.
+        _LOG.warning("%s, summaries are skipped", err)
+        return "skip-no-key"
+    return "auto" if providers.problem(settings) is None else "skip-no-key"
+
+
+def _missing_model(args: argparse.Namespace) -> str:
+    """Why no model writes the summaries, for the notice to the user.
+
+    Names the chosen provider's own problem: a user of ``--llm-provider
+    ollama`` without a model was told to set an Anthropic key.
+    """
+    from thesisagents.intelligence import providers
+
+    try:
+        settings = providers.resolve(
+            args.llm_provider, model=args.llm_model, base_url=args.llm_base_url,
+            command=getattr(args, "llm_command", None),
+        )
+    except ConfigError as err:
+        return str(err)
+    if settings.provider.name == providers.ANTHROPIC:
+        return "no ANTHROPIC_API_KEY in env"
+    return providers.problem(settings) or "no usable model"
 
 
 async def _maybe_enrich(
@@ -875,9 +966,9 @@ async def _maybe_enrich(
     enrich_mode = _resolve_enrich_mode(args)
     if enrich_mode == "skip-no-key" and not args.quiet:
         print(
-            "Lightweight deck — no ANTHROPIC_API_KEY in env.\n"
-            "If you (the human) want auto-enrichment, set the key and "
-            "rerun.\n"
+            f"Lightweight deck — {_missing_model(args)}.\n"
+            "If you (the human) want auto-enrichment, set the key, or choose "
+            "another model with --llm-provider, and rerun.\n"
             "If you (an LLM agent) are running this, the lightweight "
             "deck is intermediate, NOT the deliverable: read each PDF "
             "in exports/<run>/pdfs/, hand-author a rich PaperSummary, "
@@ -888,9 +979,18 @@ async def _maybe_enrich(
         )
     if enrich_mode not in {"explicit", "auto"} or not collection.papers:
         return collection
+    from thesisagents.intelligence import providers
+
+    settings = providers.resolve(
+        args.llm_provider, model=args.llm_model, base_url=args.llm_base_url,
+        command=getattr(args, "llm_command", None),
+    )
+    reason = providers.problem(settings)
+    if reason:
+        # Only with --enrich: "auto" was chosen because there is no problem.
+        raise ConfigError(reason)
     print(
-        f"Auto-enriching {len(collection)} paper(s) via Anthropic API "
-        f"({args.llm_model or 'default model'}). "
+        f"Auto-enriching {len(collection)} paper(s) with {settings.describes}. "
         f"Pass --lightweight to skip.",
         file=sys.stderr,
     )
@@ -919,7 +1019,9 @@ async def _enrich_for_mode(
     if args.pdf:
         return await _enrich_local_pdf_collection(collection, args)
     return await enrich_collection(
-        collection, language=args.lang, model=args.llm_model
+        collection, language=args.lang, model=args.llm_model,
+        provider=args.llm_provider, base_url=args.llm_base_url,
+        command=getattr(args, "llm_command", None),
     )
 
 
@@ -950,6 +1052,8 @@ async def _enrich_local_pdf_collection(
             summary = await asyncio.to_thread(
                 summarise_paper, paper, extracted,
                 language=args.lang, model=args.llm_model,
+                provider=args.llm_provider, base_url=args.llm_base_url,
+                command=getattr(args, "llm_command", None),
             )
         except Exception as err:  # noqa: BLE001  # anthropic client raises various, incl. ThesisAgentsError
             _LOG.warning(
@@ -962,7 +1066,9 @@ async def _enrich_local_pdf_collection(
             enriched.append(paper)
         else:
             enriched.append(dataclasses.replace(paper, summary=summary))
-    return dataclasses.replace(collection, papers=tuple(enriched))
+    return dataclasses.replace(  # NOSONAR dataclasses.replace returns the same dataclass type
+        collection, papers=tuple(enriched)
+    )
 
 
 def _configure_stdio_for_unicode() -> None:
@@ -986,12 +1092,14 @@ def _dispatch_gui(gui_argv: list[str]) -> int:
     try:
         from thesisagents.gui.app import main as gui_main
     except ImportError as err:
-        print(
+        message = (
             "error: GUI extras not installed. Run "
             "`pip install thesisagents[gui]`.\n"
-            f"(import error: {err})",
-            file=sys.stderr,
+            f"(import error: {err})"
         )
+        # The windowed executable has nowhere to print it.
+        if not show_error("ThesisAgents", message):
+            print(message, file=sys.stderr)
         return 2
     return gui_main(gui_argv)
 
@@ -1031,6 +1139,9 @@ def main(argv: list[str] | None = None) -> int:
     if not raw_argv or raw_argv[0] == "gui":
         gui_extra_argv = raw_argv[1:] if raw_argv else []
         return _dispatch_gui(gui_extra_argv)
+    # The windowed Windows executable has no streams of its own: print to the
+    # terminal it was typed into, if any. No-op for every other way to run.
+    borrow_parent_console()
     # ``review`` audits an existing .pptx (overflow + colour contracts + section
     # completeness) and short-circuits before argparse for the same reason as the
     # gui shim: it takes file paths, not the query/paper/pdf mode mutex group.
@@ -1042,6 +1153,10 @@ def main(argv: list[str] | None = None) -> int:
     if raw_argv[0] == "validate-template":
         from thesisagents.exporters.template import main as template_main
         return template_main(raw_argv[1:])
+    # ``library`` edits a literature library and has its own actions.
+    if raw_argv[0] == "library":
+        from thesisagents.cli_library_edit import main as library_main
+        return library_main(raw_argv[1:])
     # Discovery flags short-circuit before argparse: they answer "what can I
     # search / export?" and so must NOT trip the required query/paper/pdf mutex
     # group (same reasoning as the bare-invocation gui shim above).
@@ -1053,6 +1168,7 @@ def main(argv: list[str] | None = None) -> int:
         return 0
     parser = build_parser()
     args = parser.parse_args(raw_argv)
+    _warn_unused_command(args)
     try:
         return asyncio.run(_run(args))
     except ThesisAgentsError as err:
@@ -1061,6 +1177,26 @@ def main(argv: list[str] | None = None) -> int:
     except ValueError as err:
         print(f"error: {err}", file=sys.stderr)
         return 2
+
+
+def _warn_unused_command(args: argparse.Namespace) -> None:
+    """Say so when ``--llm-command`` has no command-line provider to go to.
+
+    Without this the flag was dropped in silence, and the summaries came from
+    the default model.
+    """
+    if not args.llm_command:
+        return
+    from thesisagents.intelligence import providers
+
+    name = (args.llm_provider or providers.selected_provider()).strip().lower()
+    chosen = providers.PROVIDERS.get(name)
+    if chosen is not None and not chosen.is_cli:
+        print(
+            f"warning: --llm-command is ignored with --llm-provider {name}. "
+            "Choose claude-cli, gemini-cli, codex-cli, ollama-cli or cli.",
+            file=sys.stderr,
+        )
 
 
 if __name__ == "__main__":

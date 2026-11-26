@@ -16,6 +16,7 @@ from thesisagents.core.exceptions import (
     ParseError,
     RateLimitError,
     SourceUnavailableError,
+    retry_after_seconds,
 )
 from thesisagents.core.models import Paper, Query
 from thesisagents.fetchers.base import Fetcher, FetcherConfig
@@ -102,7 +103,12 @@ class SemanticScholarFetcher(Fetcher):
                 _SOURCE_NAME, f"network error: {err}"
             ) from err
         if response.status_code == 429:
-            raise RateLimitError(_SOURCE_NAME, "Semantic Scholar rate limit hit")
+            raise RateLimitError(
+                _SOURCE_NAME,
+                "Semantic Scholar rate limit hit (an API key in "
+                f"{_API_KEY_ENV} raises the limit)",
+                retry_after=retry_after_seconds(response.headers.get("retry-after")),
+            )
         if response.status_code >= 500:
             raise SourceUnavailableError(
                 _SOURCE_NAME, f"server error {response.status_code}"

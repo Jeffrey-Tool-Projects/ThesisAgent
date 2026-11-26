@@ -39,6 +39,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from thesisagents.core.exceptions import ExportError
 from thesisagents.core.models import ExportOptions, PaperCollection
 from thesisagents.exporters import export_collection
 from thesisagents.exporters.i18n import SUPPORTED_LANGUAGES as DECK_LANGUAGES
@@ -49,6 +50,7 @@ from thesisagents.exporters.template import format_report as format_template_rep
 from thesisagents.gui.i18n import LANGUAGE_DISPLAY_NAMES, t
 from thesisagents.gui.pages.settings import saved_vpn_access
 from thesisagents.gui.pdf_stage import PdfStageReport, run_pdf_stage
+from thesisagents.gui.widgets.deck_editor import DeckEditor
 from thesisagents.gui.widgets.report_dialog import ReportDialog
 from thesisagents.gui.widgets.responsive import (
     AdaptiveSplit,
@@ -70,11 +72,27 @@ _FORMAT_CHOICES: tuple[tuple[str, str], ...] = (
     ("ris", "deck.format_ris"),
     ("csv", "deck.format_csv"),
     ("csl", "deck.format_csl"),
+    ("docx", "deck.format_docx"),
+    ("tex", "deck.format_tex"),
 )
 _DEFAULT_FORMATS: frozenset[str] = frozenset({"pptx", "xlsx", "bib"})
 _DEFAULT_MAX_SLIDES = 25
 #: QSettings group the form is saved under when the window closes.
 _FORM_GROUP = "form/deck"
+
+
+def _stored(store: QSettings, key: str, kind: type) -> object | None:
+    """Return the saved form value ``key`` as ``kind``, or ``None`` when unsaved.
+
+    Guards the first run: ``QSettings.value`` returns a default for a key
+    that was never written, which would overwrite a field's built-in default.
+    Checking ``contains`` first lets the caller tell "never saved" apart.
+
+    Example: ``_stored(store, "max_slides", int)`` returns ``25`` after a save
+    of 25, and ``None`` on a fresh profile.
+    """
+    full = f"{_FORM_GROUP}/{key}"
+    return store.value(full, type=kind) if store.contains(full) else None
 
 
 @dataclass(frozen=True)
@@ -200,6 +218,11 @@ class DeckPage(QWidget):
             options_form, "deck.template_config_label", "deck.template_config_placeholder",
             "deck.template_config_dialog_title", "Config (*.toml *.json);;All files (*)",
         )
+        # The Word document the literature review draft is written into.
+        self._docx_template_input = self._file_row(
+            options_form, "deck.docx_template_label", "deck.docx_template_placeholder",
+            "deck.docx_template_label", "Word (*.docx);;All files (*)",
+        )
         check_row = QHBoxLayout()
         self._check_template_button = QPushButton(t("deck.check_template_button", language), self)
         self._check_template_button.clicked.connect(self._on_check_template_clicked)
@@ -232,6 +255,9 @@ class DeckPage(QWidget):
         self._review_button = QPushButton(t("deck.review_button", language), self)
         self._review_button.clicked.connect(self._on_review_clicked)
         review_row.addWidget(self._review_button)
+        self._edit_button = QPushButton(t("slides.button", language), self)
+        self._edit_button.clicked.connect(self._on_edit_clicked)
+        review_row.addWidget(self._edit_button)
         review_row.addStretch(1)
         results_layout.addLayout(review_row)
         self._table = QTableView(self)
@@ -340,46 +366,62 @@ class DeckPage(QWidget):
             "download_pdfs": self._download_pdfs_check.isChecked(),
             "template": self._template_input.text(),
             "template_config": self._template_config_input.text(),
+            "docx_template": self._docx_template_input.text(),
         }
         for key, value in values.items():
             store.setValue(f"{_FORM_GROUP}/{key}", value)
 
     def restore_form(self, store: QSettings) -> None:
         """Fill the fields from ``store``; missing values keep the defaults."""
-
-        def stored(key: str, kind: type) -> object | None:
-            full = f"{_FORM_GROUP}/{key}"
-            return store.value(full, type=kind) if store.contains(full) else None
-
-        for key, field in (
-            ("out_dir", self._out_dir_input),
-            ("template", self._template_input),
-            ("template_config", self._template_config_input),
-        ):
-            text = stored(key, str)
-            # An empty saved output folder would leave Export with nowhere to write.
-            if text is not None and (text or key != "out_dir"):
-                field.setText(str(text))
-        language = stored("language", str)
+        self._restore_paths(store)
+        language = _stored(store, "language", str)
         if language is not None and self._language_combo.findData(language) >= 0:
             self._language_combo.setCurrentIndex(self._language_combo.findData(language))
-        formats = stored("formats", str)
+        formats = _stored(store, "formats", str)
         if formats is not None:
             wanted = set(str(formats).split(","))
             for fmt, check in self._format_checks.items():
                 check.setChecked(fmt in wanted)
-        max_slides = stored("max_slides", int)
+        max_slides = _stored(store, "max_slides", int)
         if max_slides is not None:
             self._max_slides_spin.setValue(int(max_slides))
+        self._restore_flags(store)
+
+    def _restore_paths(self, store: QSettings) -> None:
+        """Restore the output folder and template path fields from ``store``.
+
+        Guards the output folder: an empty saved value is skipped, since it
+        would leave Export with nowhere to write. Empty template paths are
+        restored, because no template is a valid choice.
+        """
+        for key, field in (
+            ("out_dir", self._out_dir_input),
+            ("template", self._template_input),
+            ("template_config", self._template_config_input),
+            ("docx_template", self._docx_template_input),
+        ):
+            text = _stored(store, key, str)
+            if text is not None and (text or key != "out_dir"):
+                field.setText(str(text))
+
+    def _restore_flags(self, store: QSettings) -> None:
+        """Restore the four option check boxes from ``store``.
+
+        Guards against a missing key resetting a box: only a stored value
+        changes it, so a first run keeps the defaults built in ``__init__``.
+        """
         for key, check in (
             ("include_abstract", self._include_abstract_check),
             ("dark_mode", self._dark_mode_check),
             ("verify_identifiers", self._verify_identifiers_check),
             ("download_pdfs", self._download_pdfs_check),
         ):
-            flag = stored(key, bool)
+            flag = _stored(store, key, bool)
             if flag is not None:
                 check.setChecked(bool(flag))
+
+    def set_docx_template_path(self, path: str) -> None:
+        self._docx_template_input.setText(path)
 
     def set_template_config_path(self, path: str) -> None:
         self._template_config_input.setText(path)
@@ -426,41 +468,62 @@ class DeckPage(QWidget):
             if self._format_checks[fmt].isChecked()
         )
 
-    def _on_export_clicked(self) -> None:
+    def _export_blocker(
+        self, formats: tuple[str, ...], download_pdfs: bool, out_dir: str
+    ) -> str | None:
+        """Return the i18n key of the reason Export cannot start, or ``None``.
+
+        Guards the worker start: no papers, nothing to produce (no format and
+        no PDF download) or no output folder each stop the run with a status
+        line before any thread is spawned. Checked in that order, so the
+        first missing input is the one reported.
+
+        Example: with papers loaded, ``self._export_blocker((), False, "out")``
+        returns ``"deck.error_no_formats"``.
+        """
         if self._collection is None or not self._collection.papers:
-            self._status_label.setText(
-                t("deck.error_no_collection", self._ui_language),
-            )
-            return
+            return "deck.error_no_collection"
+        if not formats and not download_pdfs:
+            return "deck.error_no_formats"
+        if not out_dir:
+            return "deck.error_no_out_dir"
+        return None
+
+    def _export_options(self, formats: tuple[str, ...], out_dir: str) -> ExportOptions:
+        """Build the :class:`ExportOptions` of one run from the form fields.
+
+        Guards the PDFs-only run: ``ExportOptions`` needs at least one format,
+        so an empty ``formats`` is passed as ``("json",)``, which that run
+        never writes. Raises ``ValueError`` when ``ExportOptions`` refuses the
+        combination (a template config with no template).
+
+        Example: ``self._export_options(("pptx",), "exports")`` returns options
+        whose ``formats`` is ``("pptx",)``.
+        """
+        return ExportOptions(
+            formats=formats or ("json",),
+            out_dir=out_dir,
+            filename_stem=self._filename_stem_input.text().strip() or None,
+            include_abstract=self._include_abstract_check.isChecked(),
+            language=self._language_combo.currentData() or "en",
+            max_slides_per_paper=self._max_slides_spin.value(),
+            dark_mode=self._dark_mode_check.isChecked(),
+            verify_identifiers=self._verify_identifiers_check.isChecked(),
+            pptx_template=self._template_input.text().strip() or None,
+            docx_template=self._docx_template_input.text().strip() or None,
+            pptx_template_config=self._template_config_input.text().strip() or None,
+        )
+
+    def _on_export_clicked(self) -> None:
         formats = self._selected_formats()
         download_pdfs = self._download_pdfs_check.isChecked()
-        if not formats and not download_pdfs:
-            self._status_label.setText(
-                t("deck.error_no_formats", self._ui_language),
-            )
-            return
         out_dir = self._out_dir_input.text().strip()
-        if not out_dir:
-            self._status_label.setText(
-                t("deck.error_no_out_dir", self._ui_language),
-            )
+        blocker = self._export_blocker(formats, download_pdfs, out_dir)
+        if blocker is not None:
+            self._status_label.setText(t(blocker, self._ui_language))
             return
-        stem = self._filename_stem_input.text().strip() or None
-        language = self._language_combo.currentData() or "en"
         try:
-            options = ExportOptions(
-                # ExportOptions needs one format; a PDFs-only run never uses it.
-                formats=formats or ("json",),
-                out_dir=out_dir,
-                filename_stem=stem,
-                include_abstract=self._include_abstract_check.isChecked(),
-                language=language,
-                max_slides_per_paper=self._max_slides_spin.value(),
-                dark_mode=self._dark_mode_check.isChecked(),
-                verify_identifiers=self._verify_identifiers_check.isChecked(),
-                pptx_template=self._template_input.text().strip() or None,
-                pptx_template_config=self._template_config_input.text().strip() or None,
-            )
+            options = self._export_options(formats, out_dir)
         except ValueError as err:
             # A template config with no template: say so here, the options
             # object refuses the combination before any worker starts.
@@ -499,9 +562,10 @@ class DeckPage(QWidget):
     def _on_export_finished(self, result: object) -> None:
         self.busy_changed.emit(False)
         self._export_button.setEnabled(True)
-        outcome = result if isinstance(result, _ExportOutcome) else _ExportOutcome(
-            result if isinstance(result, dict) else {}
-        )
+        if isinstance(result, _ExportOutcome):
+            outcome = result
+        else:
+            outcome = _ExportOutcome(result if isinstance(result, dict) else {})
         written = outcome.written
         if not written and outcome.pdfs is None:
             self._status_label.setText(
@@ -588,6 +652,34 @@ class DeckPage(QWidget):
         )
         if path:
             self.review_deck_file(path)
+
+    def _on_edit_clicked(self) -> None:
+        """Edit the deck selected in the list, or one the user picks."""
+        path = self._selected_deck()
+        if not path:
+            path, _ = QFileDialog.getOpenFileName(
+                self, t("slides.button", self._ui_language),
+                self.output_dir() or str(Path.cwd()), "PowerPoint (*.pptx)",
+            )
+        if path:
+            self.edit_deck_file(path)
+
+    def _selected_deck(self) -> str:
+        rows = self._table.selectionModel().selectedRows(1)
+        path = str(rows[0].data() or "") if len(rows) == 1 else ""
+        return path if path.lower().endswith(".pptx") and Path(path).is_file() else ""
+
+    def edit_deck_file(self, path: str) -> None:
+        """Open the slide editor on ``path``."""
+        try:
+            self._deck_editor = DeckEditor(path, self._ui_language, self)
+        except (ExportError, OSError) as err:
+            self._status_label.setText(t("deck.check_failed", self._ui_language, error=str(err)))
+            return
+        self._deck_editor.open()
+
+    def deck_editor(self) -> DeckEditor:
+        return self._deck_editor
 
     def review_deck_file(self, path: str) -> None:
         """Review ``path`` on a worker thread and show the report."""

@@ -26,6 +26,7 @@ import contextlib
 import os
 import shutil
 import tempfile
+import threading
 import time
 from pathlib import Path
 from urllib.parse import urlparse
@@ -44,9 +45,8 @@ _DOWNLOAD_POLL_INTERVAL = 0.5
 
 #: Publisher CDN hosts where httpx-style PDF GETs reliably 403.
 #: Anything resolved on these hosts is routed through WebRunner.
-#: Subdomain matching: `endswith` on the hostname so
-#: e.g. ``onlinelibrary.wiley.com`` matches the broader ``wiley.com``
-#: entry.
+#: The host itself or a subdomain of it, so ``onlinelibrary.wiley.com``
+#: matches the broader ``wiley.com`` entry.
 _PAYWALLED_SUFFIXES: tuple[str, ...] = (
     "ieeexplore.ieee.org",
     "ieee.org",
@@ -81,11 +81,15 @@ def is_available() -> bool:
 
 
 def should_use_webrunner(url: str) -> bool:
-    """True when the URL's host is a known paywalled publisher CDN."""
-    host = (urlparse(url).hostname or "").lower()
-    if not host:
-        return False
-    return any(host.endswith(suffix) for suffix in _PAYWALLED_SUFFIXES)
+    """True when the URL's host is a known paywalled publisher CDN.
+
+    The host must be a listed domain or a subdomain of one. A bare
+    ``endswith`` also matched ``evilieee.org``, and a PDF link comes from
+    third-party metadata, so such a host would have been opened in the user's
+    own Chrome profile.
+    """
+    host = (urlparse(url).hostname or "").lower().rstrip(".")
+    return any(host == domain or host.endswith(f".{domain}") for domain in _PAYWALLED_SUFFIXES)
 
 
 async def download_via_browser(url: str, target: Path) -> bool:
@@ -100,6 +104,27 @@ async def download_via_browser(url: str, target: Path) -> bool:
 
 def _download_sync(url: str, target: Path) -> bool:
     """Boot Chrome → navigate to PDF URL → wait for file → copy to target."""
+    with _profile_turn():
+        return _download_with_chrome(url, target)
+
+
+#: Held while a download uses the user's own Chrome profile.
+_PROFILE_LOCK = threading.Lock()
+
+
+def _profile_turn() -> contextlib.AbstractContextManager[object]:
+    """Wait for the Chrome profile, when one is set.
+
+    Chrome opens a profile once. Two downloads at a time with
+    ``THESISAGENTS_CHROME_PROFILE_DIR`` set meant that the second could not
+    start and its paper was skipped.
+    """
+    if os.environ.get(_PROFILE_DIR_ENV, "").strip():
+        return _PROFILE_LOCK
+    return contextlib.nullcontext()
+
+
+def _download_with_chrome(url: str, target: Path) -> bool:
     from thesisagents.fetchers import webrunner_browser
 
     tmpdir = Path(tempfile.mkdtemp(prefix="thesisagents_pdf_"))
@@ -145,7 +170,10 @@ def _persist_downloaded_pdf(source: Path, target: Path) -> bool:
         _LOG.warning("WebRunner PDF: cannot read %s: %s", source, err)
         return False
     if not head.startswith(b"%PDF"):
-        _LOG.warning("WebRunner PDF: %s is not a PDF (head=%r)", source, head)
+        # The first bytes are content the remote server chose, so they are
+        # not logged (a CR / LF among them could forge a log line). The
+        # missing magic number is all the reader needs.
+        _LOG.warning("WebRunner PDF: %s is not a PDF (no %%PDF header)", source)
         return False
     target.parent.mkdir(parents=True, exist_ok=True)
     try:

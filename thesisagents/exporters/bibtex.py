@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Iterable
 from pathlib import Path
 
 from thesisagents.core.constants import EXPORT_BIBTEX
@@ -24,15 +25,32 @@ class BibtexExporter(Exporter):
         return out_path
 
     def _render(self, collection: PaperCollection) -> str:
-        used_keys: dict[str, int] = {}
-        entries: list[str] = []
-        for paper in collection.papers:
-            base_key = paper.bibtex_key()
-            count = used_keys.get(base_key, 0)
-            used_keys[base_key] = count + 1
-            key = base_key if count == 0 else f"{base_key}{chr(ord('a') + count)}"
-            entries.append(_render_entry(key, paper))
+        entries = [
+            _render_entry(key, paper)
+            for key, paper in zip(unique_keys(collection.papers), collection.papers, strict=True)
+        ]
         return "\n\n".join(entries) + "\n"
+
+    def write(self, collection: PaperCollection, path: Path) -> None:
+        """Write the entries to ``path``, for the LaTeX draft that cites them."""
+        path.write_text(self._render(collection), encoding="utf-8")
+
+
+def unique_keys(papers: Iterable[Paper]) -> list[str]:
+    """One cite key per paper, repeated ones told apart by a letter.
+
+    The LaTeX draft cites with the same keys, so both take them from here.
+    """
+    used_keys: dict[str, int] = {}
+    keys: list[str] = []
+    for paper in papers:
+        base_key = paper.bibtex_key()
+        count = used_keys.get(base_key, 0)
+        used_keys[base_key] = count + 1
+        # After "z" a number: the character behind it in ASCII is a brace.
+        suffix = chr(ord("a") + count) if count < 26 else str(count + 1)
+        keys.append(base_key if count == 0 else f"{base_key}{suffix}")
+    return keys
 
 
 def bibtex_entry(paper: Paper) -> str:
@@ -52,7 +70,7 @@ def _render_entry(key: str, paper: Paper) -> str:
     fields: list[tuple[str, str]] = []
     fields.append(("title", _bib_escape(paper.title)))
     if paper.authors:
-        fields.append(("author", _bib_escape(" and ".join(paper.authors))))
+        fields.append(("author", " and ".join(map(_bib_name, paper.authors))))
     if paper.year is not None:
         fields.append(("year", str(paper.year)))
     if paper.venue:
@@ -70,22 +88,30 @@ def _render_entry(key: str, paper: Paper) -> str:
     return f"@{entry_type}{{{key},\n  {field_block}\n}}"
 
 
-_REPLACEMENTS = (
-    ("\\", r"\textbackslash{}"),
-    ("{", r"\{"),
-    ("}", r"\}"),
-    ("&", r"\&"),
-    ("%", r"\%"),
-    ("$", r"\$"),
-    ("#", r"\#"),
-    ("_", r"\_"),
-    ("~", r"\textasciitilde{}"),
-    ("^", r"\textasciicircum{}"),
-)
+_REPLACEMENTS = str.maketrans({
+    "\\": r"\textbackslash{}",
+    "{": r"\{",
+    "}": r"\}",
+    "&": r"\&",
+    "%": r"\%",
+    "$": r"\$",
+    "#": r"\#",
+    "_": r"\_",
+    "~": r"\textasciitilde{}",
+    "^": r"\textasciicircum{}",
+})
+
+
+def _bib_name(name: str) -> str:
+    """One author. "Barnes and Noble" needs braces, or BibTeX reads two people."""
+    escaped = _bib_escape(" ".join(name.split()))
+    return f"{{{escaped}}}" if " and " in f" {escaped.lower()} " else escaped
 
 
 def _bib_escape(value: str) -> str:
-    out = value
-    for src, target in _REPLACEMENTS:
-        out = out.replace(src, target)
-    return out
+    """``value`` with LaTeX's special characters written out.
+
+    In one pass: replacing one character after the other escaped the braces
+    of ``\\textbackslash{}`` again, which prints them.
+    """
+    return value.translate(_REPLACEMENTS)

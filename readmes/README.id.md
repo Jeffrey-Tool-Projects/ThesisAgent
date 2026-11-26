@@ -1,10 +1,10 @@
 # ThesisAgents
 
-[![CI](https://github.com/Integration-Automation/ThesisAgents/actions/workflows/ci.yml/badge.svg)](https://github.com/Integration-Automation/ThesisAgents/actions/workflows/ci.yml)
-[![Release](https://github.com/Integration-Automation/ThesisAgents/actions/workflows/release.yml/badge.svg?branch=main)](https://github.com/Integration-Automation/ThesisAgents/actions/workflows/release.yml)
+[![CI](https://github.com/Jeffrey-Tool-Projects/ThesisAgent/actions/workflows/ci.yml/badge.svg)](https://github.com/Jeffrey-Tool-Projects/ThesisAgent/actions/workflows/ci.yml)
+[![Release](https://github.com/Jeffrey-Tool-Projects/ThesisAgent/actions/workflows/release.yml/badge.svg?branch=main)](https://github.com/Jeffrey-Tool-Projects/ThesisAgent/actions/workflows/release.yml)
 [![PyPI](https://img.shields.io/pypi/v/thesisagents.svg)](https://pypi.org/project/thesisagents/)
 [![Python](https://img.shields.io/pypi/pyversions/thesisagents.svg)](https://pypi.org/project/thesisagents/)
-[![License: MIT](https://img.shields.io/github/license/Integration-Automation/ThesisAgents.svg)](https://github.com/Integration-Automation/ThesisAgents/blob/main/LICENSE)
+[![License: MIT](https://img.shields.io/github/license/Jeffrey-Tool-Projects/ThesisAgent.svg)](https://github.com/Jeffrey-Tool-Projects/ThesisAgent/blob/main/LICENSE)
 [![Docs](https://readthedocs.org/projects/thesisagents/badge/?version=latest)](https://thesisagents.readthedocs.io/en/latest/)
 
 > **Bahasa**: [English](../README.md) · [繁體中文](README.zh-TW.md) · [简体中文](README.zh-CN.md) · [日本語](README.ja.md) · [Español](README.es.md) · [Français](README.fr.md) · [Deutsch](README.de.md) · [한국어](README.ko.md) · [Português](README.pt.md) · [Русский](README.ru.md) · [Italiano](README.it.md) · [Tiếng Việt](README.vi.md) · [हिन्दी](README.hi.md) · **Bahasa Indonesia**
@@ -247,7 +247,7 @@ mengikuti bentuk yang sama, dengan satu entri
   bekerja terhadap deck apa pun yang dihasilkan eksportir, plus tool MCP
   `pptx_*` setara sehingga agen LLM dapat beriterasi di atas deck yang
   telah dibuat.
-- **Server MCP**: 18 tool — `list_sources` + `list_exports`
+- **Server MCP**: 25 tool — `list_sources` + `list_exports`
   (discovery), `search`, `snowball`, `library_add`, `library_search`, `library_stats`, `fetch_paper`, `fetch_pdf_text`,
   `download_pdfs`, `pptx_validate_template`, `export`, dan enam tool deck `pptx_*`
   (`inspect`, `review`, `update_slide`, `delete_slide`,
@@ -260,7 +260,7 @@ mengikuti bentuk yang sama, dengan satu entri
     PDF via `fetch_pdf_text`, menulis ringkasan terstruktur dalam konteks,
     dan meneruskannya ke `export`.
   - **Pipeline Python (`--enrich`)** — CLI memanggil API Anthropic
-    sendiri; model default `claude-opus-4-7`.
+    sendiri; model default `claude-opus-5-5`.
 - **Alur publisher via-Chrome yang terlihat**: SERP Scholar, IEEE
   `/rest/search`, dan setiap unduhan PDF-berbayar (ieeexplore / dl.acm /
   link.springer / sciencedirect / wiley / oup / nature / science / …)
@@ -402,14 +402,15 @@ py -m thesisagents --paper "https://arxiv.org/abs/1706.03762" `
 | `--source` / `-s` | Daftar sumber dipisah koma. Default `arxiv`. |
 | `--max` / `-n` | Hasil maksimum per sumber (1..200). Default 25. |
 | `--year-from` / `--year-to` | Filter tahun inklusif. |
-| `--export` / `-e` | Format: kombinasi dari `pptx,xlsx,md,bib,json,ris,csv,csl`. Default bergantung mode (lihat bawah). |
+| `--export` / `-e` | Format: kombinasi dari `pptx,xlsx,md,bib,json,ris,csv,csl,docx,tex`. Default bergantung mode (lihat bawah). |
 | `--out` / `-o` | Direktori output. Default `./exports`. |
 | `--filename-stem` | Override stem nama berkas yang dihasilkan. |
 | `--no-abstract` | Hilangkan konten abstrak dari ekspor. |
 | `--lang` / `-l` | Bahasa deck: salah satu dari 14 — `en`, `zh-tw`, `zh-cn`, `ja`, `es`, `fr`, `de`, `ko`, `pt`, `ru`, `it`, `vi`, `hi`, `id`. Default `en`. |
 | `--enrich` | Varian fail-loud dari auto-enrich. Butuh `ANTHROPIC_API_KEY` dan extra `[intelligence]`. (Auto-enrich adalah default saat key di-set.) |
 | `--lightweight` | Lewati pengayaan + paksa deck hanya-abstrak. Gunakan hanya untuk run cepat / tanpa-pengawasan; **saat agen LLM yang menjalankan, utamakan alur LLM-as-agent** di bawah. |
-| `--llm-model` | Override default `claude-opus-4-7` untuk pengayaan. |
+| `--llm-model` | Override default `claude-opus-5-5` untuk pengayaan. |
+| `--llm-command COMMAND` | Baris perintah penyedia baris perintah (`claude-cli`, `cli`, …), makalah lewat masukan standar. |
 | `--no-pdf` | Lewati unduhan PDF otomatis. Juga menonaktifkan gate PPT per-makalah (tanpa PDF → tanpa konten penuh). |
 | `--no-oa-resolve` | Lewati resolver PDF OA pasca-dedup (Unpaywall + S2 + arXiv + CORE.ac.uk). |
 | `--top-tier-only` | Batasi hasil ke arXiv + whitelist CS-unggulan terkurasi (S&P, CCS, NDSS, USENIX Security, NeurIPS, ICML, ICSE, …). Nonaktif secara default. |
@@ -434,7 +435,10 @@ py -m thesisagents --paper "https://arxiv.org/abs/1706.03762" `
 | Variabel | Dipakai oleh | Tujuan |
 |---|---|---|
 | `ANTHROPIC_API_KEY` | `--enrich` | Auth LLM. Tidak perlu untuk jalur LLM-as-agent via MCP. |
-| `THESISAGENTS_LLM_MODEL` | `--enrich` | Override default `claude-opus-4-7`. |
+| `THESISAGENTS_LLM_PROVIDER` | `--enrich` | Siapa yang menjalankan model: `anthropic`, `openai`, `gemini`, `mistral`, `deepseek`, `xai`, `groq`, `openrouter`, `together`, `fireworks`, `dashscope`, `moonshot`, di komputer ini `ollama`, `lmstudio`, `llamacpp`, `vllm`, atau `custom` dengan `THESISAGENTS_LLM_BASE_URL`. Atau program AI di baris perintah: `claude-cli`, `gemini-cli`, `codex-cli`, `ollama-cli`, atau `cli` dengan `THESISAGENTS_LLM_COMMAND`. |
+| `THESISAGENTS_LLM_COMMAND` | `--enrich` | Baris perintah penyedia baris perintah, yang menerima makalah lewat masukan standar (misalnya `claude -p --model opus`). Menggantikan perintah bawaan penyedia. |
+| `THESISAGENTS_LLM_CLI_TIMEOUT` | `--enrich` | Detik yang boleh dipakai satu makalah dengan penyedia baris perintah (bawaan 600). |
+| `THESISAGENTS_LLM_MODEL` | `--enrich` | Override default `claude-opus-5-5`. |
 | `THESISAGENTS_S2_API_KEY` | Semantic Scholar + resolver OA | Rate limit lebih tinggi; juga dipakai langkah S2 `openAccessPdf` pada resolver OA. Key gratis di <https://www.semanticscholar.org/product/api>. |
 | `THESISAGENTS_NCBI_API_KEY` | PubMed | Menaikkan limit anonim NCBI (3/s) ke 10/s. Opsional. |
 | `THESISAGENTS_CONTACT_EMAIL` | PubMed, ACM, Crossref, OpenAlex, **Unpaywall** | Tag polite-pool + mengaktifkan langkah Unpaywall pada resolver OA (kemenangan cakupan-PDF terbesar untuk makalah berbayar IEEE / ACM / Springer / Elsevier; peningkatan tipikal 40-70 pp). |
@@ -497,10 +501,11 @@ Tool:
 | `library_add` | Makalah → pustaka literatur (file SQLite di `library`), disimpan untuk sesi berikutnya. Menambahkan berarti menggabungkan: makalah yang sudah ada diperbarui, tidak diduplikasi. `relations` menyimpan tautan sitasi yang dikembalikan `snowball`. |
 | `library_search` | Kueri → makalah yang sudah ada di pustaka, dinilai seperti pencarian, tanpa akses jaringan. Masing-masing disertai riwayatnya: kapan pertama dan terakhir terlihat, serta sumber mana yang mengembalikannya. |
 | `library_stats` | Pustaka → berapa makalah, proses, dan tautan sitasi yang disimpannya, jumlah makalah per sumber, dan impor terbaru. |
+| `library_update`, `library_delete`, `library_import`, `library_duplicates`, `library_merge`, `library_saved_search`, `library_prisma` | Pustaka → tag, catatan, status baca dan keputusan penyaringan, menghapus dan menggabungkan makalah, mengimpor BibTeX / RIS, pencarian yang hanya melaporkan yang baru, dan alur PRISMA. |
 | `fetch_paper` | Identifier arXiv / DOI / PMID / IEEE → satu makalah. |
 | `fetch_pdf_text` | Unduh satu PDF, kembalikan teks tubuh hasil ekstraksi. **Jalur MCP menuju "saya membaca makalahnya".** |
 | `download_pdfs` | Unduh PDF daftar makalah secara batch ke `{out_dir}/pdfs/`. Mengembalikan hasil per-makalah berindeks kunci BibTeX. |
-| `export` | Daftar makalah + format → menulis `.pptx/.xlsx/.md/.bib/.json/.ris/.csv/.csl.json`. Menerima field `summary` per makalah untuk skema gaya-tesis yang kaya, `max_slides_per_paper` (default 25), dan `dark_mode` (default `false` — default proyek adalah deck terang band-navy, berikan `true` untuk post-pass gelap OLED / minim-cahaya). Memverifikasi setiap DOI / URL sebelum menulis (`verify_identifiers`, default `true`): pengenal yang salah atau tidak dapat dijangkau menggagalkan pemanggilan dan menyebutkan makalahnya, dan respons memuat laporan `verification`. `library` menunjuk pustaka literatur tempat hasil pemeriksaan pengenal disimpan, sehingga pengenal yang sudah terverifikasi pada pemanggilan sebelumnya tidak diperiksa lagi. `pptx_template` (dengan `pptx_template_config` opsional) menyusun deck di atas templat PowerPoint Anda sendiri. |
+| `export` | Daftar makalah + format → menulis `.pptx/.xlsx/.md/.bib/.json/.ris/.csv/.csl.json/.docx/.tex`. Menerima field `summary` per makalah untuk skema gaya-tesis yang kaya, `max_slides_per_paper` (default 25), dan `dark_mode` (default `false` — default proyek adalah deck terang band-navy, berikan `true` untuk post-pass gelap OLED / minim-cahaya). Memverifikasi setiap DOI / URL sebelum menulis (`verify_identifiers`, default `true`): pengenal yang salah atau tidak dapat dijangkau menggagalkan pemanggilan dan menyebutkan makalahnya, dan respons memuat laporan `verification`. `library` menunjuk pustaka literatur tempat hasil pemeriksaan pengenal disimpan, sehingga pengenal yang sudah terverifikasi pada pemanggilan sebelumnya tidak diperiksa lagi. `pptx_template` (dengan `pptx_template_config` opsional) menyusun deck di atas templat PowerPoint Anda sendiri. |
 | `pptx_validate_template` | Templat → apakah dapat dipakai untuk `export(pptx_template=...)`: tata letak yang akan dipakai tiap jenis slide, beserta galat dan peringatan yang menyebutkan apa yang harus diubah. Tidak ada yang dirender. |
 | `pptx_inspect` | Membaca struktur slide / shape dari deck yang ada. |
 | `pptx_review` | Audit deck dalam satu panggilan — overflow + kontrak warna + kelengkapan bagian `paper_rule`. Mendeteksi bahasa deck secara otomatis; juga CLI `python -m thesisagents review <deck.pptx>`. |
@@ -530,11 +535,11 @@ ThesisAgents/
 ├── thesisagents/                 # paket utama
 │   ├── core/                        # Paper / PaperSummary / RqResult / dedup / ranking / pipeline
 │   ├── fetchers/                    # client async HTTPS-only, rate limit token-bucket
-│   ├── exporters/                   # pptx (gaya tesis) · xlsx · bib · md · json · ris · csv · csl · pptx_edit · i18n
+│   ├── exporters/                   # pptx (gaya tesis) · xlsx · bib · md · json · ris · csv · csl · docx · tex · pptx_edit · i18n
 │   ├── intelligence/                # unduh PDF + summarizer Anthropic  (extra [intelligence])
 │   ├── library/                     # SQLite literature library kept across runs
 │   ├── evaluation/                  # benchmark kualitas-pencarian offline (docs/search-quality.md)
-│   ├── mcp/                         # server FastMCP (18 tool)
+│   ├── mcp/                         # server FastMCP (25 tool)
 │   ├── sources/<name>/              # folder plugin: arxiv, semantic_scholar,
 │   │                                #   openalex, pubmed, acm, ieee, scholar,
 │   │                                #   dblp, crossref, openaire, springer,
@@ -569,13 +574,14 @@ pip install thesisagents[gui]
 thesisagents-gui                 # atau: thesisagents gui
 ```
 
-Jendela memiliki sidebar dengan lima halaman: **Search**, **Library** (tampilan hanya-baca sebuah berkas pustaka: ikhtisar, makalahnya beserta tautan sitasi dan pemeriksaan pengenalnya, serta pencarian yang mengisinya), **Enrich**
+Jendela memiliki sidebar dengan lima halaman: **Search**, **Library** (sebuah berkas pustaka dengan tag, catatan, dan keputusan penyaringan Anda, impor BibTeX / RIS, penggabungan duplikat, pencarian tersimpan yang hanya menampilkan yang baru, grafik sitasi, dan alur PRISMA: ikhtisar, makalahnya beserta tautan sitasi dan pemeriksaan pengenalnya, serta pencarian yang mengisinya), **Enrich**
 (menggerakkan pengayaan LLM-as-agent / Python-pipeline lewat sinyal
 `collection_ready`), **Deck** (toggle Dark mode, batas slide, pemeriksaan
 identifier, dan templat deck mengalir ke `ExportOptions`), dan
-**Settings** (mempertahankan API key via QSettings). Zip rilis Windows memuat bundle terkompilasi-Nuitka
-dengan PySide6 disertakan, jadi `thesisagents.exe gui` bekerja tanpa
-instalasi Python terpisah.
+**Settings** (API key dan preferensi). Zip rilis Windows memuat bundle terkompilasi-Nuitka
+dengan PySide6 disertakan: `thesisagents.exe` membuka aplikasi desktop tanpa
+jendela konsol dan tanpa instalasi Python terpisah, dan
+`thesisagents-cli.exe` di folder yang sama adalah baris perintahnya.
 Halaman Search juga dapat mengikuti sitasi dari hasil teratas (bola salju),
 menyimpan hasil dalam file pustaka dan mencari di pustaka itu tanpa
 jaringan, dan halaman Deck dapat menyusun deck di atas templat PowerPoint
@@ -593,7 +599,7 @@ sidebar menciut menjadi ikon dan label form pindah ke atas field-nya.
 Jendela mengecil hingga 640×480, dengan penskalaan HiDPI aktif secara
 default. **Settings → Theme** memilih terang, gelap, atau mengikuti sistem,
 langsung diterapkan dan tidak bergantung pada mode gelap milik deck itu
-sendiri. Hasil dapat diurutkan, disaring, dan dicentang agar hanya sebagian makalah yang diteruskan ke Enrich, Deck, dan Export, batas bola salju dapat diatur, pencarian atau pengayaan yang sedang berjalan dapat dibatalkan, dan isian formulir diingat antar-peluncuran. Halaman Deck dapat memeriksa templat sebelum ekspor dan meninjau slide yang sudah jadi, dan tanpa kunci API halaman Enrich menyerahkan makalah ke agen LLM sebagai berkas JSON lalu mengimpor ringkasannya. Halaman Deck juga dapat mengunduh PDF, melewatkan IEEE sampai Settings menyatakan akses institusi / VPN, dan bahasa antarmuka baru langsung berlaku tanpa kehilangan pekerjaan. Sakelar yang sama juga mengecualikan `ieee` dari pencarian. Halaman Search juga dapat membaca PDF lokal sebagai hasil, seperti `--pdf` di CLI. Baris status menyebutkan berapa PDF yang datang lewat Chrome dan memperingatkan bila PDF penerbit tidak dapat memakainya. **Settings → Style** beralih antara tampilan klasik biru dongker dan Material 3. `Ctrl+1` … `Ctrl+5` berpindah halaman.
+sendiri. Hasil dapat diurutkan, disaring, dan dicentang agar hanya sebagian makalah yang diteruskan ke Enrich, Deck, dan Export, batas bola salju dapat diatur, pencarian atau pengayaan yang sedang berjalan dapat dibatalkan, dan isian formulir diingat antar-peluncuran. Halaman Deck dapat memeriksa templat sebelum ekspor dan meninjau slide yang sudah jadi, dan tanpa kunci API halaman Enrich menyerahkan makalah ke agen LLM sebagai berkas JSON lalu mengimpor ringkasannya. Halaman Deck juga dapat mengunduh PDF, melewatkan IEEE sampai Settings menyatakan akses institusi / VPN, dan bahasa antarmuka baru langsung berlaku tanpa kehilangan pekerjaan. Sakelar yang sama juga mengecualikan `ieee` dari pencarian. Halaman Search juga dapat membaca PDF lokal sebagai hasil, seperti `--pdf` di CLI. Baris status menyebutkan berapa PDF yang datang lewat Chrome dan memperingatkan bila PDF penerbit tidak dapat memakainya. **Settings → Style** beralih antara tampilan klasik biru dongker dan Material 3. **Settings → Font size** langsung mengatur ukuran teks seluruh aplikasi antara 8 dan 24 pt, juga dengan `Ctrl++`, `Ctrl+-`, dan `Ctrl+0` (kembali ke default), dan tata letaknya menyesuaikan. **Log** di bilah status (`Ctrl+L`) menampilkan apa yang sedang dikerjakan aplikasi, dengan berkas log untuk dilampirkan pada laporan bug, dan sebuah banner memberi tahu saat Chrome menunggu Anda menyelesaikan captcha. Kunci API disimpan di penyimpanan kredensial sistem (Windows Credential Manager, macOS Keychain, Secret Service), bukan di berkas pengaturan. Untuk Windows tersedia penginstal yang tidak memerlukan hak administrator, dan aplikasi memberi tahu saat ada versi baru (sekali sehari, dapat dimatikan). **Settings → AI model** memilih siapa yang menulis ringkasan: Anthropic, sebelas layanan lain, atau model di komputer Anda sendiri (Ollama, LM Studio, llama.cpp, vLLM), sehingga teks tidak perlu keluar. **Edit summary** di halaman Enrich dan Library mengubah ringkasan makalah secara manual dan menunjukkan bagian tesis mana yang masih kosong. **Word draft** dan **LaTeX draft** mengekspor tinjauan pustaka dengan sitasi APA, tabel perbandingan, dan daftar pustaka, juga ke dalam templat Word kampus Anda. **Edit slides…** di halaman Deck mengubah teks, urutan, dan jumlah slide pada dek yang sudah jadi, dengan pratinjau dan urungkan. **Settings → AI model** juga menawarkan program AI di baris perintah (Claude Code, Gemini CLI, Codex, Ollama, atau perintah apa pun), yang meringkas dengan akun yang sedang masuk, tanpa kunci API. `Ctrl+1` … `Ctrl+5` berpindah halaman.
 
 Referensi lengkap: [`docs/gui.md`](../docs/gui.md).
 

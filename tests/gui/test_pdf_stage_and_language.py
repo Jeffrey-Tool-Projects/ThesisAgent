@@ -51,7 +51,7 @@ def test_only_ieee_needs_institutional_access(paper, gated):
     assert needs_institutional_access(paper) is gated
 
 
-@pytest.fixture()
+@pytest.fixture
 def fake_download(monkeypatch):
     """Record the batch handed to ``download_pdfs``; every paper but #3 saves."""
     batches: list[list[str]] = []

@@ -43,7 +43,7 @@ def _parse_article(article: Any) -> Paper:
     authors = _collect_authors(art) if art is not None else ()
     venue = _text(art.find("./Journal/Title")) if art is not None else ""
     year = _extract_year(art) if art is not None else None
-    doi = _extract_doi(art) if art is not None else None
+    doi = _extract_doi(article)
     return Paper(
         source=_SOURCE,
         source_id=pmid,
@@ -97,12 +97,18 @@ def _extract_year(article: Any) -> int | None:
 
 
 def _extract_doi(article: Any) -> str | None:
-    for eid in article.findall("./ELocationID"):
+    """The DOI of a ``PubmedArticle``: its own location, else the id list.
+
+    Takes the whole record: ElementTree cannot go up from ``Article`` with
+    ``..``, so the id list beside it was never found. The path is exact,
+    because the reference list holds id lists of other papers.
+    """
+    for eid in article.findall("./MedlineCitation/Article/ELocationID"):
         if eid.attrib.get("EIdType", "").lower() == "doi":
             value = _text(eid)
             if value:
                 return value
-    article_ids = article.findall("../PubmedData/ArticleIdList/ArticleId")
+    article_ids = article.findall("./PubmedData/ArticleIdList/ArticleId")
     for aid in article_ids:
         if aid.attrib.get("IdType", "").lower() == "doi":
             value = _text(aid)

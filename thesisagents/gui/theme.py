@@ -47,6 +47,7 @@ from PySide6.QtCore import Qt
 from PySide6.QtGui import QColor, QGuiApplication, QPalette
 from PySide6.QtWidgets import QApplication
 
+from thesisagents.gui.font_size import font_scale
 from thesisagents.gui.icons import write_glyph
 
 THEME_SYSTEM: Final[str] = "system"
@@ -372,15 +373,23 @@ def write_theme_assets(tokens: Palette) -> dict[str, str]:
     Returns ``{"check": path, "down": path, "up": path}`` with forward-slash
     paths, the form a stylesheet ``url(...)`` accepts on every platform.
     Each palette's files are drawn once per process.
+
+    The directory is created again when it has gone: a temp-folder cleaner
+    (Windows Storage Sense, ``tmpwatch``) may delete it while the app runs
+    for days, and the next theme switch then raised ``OSError`` from
+    :func:`write_glyph` instead of repainting.
     """
     specs = {
         "check": ("check", tokens.on_accent),
         "down": ("chevron_down", tokens.muted),
         "up": ("chevron_up", tokens.muted),
     }
+    directory = _asset_dir()
+    # 0o700 keeps the private access mkdtemp gave the first one.
+    directory.mkdir(mode=0o700, parents=True, exist_ok=True)
     assets: dict[str, str] = {}
     for key, (glyph, colour) in specs.items():
-        path = _asset_dir() / f"{tokens.name}-{key}.png"
+        path = directory / f"{tokens.name}-{key}.png"
         if not path.is_file():
             write_glyph(glyph, colour, str(path))
         assets[key] = path.as_posix()
@@ -458,7 +467,9 @@ QSpinBox::down-arrow {{
 """
 
 
-def build_stylesheet(tokens: Palette, assets: dict[str, str] | None = None) -> str:
+def build_stylesheet(
+    tokens: Palette, assets: dict[str, str] | None = None, *, text_scale: float = 1.0
+) -> str:
     """The application-wide Qt stylesheet for ``tokens``.
 
     Widgets opt into the special looks with object names and dynamic
@@ -472,7 +483,9 @@ def build_stylesheet(tokens: Palette, assets: dict[str, str] | None = None) -> s
     * ``#PageTitle`` / ``#PageSubtitle`` / ``#CardTitle`` / ``#Muted``: type.
 
     Colours come from ``tokens``, radii, padding and weights from
-    ``tokens.shape``. ``assets`` (from :func:`write_theme_assets`) adds the
+    ``tokens.shape``. ``text_scale`` enlarges the page titles with the
+    interface font (every other text takes the application font, so it
+    needs no rule). ``assets`` (from :func:`write_theme_assets`) adds the
     check-box and arrow rules. Without it those controls keep the Fusion
     style's own drawing, which is what tests that only inspect the text use.
     """
@@ -480,9 +493,22 @@ def build_stylesheet(tokens: Palette, assets: dict[str, str] | None = None) -> s
     s = p.shape
     card_border = f"1px solid {p.border}" if s.card_border else "none"
     glyphs = _glyph_rules(p, assets) if assets else ""
+    title_pt = round(s.title_size_pt * text_scale)
+    # A stylesheet min-height replaces the minimum Qt works out from the font,
+    # so a fixed one lets a short window squash large text.
+    control_px = max(20, round(18 * text_scale))
+    # The ``QWidget:disabled`` rule is needed because a stylesheet ``color``
+    # with no pseudo-state also fills the palette's Disabled group, which
+    # beats the muted colour build_palette puts there. Without it a combo
+    # box, line edit or check box label that is switched off (the Library's
+    # filters while it works, a locked source) still showed body-text colour
+    # and looked as if it could be used.
     return glyphs + f"""
 QWidget {{
     color: {p.text};
+}}
+QWidget:disabled {{
+    color: {p.muted};
 }}
 QMainWindow, QStackedWidget, #PageBody, QScrollArea, QScrollArea > QWidget > QWidget {{
     background: {p.window};
@@ -527,7 +553,7 @@ QToolTip {{
     background: {p.window};
 }}
 QLabel#PageTitle {{
-    font-size: {s.title_size_pt}pt;
+    font-size: {title_pt}pt;
     font-weight: {s.title_weight};
 }}
 QLabel#PageSubtitle, QLabel#Muted {{
@@ -551,7 +577,7 @@ QLineEdit, QComboBox, QSpinBox {{
     border: 1px solid {p.input_border};
     border-radius: {s.input_radius}px;
     padding: {s.input_padding};
-    min-height: 20px;
+    min-height: {control_px}px;
     selection-background-color: {p.accent};
     selection-color: {p.on_accent};
 }}
@@ -574,7 +600,7 @@ QPushButton {{
     border: 1px solid {p.button_border};
     border-radius: {s.button_radius}px;
     padding: {s.button_padding};
-    min-height: 20px;
+    min-height: {control_px}px;
 }}
 QPushButton:hover {{
     background: {p.button_hover};
@@ -621,9 +647,9 @@ QTabBar::tab:selected {{
     border-bottom: 2px solid {p.accent};
     font-weight: 600;
 }}
-QTextBrowser {{
+QTextBrowser, QPlainTextEdit, QGraphicsView {{
     background: {p.surface};
-    border: {card_border};
+    border: {card_border if card_border != "none" else f"1px solid {p.border}"};
     border-radius: {s.card_radius - 2}px;
     padding: 4px;
 }}
@@ -656,6 +682,18 @@ QStatusBar {{
     background: {p.nav if p.style == STYLE_MATERIAL else p.surface};
     border-top: 1px solid {p.border};
     color: {p.muted};
+}}
+#StatusButton {{
+    padding: 0px 10px;
+    min-height: 16px;
+}}
+#NoticeBanner {{
+    background: {p.accent};
+}}
+#NoticeBanner QLabel#NoticeText {{
+    background: transparent;
+    color: {p.on_accent};
+    font-weight: 600;
 }}
 QProgressBar {{
     background: {p.border};
@@ -702,6 +740,10 @@ QScrollBar::add-page, QScrollBar::sub-page {{
 """
 
 
+#: Set on the application once its Qt style is Fusion (see ``apply_theme``).
+_STYLED_PROPERTY: Final[str] = "thesisagents_styled"
+
+
 def apply_theme(app: QApplication, choice: str, style: str = STYLE_CLASSIC) -> Palette:
     """Paint ``app`` with theme ``choice`` in ``style``; return the palette used.
 
@@ -709,11 +751,27 @@ def apply_theme(app: QApplication, choice: str, style: str = STYLE_CLASSIC) -> P
     most palette roles, so a dark palette on it gives dark text on dark
     buttons. Safe to call again at any time (Settings does on save, and the
     system-scheme listener does when the OS flips between light and dark).
+
+    ``setStyle`` and the first ``setStyleSheet`` also rebuild Qt's per-class
+    platform fonts, and those beat the application font: lists, tables, menus
+    and the status bar drop back to the bare system family, losing the
+    per-script fallback families (a Hindi label then makes Qt probe eight
+    fonts that cannot shape it) and the interface font size. Setting the
+    application font again clears them, so it comes last. That only helps
+    widgets built later: the ones already on screen keep the class font they
+    were given, so the style is set once and never again. Example: with a
+    second ``setStyle`` a theme switch put the tables of an open window back
+    to 9 pt.
     """
     tokens = resolve_theme(choice, system_prefers_dark(), style)
-    app.setStyle("Fusion")
+    if not app.property(_STYLED_PROPERTY):
+        app.setStyle("Fusion")
+        app.setProperty(_STYLED_PROPERTY, True)
     app.setPalette(build_palette(tokens))
-    app.setStyleSheet(build_stylesheet(tokens, write_theme_assets(tokens)))
+    app.setStyleSheet(
+        build_stylesheet(tokens, write_theme_assets(tokens), text_scale=font_scale())
+    )
+    app.setFont(app.font())
     app.setProperty("thesisagents_theme", tokens.name)
     return tokens
 

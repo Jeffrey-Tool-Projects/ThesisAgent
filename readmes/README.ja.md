@@ -1,10 +1,10 @@
 # ThesisAgents
 
-[![CI](https://github.com/Integration-Automation/ThesisAgents/actions/workflows/ci.yml/badge.svg)](https://github.com/Integration-Automation/ThesisAgents/actions/workflows/ci.yml)
-[![Release](https://github.com/Integration-Automation/ThesisAgents/actions/workflows/release.yml/badge.svg?branch=main)](https://github.com/Integration-Automation/ThesisAgents/actions/workflows/release.yml)
+[![CI](https://github.com/Jeffrey-Tool-Projects/ThesisAgent/actions/workflows/ci.yml/badge.svg)](https://github.com/Jeffrey-Tool-Projects/ThesisAgent/actions/workflows/ci.yml)
+[![Release](https://github.com/Jeffrey-Tool-Projects/ThesisAgent/actions/workflows/release.yml/badge.svg?branch=main)](https://github.com/Jeffrey-Tool-Projects/ThesisAgent/actions/workflows/release.yml)
 [![PyPI](https://img.shields.io/pypi/v/thesisagents.svg)](https://pypi.org/project/thesisagents/)
 [![Python](https://img.shields.io/pypi/pyversions/thesisagents.svg)](https://pypi.org/project/thesisagents/)
-[![License: MIT](https://img.shields.io/github/license/Integration-Automation/ThesisAgents.svg)](https://github.com/Integration-Automation/ThesisAgents/blob/main/LICENSE)
+[![License: MIT](https://img.shields.io/github/license/Jeffrey-Tool-Projects/ThesisAgent.svg)](https://github.com/Jeffrey-Tool-Projects/ThesisAgent/blob/main/LICENSE)
 [![Docs](https://readthedocs.org/projects/thesisagents/badge/?version=latest)](https://thesisagents.readthedocs.io/en/latest/)
 
 > **言語**: [English](../README.md) · [繁體中文](README.zh-TW.md) · [简体中文](README.zh-CN.md) · **日本語** · [Español](README.es.md) · [Français](README.fr.md) · [Deutsch](README.de.md) · [한국어](README.ko.md) · [Português](README.pt.md) · [Русский](README.ru.md) · [Italiano](README.it.md) · [Tiếng Việt](README.vi.md) · [हिन्दी](README.hi.md) · [Bahasa Indonesia](README.id.md)
@@ -37,7 +37,7 @@
 6. export(papers=[{...paper, "summary": {...}}], language="zh-tw", ...)
 ```
 
-18 個の MCP ツール(`list_sources`、`list_exports`、`download_pdfs`、`pptx_inspect` / `pptx_review` / `pptx_update_slide` / `pptx_add_slide` など)はすべて [`docs/mcp.md`](../docs/mcp.md) に記載されています。
+25 個の MCP ツール(`list_sources`、`list_exports`、`download_pdfs`、`pptx_inspect` / `pptx_review` / `pptx_update_slide` / `pptx_add_slide` など)はすべて [`docs/mcp.md`](../docs/mcp.md) に記載されています。
 
 ### 必須: 納品前に URL / DOI を検証
 
@@ -111,10 +111,10 @@ for key in irrelevant_keys:
   - `.csv` — スプレッドシート / 手早い grep トリアージ用の 1 論文 1 行のフラットな表(RFC-4180 クオート、タイトル内のカンマが列をずらしません)。
   - `.csl.json` — Pandoc / citeproc 用の CSL-JSON。任意の CSL スタイル(APA、IEEE、Nature、…)で文献目録をレンダリング。`.csl.json` 拡張子でプレーンな `.json` ダンプと区別されます。
 - **PPT 編集ツールキット**: `thesisagents.exporters.pptx_edit`(inspect / update_slide / delete_slide / reorder_slides / add_slide)はエクスポータが生成する任意のデッキに対して動作し、加えて同等の `pptx_*` MCP ツールにより LLM エージェントが生成済みデッキ上で反復できます。
-- **MCP サーバー**: 18 ツール — `list_sources` + `list_exports`(発見)、`search`、`snowball`、`library_add`、`library_search`、`library_stats`、`fetch_paper`、`fetch_pdf_text`、`download_pdfs`、`pptx_validate_template`、`export`、および 6 個の `pptx_*` デッキツール(`inspect`、`review`、`update_slide`、`delete_slide`、`reorder_slides`、`add_slide`)。MCP 対応の任意の LLM(Claude Code、Claude Desktop、Cursor、…)がワークフロー全体を駆動できます。
+- **MCP サーバー**: 25 ツール — `list_sources` + `list_exports`(発見)、`search`、`snowball`、`library_add`、`library_search`、`library_stats`、`fetch_paper`、`fetch_pdf_text`、`download_pdfs`、`pptx_validate_template`、`export`、および 6 個の `pptx_*` デッキツール(`inspect`、`review`、`update_slide`、`delete_slide`、`reorder_slides`、`add_slide`)。MCP 対応の任意の LLM(Claude Code、Claude Desktop、Cursor、…)がワークフロー全体を駆動できます。
 - **2 つのエンリッチパス**(要約を超えて真の論文発表級デッキに至るため):
   - **LLM-as-agent(API キー不要)** — 呼び出し側 LLM が `fetch_pdf_text` で PDF 本文を読み、構造化サマリをコンテキスト内で書き、`export` に渡します。
-  - **Python パイプライン(`--enrich`)** — CLI が Anthropic の API を自身で呼びます。デフォルトモデルは `claude-opus-4-7`。
+  - **Python パイプライン(`--enrich`)** — CLI が Anthropic の API を自身で呼びます。デフォルトモデルは `claude-opus-5-5`。
 - **可視 Chrome の出版社フロー**: Scholar の SERP、IEEE の `/rest/search`、およびすべての paywalled-PDF ダウンロード(ieeexplore / dl.acm / link.springer / sciencedirect / wiley / oup / nature / science / …)は、`selenium` 経由で本物の可視 Chrome セッション内で実行されます。ユーザーはライブウィンドウで captcha を解いたり SSO を完了したりを一度だけ行い、`THESISAGENTS_CHROME_PROFILE_DIR` が実行間で cookie を永続化します。
 - **LLM-as-agent フロー**: MCP ツールが検索、PDF ダウンロード、テキスト抽出を提供します。`scripts/regen_*.py` には、論文ごとにリッチな `PaperSummary` を手書きする再現可能な例が含まれています。
 - **OA PDF リゾルバ**: 重複排除後、`pdf_url` の無い各論文は Unpaywall → S2 `openAccessPdf` → arXiv タイトル検索 → CORE.ac.uk(キー設定時)を通過します。IEEE / ACM / Springer / Elsevier 中心のクエリでの典型的な向上: 40〜70 パーセントポイント。
@@ -179,14 +179,15 @@ py -m thesisagents --paper "https://arxiv.org/abs/1706.03762" `
 | `--source` / `-s` | カンマ区切りのソースリスト。デフォルト `arxiv`。 |
 | `--max` / `-n` | ソースごとの最大件数(1..200)。デフォルト 25。 |
 | `--year-from` / `--year-to` | 両端を含む年フィルタ。 |
-| `--export` / `-e` | 形式: `pptx,xlsx,md,bib,json,ris,csv,csl` の任意の組合せ。デフォルトはモードによる(下記参照)。 |
+| `--export` / `-e` | 形式: `pptx,xlsx,md,bib,json,ris,csv,csl,docx,tex` の任意の組合せ。デフォルトはモードによる(下記参照)。 |
 | `--out` / `-o` | 出力ディレクトリ。デフォルト `./exports`。 |
 | `--filename-stem` | 生成されるファイル名の stem を上書き。 |
 | `--no-abstract` | エクスポートから要約内容を除外。 |
 | `--lang` / `-l` | デッキ言語: 14 種のいずれか — `en`、`zh-tw`、`zh-cn`、`ja`、`es`、`fr`、`de`、`ko`、`pt`、`ru`、`it`、`vi`、`hi`、`id`。デフォルト `en`。 |
 | `--enrich` | 自動エンリッチの fail-loud 版。`ANTHROPIC_API_KEY` と `[intelligence]` extra が必要。(キー設定時は自動エンリッチがデフォルト。) |
 | `--lightweight` | エンリッチをスキップし、要約のみのデッキを強制。手早い / 無人運転にのみ使用。**LLM エージェントが駆動する場合は下記の LLM-as-agent フローを優先。** |
-| `--llm-model` | エンリッチのデフォルト `claude-opus-4-7` を上書き。 |
+| `--llm-model` | エンリッチのデフォルト `claude-opus-5-5` を上書き。 |
+| `--llm-command COMMAND` | コマンドライン型プロバイダー(`claude-cli`、`cli` など)のコマンド。論文は標準入力で渡されます。 |
 | `--no-pdf` | 自動 PDF ダウンロードをスキップ。論文ごとの PPT ゲートも無効化(PDF 無し → 完全な内容無し)。 |
 | `--no-oa-resolve` | 重複排除後の OA PDF リゾルバ(Unpaywall + S2 + arXiv + CORE.ac.uk)をスキップ。 |
 | `--top-tier-only` | 結果を arXiv + 精選された CS 旗艦ホワイトリスト(S&P、CCS、NDSS、USENIX Security、NeurIPS、ICML、ICSE、…)に限定。デフォルトは無効。 |
@@ -211,7 +212,10 @@ py -m thesisagents --paper "https://arxiv.org/abs/1706.03762" `
 | 変数 | 利用箇所 | 用途 |
 |---|---|---|
 | `ANTHROPIC_API_KEY` | `--enrich` | LLM 認証。MCP 経由の LLM-as-agent パスでは不要。 |
-| `THESISAGENTS_LLM_MODEL` | `--enrich` | デフォルト `claude-opus-4-7` を上書き。 |
+| `THESISAGENTS_LLM_PROVIDER` | `--enrich` | モデルの提供元: `anthropic`, `openai`, `gemini`, `mistral`, `deepseek`, `xai`, `groq`, `openrouter`, `together`, `fireworks`, `dashscope`, `moonshot`、このコンピューター上の `ollama`, `lmstudio`, `llamacpp`, `vllm`、または `THESISAGENTS_LLM_BASE_URL` を指定した `custom`。またはコマンドラインの AI プログラム: `claude-cli`、`gemini-cli`、`codex-cli`、`ollama-cli`、または `THESISAGENTS_LLM_COMMAND` を使う `cli`。 |
+| `THESISAGENTS_LLM_COMMAND` | `--enrich` | コマンドライン型プロバイダーのコマンド。論文は標準入力で渡されます(例: `claude -p --model opus`)。既定のコマンドを置き換えます。 |
+| `THESISAGENTS_LLM_CLI_TIMEOUT` | `--enrich` | コマンドライン型プロバイダーで論文 1 本にかけてよい秒数(既定 600)。 |
+| `THESISAGENTS_LLM_MODEL` | `--enrich` | デフォルト `claude-opus-5-5` を上書き。 |
 | `THESISAGENTS_S2_API_KEY` | Semantic Scholar + OA リゾルバ | より高いレート上限。OA リゾルバの S2 `openAccessPdf` ステップでも使用。無料キーは <https://www.semanticscholar.org/product/api>。 |
 | `THESISAGENTS_NCBI_API_KEY` | PubMed | NCBI の匿名上限(3/s)を 10/s に引き上げ。任意。 |
 | `THESISAGENTS_CONTACT_EMAIL` | PubMed、ACM、Crossref、OpenAlex、**Unpaywall** | polite-pool タグ + OA リゾルバの Unpaywall ステップを有効化(IEEE / ACM / Springer / Elsevier の paywalled 論文で最大の PDF カバレッジ向上、典型的な向上は 40〜70 pp)。 |
@@ -266,10 +270,11 @@ claude mcp add thesisagents -- ".venv\Scripts\python.exe" -m thesisagents.mcp
 | `library_add` | 論文 → 文献ライブラリ (`library` が指す SQLite ファイル) に保存し、後のセッションで使えるようにします。追加は統合です。既にある論文は更新され、重複しません。`relations` には `snowball` が返す引用関係を保存できます。 |
 | `library_search` | クエリ → ライブラリに既にある論文を、検索と同じ方法で採点して返します。ネットワークは使いません。各論文には履歴が付きます。最初と最後に見つかった日時、そしてどのソースが返したかです。 |
 | `library_stats` | ライブラリ → 保存している論文、実行、引用関係の件数、ソースごとの論文数、最近の取り込み。 |
+| `library_update`, `library_delete`, `library_import`, `library_duplicates`, `library_merge`, `library_saved_search`, `library_prisma` | ライブラリ → タグ、メモ、読書状況、スクリーニングの判定、論文の削除と統合、BibTeX / RIS の取り込み、新着だけを返す保存済み検索、PRISMA フロー。 |
 | `fetch_paper` | arXiv / DOI / PMID / IEEE 識別子 → 単一論文。 |
 | `fetch_pdf_text` | 単一 PDF をダウンロードし、抽出した本文を返す。**MCP 経由で「論文を読んだ」に至る入口。** |
 | `download_pdfs` | 論文リストの PDF を `{out_dir}/pdfs/` に一括ダウンロード。BibTeX キーをキーとする論文ごとの結果を返す。 |
-| `export` | 論文リスト + 形式 → `.pptx/.xlsx/.md/.bib/.json/.ris/.csv/.csl.json` を書き出す。リッチな論文発表級スキーマ用の論文ごとの `summary` フィールド、`max_slides_per_paper`(デフォルト 25)、`dark_mode`(デフォルト `false` — プロジェクトのデフォルトはライトの navy バンドデッキ、ダークの OLED / 暗所向け post-pass には `true` を渡す)を受理。 書き出す前にすべての DOI / URL を検証します (`verify_identifiers`、既定 `true`)。誤った識別子や到達できない識別子があると呼び出しは失敗して該当論文を示し、レスポンスには `verification` レポートが含まれます。 `library` には識別子の確認結果を保存する文献ライブラリを指定します。以前の呼び出しで確認できた識別子は再確認されません。 `pptx_template` (任意で `pptx_template_config`) を渡すと、手持ちの PowerPoint テンプレートの上にスライドを作ります。 |
+| `export` | 論文リスト + 形式 → `.pptx/.xlsx/.md/.bib/.json/.ris/.csv/.csl.json/.docx/.tex` を書き出す。リッチな論文発表級スキーマ用の論文ごとの `summary` フィールド、`max_slides_per_paper`(デフォルト 25)、`dark_mode`(デフォルト `false` — プロジェクトのデフォルトはライトの navy バンドデッキ、ダークの OLED / 暗所向け post-pass には `true` を渡す)を受理。 書き出す前にすべての DOI / URL を検証します (`verify_identifiers`、既定 `true`)。誤った識別子や到達できない識別子があると呼び出しは失敗して該当論文を示し、レスポンスには `verification` レポートが含まれます。 `library` には識別子の確認結果を保存する文献ライブラリを指定します。以前の呼び出しで確認できた識別子は再確認されません。 `pptx_template` (任意で `pptx_template_config`) を渡すと、手持ちの PowerPoint テンプレートの上にスライドを作ります。 |
 | `pptx_validate_template` | テンプレート → `export(pptx_template=...)` に使えるかどうか。スライドの種類ごとに使われるレイアウトと、何を直すべきかを示すエラーと警告を返します。スライドは生成されません。 |
 | `pptx_inspect` | 既存デッキのスライド / シェイプ構造を読む。 |
 | `pptx_review` | 1 回の呼び出しでデッキを監査 — overflow + 色コントラクト + `paper_rule` セクション網羅性。デッキ言語を自動検出。CLI 版は `python -m thesisagents review <deck.pptx>` でも。 |
@@ -299,11 +304,11 @@ ThesisAgents/
 ├── thesisagents/                 # main package
 │   ├── core/                        # Paper / PaperSummary / RqResult / dedup / ranking / pipeline
 │   ├── fetchers/                    # HTTPS-only async client, token-bucket rate limit
-│   ├── exporters/                   # pptx (thesis-style) · xlsx · bib · md · json · ris · csv · csl · pptx_edit · i18n
+│   ├── exporters/                   # pptx (thesis-style) · xlsx · bib · md · json · ris · csv · csl · docx · tex · pptx_edit · i18n
 │   ├── intelligence/                # PDF fetch + Anthropic summariser  ([intelligence] extra)
 │   ├── library/                     # SQLite literature library kept across runs
 │   ├── evaluation/                  # offline search-quality benchmark (docs/search-quality.md)
-│   ├── mcp/                         # FastMCP server (18 tools)
+│   ├── mcp/                         # FastMCP server (25 tools)
 │   ├── sources/<name>/              # plugin folders: arxiv, semantic_scholar,
 │   │                                #   openalex, pubmed, acm, ieee, scholar,
 │   │                                #   dblp, crossref, openaire, springer,
@@ -336,9 +341,9 @@ pip install thesisagents[gui]
 thesisagents-gui                 # or: thesisagents gui
 ```
 
-ウィンドウにはサイドバーと 5 つのページがあります: **Search**、**Library**(ライブラリファイルの読み取り専用ビュー。概要、収録論文とその引用関係・識別子の確認結果、ライブラリを集めた検索履歴を表示)、**Enrich**(`collection_ready` シグナルを介して LLM-as-agent / Python パイプラインのエンリッチを駆動)、**Deck**(Dark mode トグル、スライド上限、識別子チェック、デッキテンプレートが `ExportOptions` に流れる)、**Settings**(QSettings 経由で API キーを永続化)。Windows リリース zip は PySide6 を含む Nuitka コンパイル済みバンドルを同梱するので、別途 Python をインストールせずに `thesisagents.exe gui` が動作します。
+ウィンドウにはサイドバーと 5 つのページがあります: **Search**、**Library**(ライブラリファイル。タグ・メモ・スクリーニング判定、BibTeX / RIS の取り込み、重複の統合、新着だけを示す保存済み検索、引用関係図、PRISMA フローに対応。概要、収録論文とその引用関係・識別子の確認結果、ライブラリを集めた検索履歴を表示)、**Enrich**(`collection_ready` シグナルを介して LLM-as-agent / Python パイプラインのエンリッチを駆動)、**Deck**(Dark mode トグル、スライド上限、識別子チェック、デッキテンプレートが `ExportOptions` に流れる)、**Settings**(API キーと各種設定)。Windows リリース zip は PySide6 を含む Nuitka コンパイル済みバンドルを同梱するので、別途 Python をインストールしなくても、`thesisagents.exe` を開けばコンソールウィンドウを表示せずにデスクトップアプリが起動します。同じフォルダーの `thesisagents-cli.exe` がコマンドライン版です。
 Search ページでは、上位の結果から引用をたどること (スノーボール)、結果をライブラリファイルに保存してネットワークなしでそのライブラリを検索することもでき、Deck ページでは手持ちの PowerPoint テンプレートの上にスライドを作れます。
-**UI は 14 言語すべてで提供**(English、繁體中文、简体中文、日本語、Español、Français、Deutsch、한국어、Português、Русский、Italiano、Tiếng Việt、हिन्दी、Bahasa Indonesia) — 初回起動は OS ロケールから言語を選び、その後 **Settings → Interface language** で変更できます。デッキ出力言語は別のドロップダウンなので、UI を 1 つの言語で動かしつつ別の言語でスライドを出力できます。レイアウトはウィンドウ幅に合わせて変わります。広いウィンドウでは各ページのコントロールが結果の横に列として並び、中くらいの幅では結果の上に置かれ、760 px 未満ではサイドバーがアイコンだけに折りたたまれ、フォームのラベルが入力欄の上に移ります。ウィンドウは 640×480 まで縮小でき、HiDPI スケーリングはデフォルトで有効です。**Settings → Theme** でライト、ダーク、システムに従うのいずれかを選べ、すぐに反映され、デッキ自体のダークモードとは独立しています。結果は並べ替え・絞り込み・チェックができ、チェックした論文だけを Enrich・Deck・Export に渡せます。スノーボールの上限は調整でき、実行中の検索や Enrich はキャンセルでき、フォームの内容は次回起動時にも残ります。Deck ページではエクスポート前にテンプレートを確認でき、完成したスライドもレビューできます。API キーがない場合、Enrich ページは論文を JSON ファイルとして LLM エージェントに渡し、その要約を読み込みます。Deck ページは PDF のダウンロードもでき、Settings で機関 / VPN アクセスを宣言するまで IEEE は除外します。新しい表示言語は作業内容を保ったまますぐに反映されます。同じスイッチで `ieee` は検索からも外れます。Search ページでは、CLI の `--pdf` と同じくローカルの PDF を結果として読み込むこともできます。ステータス行には Chrome 経由で取得した PDF の数が表示され、出版社の PDF で Chrome を使えなかった場合は警告が出ます。**Settings → Style** でクラシックなネイビーの外観と Material 3 を切り替えられます。`Ctrl+1` … `Ctrl+5` でページを切り替えます。
+**UI は 14 言語すべてで提供**(English、繁體中文、简体中文、日本語、Español、Français、Deutsch、한국어、Português、Русский、Italiano、Tiếng Việt、हिन्दी、Bahasa Indonesia) — 初回起動は OS ロケールから言語を選び、その後 **Settings → Interface language** で変更できます。デッキ出力言語は別のドロップダウンなので、UI を 1 つの言語で動かしつつ別の言語でスライドを出力できます。レイアウトはウィンドウ幅に合わせて変わります。広いウィンドウでは各ページのコントロールが結果の横に列として並び、中くらいの幅では結果の上に置かれ、760 px 未満ではサイドバーがアイコンだけに折りたたまれ、フォームのラベルが入力欄の上に移ります。ウィンドウは 640×480 まで縮小でき、HiDPI スケーリングはデフォルトで有効です。**Settings → Theme** でライト、ダーク、システムに従うのいずれかを選べ、すぐに反映され、デッキ自体のダークモードとは独立しています。結果は並べ替え・絞り込み・チェックができ、チェックした論文だけを Enrich・Deck・Export に渡せます。スノーボールの上限は調整でき、実行中の検索や Enrich はキャンセルでき、フォームの内容は次回起動時にも残ります。Deck ページではエクスポート前にテンプレートを確認でき、完成したスライドもレビューできます。API キーがない場合、Enrich ページは論文を JSON ファイルとして LLM エージェントに渡し、その要約を読み込みます。Deck ページは PDF のダウンロードもでき、Settings で機関 / VPN アクセスを宣言するまで IEEE は除外します。新しい表示言語は作業内容を保ったまますぐに反映されます。同じスイッチで `ieee` は検索からも外れます。Search ページでは、CLI の `--pdf` と同じくローカルの PDF を結果として読み込むこともできます。ステータス行には Chrome 経由で取得した PDF の数が表示され、出版社の PDF で Chrome を使えなかった場合は警告が出ます。**Settings → Style** でクラシックなネイビーの外観と Material 3 を切り替えられます。**Settings → Font size** でアプリ全体の文字サイズを 8〜24 pt の範囲で変えられ、すぐに反映されます。`Ctrl++`、`Ctrl+-`、`Ctrl+0`(既定に戻す)でも変更でき、レイアウトもそれに合わせて変わります。ステータスバーの **Log**(`Ctrl+L`)でアプリの動作を確認でき、不具合報告に添付できるログファイルも残ります。Chrome が確認の完了を待っているときは上部に知らせが出ます。API キーは設定ファイルではなく、システムの資格情報ストア(Windows 資格情報マネージャー、macOS キーチェーン、Secret Service)に保存されます。Windows には管理者権限の要らないインストーラーがあり、新しいバージョンが出るとアプリが知らせます(1 日 1 回、オフにできます)。**Settings → AI model** で要約を書くモデルを選べます。Anthropic、ほか 11 のサービス、または手元のコンピューターのモデル(Ollama、LM Studio、llama.cpp、vLLM)から選べ、手元のモデルなら本文を外部に送らずに済みます。Enrich と Library のページの **Edit summary** で要約を手で編集でき、論文の 7 つの節のうち内容がまだない節も分かります。**Word draft** と **LaTeX draft** は APA 形式の引用、比較表、参考文献付きの文献レビュー草稿を書き出し、大学の Word テンプレートにも書き込めます。Deck ページの **Edit slides…** で、完成したスライドの文字・順序・枚数をプレビューと取り消し付きで変更できます。**Settings → AI model** ではコマンドラインの AI プログラム(Claude Code、Gemini CLI、Codex、Ollama、任意のコマンド)も選べ、ログイン中のアカウントで要約を書くので API キーは要りません。`Ctrl+1` … `Ctrl+5` でページを切り替えます。
 
 完全な参照: [`docs/gui.md`](../docs/gui.md)。
 

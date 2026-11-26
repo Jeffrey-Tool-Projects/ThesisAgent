@@ -32,6 +32,11 @@ SUPPORTED_LANGUAGES: Final[tuple[str, ...]] = (
     "id",
 )
 
+# Display name of the Material 3 GUI style. It is a product name that stays
+# the same in every language, so the settings label for every locale reads
+# it from here instead of repeating the literal per language.
+_MATERIAL_3_STYLE_NAME: Final[str] = "Material 3"
+
 # Human-readable language name to display in the UI language dropdown.
 LANGUAGE_DISPLAY_NAMES: Final[dict[str, str]] = {
     "en": "English",
@@ -177,8 +182,8 @@ _LABELS: Final[dict[str, dict[str, str]]] = {
         "pt": "Fontes",
         "ru": "Источники",
         "it": "Fonti",
-        "vi": "Nguồn",
-        "hi": "स्रोत",
+        "vi": "Nguồn",  # NOSONAR translation, matching words in other keys are not one constant
+        "hi": "स्रोत",  # NOSONAR translation, matching words in other keys are not one constant
         "id": "Sumber",
     },
     "search.language_label": {
@@ -274,7 +279,7 @@ _LABELS: Final[dict[str, dict[str, str]]] = {
         "ru": "Искать",
         "it": "Cerca",
         "vi": "Tìm kiếm",
-        "hi": "खोजें",
+        "hi": "खोजें",  # NOSONAR translation, matching words in other keys are not one constant
         "id": "Cari",
     },
     "search.export_button": {
@@ -287,7 +292,7 @@ _LABELS: Final[dict[str, dict[str, str]]] = {
         "de": "Exportieren…",
         "ko": "내보내기…",
         "pt": "Exportar…",
-        "ru": "Экспорт…",
+        "ru": "Экспорт…",  # NOSONAR translation, matching words in other keys are not one constant
         "it": "Esporta…",
         "vi": "Xuất…",
         "hi": "निर्यात…",
@@ -555,20 +560,24 @@ _LABELS: Final[dict[str, dict[str, str]]] = {
         "id": "File pustaka (opsional), mis. thesis.db",
     },
     "search.library_browse": {
-        "en": "Browse…",
+        "en": "Browse…",  # NOSONAR translation, matching words in other keys are not one constant
         "zh-tw": "瀏覽…",
         "zh-cn": "浏览…",
         "ja": "参照…",
-        "es": "Examinar…",
-        "fr": "Parcourir…",
-        "de": "Durchsuchen…",
-        "ko": "찾아보기…",
-        "pt": "Procurar…",
-        "ru": "Обзор…",
-        "it": "Sfoglia…",
-        "vi": "Duyệt…",
+        "es": "Examinar…",  # NOSONAR translation, matching words in other keys are not one constant
+        "fr": (
+            "Parcourir…"  # NOSONAR translation, matching words in other keys are not one constant
+        ),
+        "de": (
+            "Durchsuchen…"  # NOSONAR translation, matching words in other keys are not one constant
+        ),
+        "ko": "찾아보기…",  # NOSONAR translation, matching words in other keys are not one constant
+        "pt": "Procurar…",  # NOSONAR translation, matching words in other keys are not one constant
+        "ru": "Обзор…",  # NOSONAR translation, matching words in other keys are not one constant
+        "it": "Sfoglia…",  # NOSONAR translation, matching words in other keys are not one constant
+        "vi": "Duyệt…",  # NOSONAR translation, matching words in other keys are not one constant
         "hi": "Browse…",
-        "id": "Telusuri…",
+        "id": "Telusuri…",  # NOSONAR translation, matching words in other keys are not one constant
     },
     "search.library_dialog_title": {
         "en": "Choose a library file",
@@ -671,7 +680,9 @@ _LABELS: Final[dict[str, dict[str, str]]] = {
         "zh-tw": "正在匯出…",
         "zh-cn": "正在导出…",
         "ja": "エクスポート中…",
-        "es": "Exportando…",
+        "es": (
+            "Exportando…"  # NOSONAR translation, matching words in other keys are not one constant
+        ),
         "fr": "Exportation…",
         "de": "Exportiere…",
         "ko": "내보내는 중…",
@@ -752,7 +763,7 @@ _LABELS: Final[dict[str, dict[str, str]]] = {
         "zh-tw": "標題",
         "zh-cn": "标题",
         "ja": "タイトル",
-        "es": "Título",
+        "es": "Título",  # NOSONAR translation, matching words in other keys are not one constant
         "fr": "Titre",
         "de": "Titel",
         "ko": "제목",
@@ -1127,20 +1138,20 @@ _LABELS: Final[dict[str, dict[str, str]]] = {
         "id": "Bahasa antarmuka",
     },
     "settings.api_keys_group": {
-        "en": "API keys (stored locally via QSettings)",
-        "zh-tw": "API 金鑰(透過 QSettings 儲存在本機)",
-        "zh-cn": "API 密钥(通过 QSettings 存储在本机)",
-        "ja": "API キー(QSettings でローカル保存)",
-        "es": "Claves de API (guardadas localmente vía QSettings)",
-        "fr": "Clés API (stockées localement via QSettings)",
-        "de": "API-Schlüssel (lokal via QSettings gespeichert)",
-        "ko": "API 키 (QSettings로 로컬 저장)",
-        "pt": "Chaves de API (armazenadas localmente via QSettings)",
-        "ru": "Ключи API (хранятся локально через QSettings)",
-        "it": "Chiavi API (memorizzate localmente tramite QSettings)",
-        "vi": "Khóa API (lưu cục bộ qua QSettings)",
-        "hi": "API कुंजियाँ (QSettings के माध्यम से स्थानीय रूप से संग्रहीत)",
-        "id": "Kunci API (disimpan lokal lewat QSettings)",
+        "en": "API keys",
+        "zh-tw": "API 金鑰",
+        "zh-cn": "API 密钥",
+        "ja": "API キー",
+        "es": "Claves de API",
+        "fr": "Clés API",
+        "de": "API-Schlüssel",
+        "ko": "API 키",
+        "pt": "Chaves de API",
+        "ru": "Ключи API",
+        "it": "Chiavi API",
+        "vi": "Khóa API",
+        "hi": "API कुंजियाँ",
+        "id": "Kunci API",
     },
     "settings.anthropic_key": {
         "en": "Anthropic API key",
@@ -1593,7 +1604,9 @@ _LABELS: Final[dict[str, dict[str, str]]] = {
     },
     "enrich.status_running": {
         "en": "Enriching… {done}/{total}",
-        "zh-tw": "Enrich 中… {done}/{total}",
+        "zh-tw": (
+            "Enrich 中… {done}/{total}"  # NOSONAR zh-tw zh-cn ja translations match, not a constant
+        ),
         "zh-cn": "Enrich 中… {done}/{total}",
         "ja": "Enrich 中… {done}/{total}",
         "es": "Enriqueciendo… {done}/{total}",
@@ -1640,20 +1653,20 @@ _LABELS: Final[dict[str, dict[str, str]]] = {
         "id": "Tidak ada koleksi untuk diperkaya.",
     },
     "enrich.error_no_key": {
-        "en": "ANTHROPIC_API_KEY is not set — open Settings to add it.",
-        "zh-tw": "未設 ANTHROPIC_API_KEY — 請到 Settings 分頁設定。",
-        "zh-cn": "未设 ANTHROPIC_API_KEY — 请到 Settings 分页设置。",
-        "ja": "ANTHROPIC_API_KEY 未設定 — Settings タブで追加してください。",
-        "es": "ANTHROPIC_API_KEY no está configurado: añádalo en Settings.",
-        "fr": "ANTHROPIC_API_KEY non défini — ajoutez-le dans Settings.",
-        "de": "ANTHROPIC_API_KEY ist nicht gesetzt — in Settings ergänzen.",
-        "ko": "ANTHROPIC_API_KEY 미설정 — Settings 탭에서 추가하세요.",
-        "pt": "ANTHROPIC_API_KEY não definido — adicione em Settings.",
-        "ru": "ANTHROPIC_API_KEY не задан — добавьте в Settings.",
-        "it": "ANTHROPIC_API_KEY non impostato — aggiungilo in Settings.",
-        "vi": "Chưa đặt ANTHROPIC_API_KEY — thêm vào tab Settings.",
-        "hi": "ANTHROPIC_API_KEY सेट नहीं — Settings में जोड़ें।",
-        "id": "ANTHROPIC_API_KEY belum diatur — tambah di Settings.",
+        "en": "The model is not ready: {reason}. See Settings → AI model.",
+        "zh-tw": "模型還不能用：{reason}。請到「設定 → AI 模型」。",
+        "zh-cn": "模型还不能用：{reason}。请到“设置 → AI 模型”。",
+        "ja": "モデルを使えません: {reason}。「設定 → AI モデル」を確認してください。",
+        "es": "El modelo no está listo: {reason}. Vea Ajustes → Modelo de IA.",
+        "fr": "Le modèle n'est pas prêt : {reason}. Voir Paramètres → Modèle d'IA.",
+        "de": "Das Modell ist nicht bereit: {reason}. Siehe Einstellungen → KI-Modell.",
+        "ko": "모델을 사용할 수 없습니다: {reason}. 설정 → AI 모델을 확인하세요.",
+        "pt": "O modelo não está pronto: {reason}. Veja Configurações → Modelo de IA.",
+        "ru": "Модель не готова: {reason}. См. Настройки → Модель ИИ.",
+        "it": "Il modello non è pronto: {reason}. Vedi Impostazioni → Modello IA.",
+        "vi": "Mô hình chưa sẵn sàng: {reason}. Xem Cài đặt → Mô hình AI.",
+        "hi": "मॉडल तैयार नहीं है: {reason}। सेटिंग्स → AI मॉडल देखें।",
+        "id": "Model belum siap: {reason}. Lihat Pengaturan → Model AI.",
     },
     # --- DeckPage ----------------------------------------------------
     "deck.output_group": {
@@ -2637,21 +2650,57 @@ _LABELS: Final[dict[str, dict[str, str]]] = {
         "hi": "क्लासिक (नेवी, स्लाइड जैसा)",
         "id": "Klasik (biru dongker, serasi dengan slide)",
     },
-    "settings.style_material": {
-        "en": "Material 3",
-        "zh-tw": "Material 3",
-        "zh-cn": "Material 3",
-        "ja": "Material 3",
-        "es": "Material 3",
-        "fr": "Material 3",
-        "de": "Material 3",
-        "ko": "Material 3",
-        "pt": "Material 3",
-        "ru": "Material 3",
-        "it": "Material 3",
-        "vi": "Material 3",
-        "hi": "Material 3",
-        "id": "Material 3",
+    # A style name, the same word in every language, so one constant
+    # fills every locale instead of fourteen copies of the literal.
+    "settings.style_material": dict.fromkeys(SUPPORTED_LANGUAGES, _MATERIAL_3_STYLE_NAME),
+    # Font size ---------------------------------------------------------
+    "settings.font_size_label": {
+        "en": "Font size",
+        "zh-tw": "字體大小",
+        "zh-cn": "字体大小",
+        "ja": "文字サイズ",
+        "es": "Tamaño de letra",
+        "fr": "Taille du texte",
+        "de": "Schriftgröße",
+        "ko": "글자 크기",
+        "pt": "Tamanho da fonte",
+        "ru": "Размер шрифта",
+        "it": "Dimensione del testo",
+        "vi": "Cỡ chữ",
+        "hi": "फ़ॉन्ट आकार",
+        "id": "Ukuran font",
+    },
+    "settings.font_size_reset": {
+        "en": "Reset",
+        "zh-tw": "還原預設",
+        "zh-cn": "恢复默认",
+        "ja": "既定に戻す",
+        "es": "Restablecer",
+        "fr": "Réinitialiser",
+        "de": "Zurücksetzen",
+        "ko": "기본값 복원",
+        "pt": "Redefinir",
+        "ru": "Сбросить",
+        "it": "Ripristina",
+        "vi": "Đặt lại",
+        "hi": "रीसेट करें",
+        "id": "Atur ulang",
+    },
+    "settings.font_size_hint": {
+        "en": "Applied at once. Ctrl++ larger, Ctrl+- smaller, Ctrl+0 default.",
+        "zh-tw": "立即套用。Ctrl++ 放大，Ctrl+- 縮小，Ctrl+0 還原預設。",
+        "zh-cn": "立即应用。Ctrl++ 放大，Ctrl+- 缩小，Ctrl+0 恢复默认。",
+        "ja": "すぐに反映されます。Ctrl++ で拡大、Ctrl+- で縮小、Ctrl+0 で既定に戻ります。",
+        "es": "Se aplica al instante. Ctrl++ agranda, Ctrl+- reduce, Ctrl+0 restablece.",
+        "fr": "S'applique aussitôt. Ctrl++ agrandit, Ctrl+- réduit, Ctrl+0 réinitialise.",
+        "de": "Gilt sofort. Strg++ größer, Strg+- kleiner, Strg+0 Standard.",
+        "ko": "바로 적용됩니다. Ctrl++ 크게, Ctrl+- 작게, Ctrl+0 기본값.",
+        "pt": "Aplicado na hora. Ctrl++ aumenta, Ctrl+- diminui, Ctrl+0 volta ao padrão.",
+        "ru": "Применяется сразу. Ctrl++ крупнее, Ctrl+- мельче, Ctrl+0 по умолчанию.",
+        "it": "Applicata subito. Ctrl++ ingrandisce, Ctrl+- riduce, Ctrl+0 ripristina.",
+        "vi": "Áp dụng ngay. Ctrl++ phóng to, Ctrl+- thu nhỏ, Ctrl+0 về mặc định.",
+        "hi": "तुरंत लागू होता है। Ctrl++ बड़ा, Ctrl+- छोटा, Ctrl+0 डिफ़ॉल्ट।",
+        "id": "Langsung diterapkan. Ctrl++ memperbesar, Ctrl+- memperkecil, Ctrl+0 default.",
     },
     # Stage A: cancel, snowball bounds, results filter / ticks / menu --
     "action.cancel": {
@@ -2987,54 +3036,48 @@ _LABELS: Final[dict[str, dict[str, str]]] = {
     },
     "page.library_subtitle": {
         "en": (
-            "Browse a library file: what it holds, the searches that filled it, and the citation "
-            "links between its papers. Read only."
+            "Your papers with tags, notes and screening decisions, the searches that found "
+            "them, and how they cite each other."
         ),
-        "zh-tw": "瀏覽文獻庫檔案：收錄的論文、累積它的歷次搜尋，以及論文之間的引用關係。唯讀。",
-        "zh-cn": "浏览文献库文件：收录的论文、积累它的历次搜索，以及论文之间的引用关系。只读。",
-        "ja": (
-            "ライブラリファイルを閲覧します。収録論文、それを集めた検索、"
-            "論文間の引用関係を表示します。読み取り専用です。"
-        ),
+        "zh-tw": "你的論文與標籤、筆記、篩選決定，找到它們的搜尋，以及彼此的引用關係。",
+        "zh-cn": "你的论文与标签、笔记、筛选决定，找到它们的搜索，以及彼此的引用关系。",
+        "ja": "論文とタグ、メモ、スクリーニングの判定、見つけた検索、互いの引用関係。",
         "es": (
-            "Explore un archivo de biblioteca: lo que contiene, las búsquedas que lo llenaron y "
-            "los enlaces de citas entre sus artículos. Solo lectura."
+            "Sus artículos con etiquetas, notas y decisiones de cribado, las búsquedas que los "
+            "encontraron y cómo se citan entre sí."
         ),
         "fr": (
-            "Parcourez un fichier de bibliothèque : son contenu, les recherches qui l'ont rempli "
-            "et les liens de citation entre ses articles. Lecture seule."
+            "Vos articles avec étiquettes, notes et décisions de sélection, les recherches qui "
+            "les ont trouvés et leurs citations mutuelles."
         ),
         "de": (
-            "Eine Bibliotheksdatei durchsehen: ihren Inhalt, die Suchen, die sie gefüllt haben, "
-            "und die Zitationen zwischen ihren Artikeln. Nur lesend."
+            "Ihre Artikel mit Tags, Notizen und Screening-Entscheidungen, die Suchen dahinter "
+            "und wie sie einander zitieren."
         ),
-        "ko": (
-            "라이브러리 파일을 살펴봅니다. 담긴 논문, 이를 채운 검색들, 논문 간 인용 관계를 보여 "
-            "줍니다. 읽기 전용입니다."
-        ),
+        "ko": "태그, 메모, 선별 결정이 붙은 논문과 이를 찾은 검색, 서로의 인용 관계.",
         "pt": (
-            "Explore um arquivo de biblioteca: o que ele contém, as pesquisas que o preencheram e "
-            "os vínculos de citação entre os artigos. Somente leitura."
+            "Seus artigos com etiquetas, notas e decisões de triagem, as buscas que os "
+            "encontraram e como citam uns aos outros."
         ),
         "ru": (
-            "Просмотр файла библиотеки: что в нём хранится, какие поиски его наполнили и как "
-            "статьи цитируют друг друга. Только чтение."
+            "Ваши статьи с тегами, заметками и решениями отбора, поиски, которые их нашли, и "
+            "взаимные цитирования."
         ),
         "it": (
-            "Consulta un file di biblioteca: cosa contiene, le ricerche che l'hanno riempito e i "
-            "legami di citazione tra gli articoli. Sola lettura."
+            "I tuoi articoli con etichette, note e decisioni di screening, le ricerche che li "
+            "hanno trovati e come si citano."
         ),
         "vi": (
-            "Duyệt một tệp thư viện: nội dung, các lần tìm kiếm đã bổ sung vào nó và liên kết "
-            "trích dẫn giữa các bài báo. Chỉ đọc."
+            "Các bài báo của bạn cùng thẻ, ghi chú và quyết định sàng lọc, những lần tìm kiếm "
+            "đã tìm ra chúng và cách chúng trích dẫn nhau."
         ),
         "hi": (
-            "लाइब्रेरी फ़ाइल देखें: उसमें क्या है, किन खोजों ने उसे भरा, और उसके शोध-पत्रों के बीच "
-            "उद्धरण संबंध। केवल पढ़ने के लिए।"
+            "आपके शोध-पत्र टैग, नोट और स्क्रीनिंग निर्णयों के साथ, उन्हें खोजने वाली खोजें, और वे "
+            "एक-दूसरे को कैसे उद्धृत करते हैं।"
         ),
         "id": (
-            "Jelajahi berkas pustaka: isinya, pencarian yang mengisinya, dan tautan sitasi "
-            "antarmakalah. Hanya baca."
+            "Makalah Anda dengan tag, catatan, dan keputusan penyaringan, pencarian yang "
+            "menemukannya, dan bagaimana mereka saling menyitasi."
         ),
     },
     "library.card_file": {
@@ -3090,15 +3133,15 @@ _LABELS: Final[dict[str, dict[str, str]]] = {
         "zh-tw": "論文",
         "zh-cn": "论文",
         "ja": "論文",
-        "es": "Artículos",
+        "es": "Artículos",  # NOSONAR translation, matching words in other keys are not one constant
         "fr": "Articles",
         "de": "Artikel",
         "ko": "논문",
         "pt": "Artigos",
         "ru": "Статьи",
         "it": "Articoli",
-        "vi": "Bài báo",
-        "hi": "शोध-पत्र",
+        "vi": "Bài báo",  # NOSONAR translation, matching words in other keys are not one constant
+        "hi": "शोध-पत्र",  # NOSONAR translation, matching words in other keys are not one constant
         "id": "Makalah",
     },
     "library.stat_runs": {
@@ -3924,6 +3967,2530 @@ _LABELS: Final[dict[str, dict[str, str]]] = {
         "id": "Pemeriksaan gagal: {error}",
     },
     # Stage D: PDF stage with the access switch, language switch ----------
+    # Log, notices, unexpected errors -----------------------------------
+    "log.button": {
+        "en": "Log",
+        "zh-tw": "紀錄",
+        "zh-cn": "日志",
+        "ja": "ログ",
+        "es": "Registro",
+        "fr": "Journal",
+        "de": "Protokoll",
+        "ko": "로그",
+        "pt": "Registro",
+        "ru": "Журнал",
+        "it": "Registro",
+        "vi": "Nhật ký",
+        "hi": "लॉग",
+        "id": "Log",
+    },
+    "log.title": {
+        "en": "Activity log",
+        "zh-tw": "執行紀錄",
+        "zh-cn": "运行日志",
+        "ja": "動作ログ",
+        "es": "Registro de actividad",
+        "fr": "Journal d'activité",
+        "de": "Aktivitätsprotokoll",
+        "ko": "활동 로그",
+        "pt": "Registro de atividades",
+        "ru": "Журнал работы",
+        "it": "Registro attività",
+        "vi": "Nhật ký hoạt động",
+        "hi": "गतिविधि लॉग",
+        "id": "Log aktivitas",
+    },
+    "log.open_folder": {
+        "en": "Open log folder",
+        "zh-tw": "開啟紀錄資料夾",
+        "zh-cn": "打开日志文件夹",
+        "ja": "ログのフォルダーを開く",
+        "es": "Abrir carpeta del registro",
+        "fr": "Ouvrir le dossier du journal",
+        "de": "Protokollordner öffnen",
+        "ko": "로그 폴더 열기",
+        "pt": "Abrir pasta do registro",
+        "ru": "Открыть папку журнала",
+        "it": "Apri cartella del registro",
+        "vi": "Mở thư mục nhật ký",
+        "hi": "लॉग फ़ोल्डर खोलें",
+        "id": "Buka folder log",
+    },
+    "notice.captcha_waiting": {
+        "en": (
+            "{site} asks whether you are human. Solve the check in the Chrome window, the "
+            "search waits for {time}."
+        ),
+        "zh-tw": "{site} 要求驗證你不是機器人。請到 Chrome 視窗完成驗證，搜尋會再等 {time}。",
+        "zh-cn": "{site} 要求验证你不是机器人。请到 Chrome 窗口完成验证，搜索会再等 {time}。",
+        "ja": (
+            "{site} が人間かどうかの確認を求めています。Chrome のウィンドウで確認を済ませてくだ"
+            "さい。検索はあと {time} 待ちます。"
+        ),
+        "es": (
+            "{site} pide comprobar que eres una persona. Resuelve la verificación en la "
+            "ventana de Chrome, la búsqueda espera {time}."
+        ),
+        "fr": (
+            "{site} demande si vous êtes humain. Répondez dans la fenêtre Chrome, la recherche "
+            "attend encore {time}."
+        ),
+        "de": (
+            "{site} fragt, ob Sie ein Mensch sind. Bitte im Chrome-Fenster bestätigen, die "
+            "Suche wartet noch {time}."
+        ),
+        "ko": (
+            "{site} 에서 사람인지 확인을 요청합니다. Chrome 창에서 확인을 마치세요. 검색은 "
+            "{time} 동안 기다립니다."
+        ),
+        "pt": (
+            "{site} pede a confirmação de que você é humano. Resolva a verificação na janela "
+            "do Chrome, a pesquisa espera {time}."
+        ),
+        "ru": (
+            "{site} просит подтвердить, что вы человек. Пройдите проверку в окне Chrome, поиск "
+            "подождёт ещё {time}."
+        ),
+        "it": (
+            "{site} chiede di verificare che sei una persona. Completa la verifica nella "
+            "finestra di Chrome, la ricerca attende ancora {time}."
+        ),
+        "vi": (
+            "{site} yêu cầu xác minh bạn là người. Hãy hoàn tất xác minh trong cửa sổ Chrome, "
+            "việc tìm kiếm sẽ chờ thêm {time}."
+        ),
+        "hi": (
+            "{site} पूछ रहा है कि क्या आप मनुष्य हैं। Chrome विंडो में जाँच पूरी करें, खोज {time}"
+            " तक प्रतीक्षा करेगी।"
+        ),
+        "id": (
+            "{site} meminta verifikasi bahwa Anda manusia. Selesaikan di jendela Chrome, "
+            "pencarian menunggu {time} lagi."
+        ),
+    },
+    "notice.captcha_cleared": {
+        "en": "Verified, the search goes on.",
+        "zh-tw": "驗證完成，搜尋繼續進行。",
+        "zh-cn": "验证完成，搜索继续进行。",
+        "ja": "確認できました。検索を続けます。",
+        "es": "Verificado, la búsqueda continúa.",
+        "fr": "Vérification réussie, la recherche continue.",
+        "de": "Bestätigt, die Suche läuft weiter.",
+        "ko": "확인되었습니다. 검색을 계속합니다.",
+        "pt": "Verificado, a pesquisa continua.",
+        "ru": "Проверка пройдена, поиск продолжается.",
+        "it": "Verificato, la ricerca continua.",
+        "vi": "Đã xác minh, việc tìm kiếm tiếp tục.",
+        "hi": "सत्यापित हुआ, खोज जारी है।",
+        "id": "Terverifikasi, pencarian dilanjutkan.",
+    },
+    "notice.captcha_timed_out": {
+        "en": (
+            "The check on {site} was not solved in time, so this source returned nothing. "
+            "Search again to retry."
+        ),
+        "zh-tw": "{site} 的驗證沒有在時限內完成，因此這個來源沒有結果。重新搜尋可再試一次。",
+        "zh-cn": "{site} 的验证没有在时限内完成，因此这个来源没有结果。重新搜索可再试一次。",
+        "ja": (
+            "{site} の確認が時間内に終わらなかったため、このソースの結果はありません。もう一度"
+            "検索すると再試行できます。"
+        ),
+        "es": (
+            "La verificación de {site} no se resolvió a tiempo, así que esta fuente no "
+            "devolvió nada. Busca de nuevo para reintentar."
+        ),
+        "fr": (
+            "La vérification de {site} n'a pas été faite à temps, cette source n'a donc rien "
+            "renvoyé. Relancez la recherche pour réessayer."
+        ),
+        "de": (
+            "Die Prüfung auf {site} wurde nicht rechtzeitig gelöst, diese Quelle lieferte "
+            "daher nichts. Zum Wiederholen erneut suchen."
+        ),
+        "ko": (
+            "{site} 확인이 제시간에 끝나지 않아 이 출처의 결과가 없습니다. 다시 검색하면 재시도"
+            "합니다."
+        ),
+        "pt": (
+            "A verificação em {site} não foi resolvida a tempo, então esta fonte não retornou "
+            "nada. Pesquise de novo para tentar outra vez."
+        ),
+        "ru": (
+            "Проверка на {site} не была пройдена вовремя, поэтому этот источник ничего не "
+            "вернул. Повторите поиск, чтобы попробовать снова."
+        ),
+        "it": (
+            "La verifica su {site} non è stata completata in tempo, quindi questa fonte non ha "
+            "restituito nulla. Ripeti la ricerca per riprovare."
+        ),
+        "vi": (
+            "Xác minh trên {site} không hoàn tất kịp, nên nguồn này không có kết quả. Hãy tìm "
+            "lại để thử lần nữa."
+        ),
+        "hi": (
+            "{site} की जाँच समय पर पूरी नहीं हुई, इसलिए इस स्रोत से कुछ नहीं मिला। फिर से कोशिश "
+            "करने के लिए दोबारा खोजें।"
+        ),
+        "id": (
+            "Verifikasi di {site} tidak selesai tepat waktu, jadi sumber ini tidak memberi "
+            "hasil. Cari lagi untuk mencoba ulang."
+        ),
+    },
+    "error.unexpected": {
+        "en": "An unexpected error occurred ({error}). Details are in the log.",
+        "zh-tw": "發生未預期的錯誤（{error}），詳細內容請看紀錄。",
+        "zh-cn": "发生意外错误（{error}），详细内容请看日志。",
+        "ja": "予期しないエラーが発生しました ({error})。詳細はログにあります。",
+        "es": "Se produjo un error inesperado ({error}). Los detalles están en el registro.",
+        "fr": "Une erreur inattendue s'est produite ({error}). Les détails sont dans le journal.",
+        "de": "Ein unerwarteter Fehler ist aufgetreten ({error}). Details stehen im Protokoll.",
+        "ko": "예기치 않은 오류가 발생했습니다 ({error}). 자세한 내용은 로그에 있습니다.",
+        "pt": "Ocorreu um erro inesperado ({error}). Os detalhes estão no registro.",
+        "ru": "Произошла непредвиденная ошибка ({error}). Подробности в журнале.",
+        "it": "Si è verificato un errore imprevisto ({error}). I dettagli sono nel registro.",
+        "vi": "Đã xảy ra lỗi ngoài dự kiến ({error}). Chi tiết có trong nhật ký.",
+        "hi": "एक अप्रत्याशित त्रुटि हुई ({error})। विवरण लॉग में है।",
+        "id": "Terjadi kesalahan tak terduga ({error}). Rinciannya ada di log.",
+    },
+    "error.startup": {
+        "en": "ThesisAgents could not start.\n{error}\nThe log file has the details:",
+        "zh-tw": "ThesisAgents 無法啟動。\n{error}\n詳細內容在紀錄檔：",
+        "zh-cn": "ThesisAgents 无法启动。\n{error}\n详细内容在日志文件：",
+        "ja": "ThesisAgents を起動できませんでした。\n{error}\n詳細はログファイルにあります:",
+        "es": (
+            "ThesisAgents no pudo iniciarse.\n{error}\nEl archivo de registro tiene los "
+            "detalles:"
+        ),
+        "fr": (
+            "ThesisAgents n'a pas pu démarrer.\n{error}\nLe fichier journal contient les "
+            "détails :"
+        ),
+        "de": "ThesisAgents konnte nicht starten.\n{error}\nDetails stehen in der Protokolldatei:",
+        "ko": "ThesisAgents 를 시작하지 못했습니다.\n{error}\n자세한 내용은 로그 파일에 있습니다:",
+        "pt": "O ThesisAgents não pôde iniciar.\n{error}\nO arquivo de registro tem os detalhes:",
+        "ru": "Не удалось запустить ThesisAgents.\n{error}\nПодробности в файле журнала:",
+        "it": (
+            "Impossibile avviare ThesisAgents.\n{error}\nIl file di registro contiene i "
+            "dettagli:"
+        ),
+        "vi": "ThesisAgents không khởi động được.\n{error}\nChi tiết có trong tệp nhật ký:",
+        "hi": "ThesisAgents शुरू नहीं हो सका।\n{error}\nविवरण लॉग फ़ाइल में है:",
+        "id": "ThesisAgents tidak dapat dimulai.\n{error}\nRinciannya ada di berkas log:",
+    },
+    # Where API keys are kept -------------------------------------------
+    "settings.keys_in_store": {
+        "en": "Kept in this system's credential store.",
+        "zh-tw": "存放在系統的憑證管理員。",
+        "zh-cn": "存放在系统的凭据管理器。",
+        "ja": "システムの資格情報ストアに保存されます。",
+        "es": "Se guardan en el almacén de credenciales del sistema.",
+        "fr": "Conservées dans le coffre d'identifiants du système.",
+        "de": "Werden im Anmeldeinformationsspeicher des Systems abgelegt.",
+        "ko": "시스템 자격 증명 저장소에 보관됩니다.",
+        "pt": "Guardadas no cofre de credenciais do sistema.",
+        "ru": "Хранятся в системном хранилище учётных данных.",
+        "it": "Conservate nell'archivio credenziali del sistema.",
+        "vi": "Được lưu trong kho thông tin xác thực của hệ thống.",
+        "hi": "सिस्टम के क्रेडेंशियल स्टोर में रखी जाती हैं।",
+        "id": "Disimpan di penyimpanan kredensial sistem.",
+    },
+    "settings.keys_plain": {
+        "en": (
+            "This system has no usable credential store, so keys are kept as plain text in the "
+            "app's settings."
+        ),
+        "zh-tw": "這個系統沒有可用的憑證管理員，金鑰會以純文字存放在程式設定中。",
+        "zh-cn": "这个系统没有可用的凭据管理器，密钥会以纯文本存放在程序设置中。",
+        "ja": (
+            "このシステムには使用できる資格情報ストアがないため、キーはアプリの設定に平文で保存"
+            "されます。"
+        ),
+        "es": (
+            "Este sistema no tiene un almacén de credenciales utilizable, así que las claves "
+            "se guardan como texto sin cifrar en los ajustes."
+        ),
+        "fr": (
+            "Ce système n'a pas de coffre d'identifiants utilisable, les clés sont donc "
+            "conservées en clair dans les réglages."
+        ),
+        "de": (
+            "Dieses System hat keinen nutzbaren Anmeldeinformationsspeicher, daher liegen die "
+            "Schlüssel im Klartext in den Einstellungen."
+        ),
+        "ko": (
+            "이 시스템에는 사용할 수 있는 자격 증명 저장소가 없어 키가 앱 설정에 일반 텍스트로 "
+            "저장됩니다."
+        ),
+        "pt": (
+            "Este sistema não tem um cofre de credenciais utilizável, então as chaves ficam "
+            "como texto simples nas configurações."
+        ),
+        "ru": (
+            "В этой системе нет доступного хранилища учётных данных, поэтому ключи хранятся в "
+            "настройках открытым текстом."
+        ),
+        "it": (
+            "Questo sistema non ha un archivio credenziali utilizzabile, quindi le chiavi "
+            "restano in chiaro nelle impostazioni."
+        ),
+        "vi": (
+            "Hệ thống này không có kho thông tin xác thực dùng được, nên khóa được lưu dạng "
+            "văn bản thuần trong cài đặt."
+        ),
+        "hi": (
+            "इस सिस्टम में उपयोग योग्य क्रेडेंशियल स्टोर नहीं है, इसलिए कुंजियाँ ऐप की सेटिंग में "
+            "सादे पाठ के रूप में रहती हैं।"
+        ),
+        "id": (
+            "Sistem ini tidak memiliki penyimpanan kredensial yang dapat dipakai, jadi kunci "
+            "disimpan sebagai teks biasa di pengaturan."
+        ),
+    },
+    # Updates -----------------------------------------------------------
+    "settings.check_updates": {
+        "en": "Check for a new version once a day",
+        "zh-tw": "每天檢查一次是否有新版本",
+        "zh-cn": "每天检查一次是否有新版本",
+        "ja": "新しいバージョンを 1 日 1 回確認する",
+        "es": "Buscar una versión nueva una vez al día",
+        "fr": "Rechercher une nouvelle version une fois par jour",
+        "de": "Einmal täglich nach einer neuen Version suchen",
+        "ko": "하루에 한 번 새 버전 확인",
+        "pt": "Verificar uma vez por dia se há nova versão",
+        "ru": "Проверять новую версию раз в день",
+        "it": "Cerca una nuova versione una volta al giorno",
+        "vi": "Kiểm tra phiên bản mới mỗi ngày một lần",
+        "hi": "दिन में एक बार नया संस्करण जाँचें",
+        "id": "Periksa versi baru sekali sehari",
+    },
+    "updates.available": {
+        "en": "New version {version}",
+        "zh-tw": "新版本 {version}",
+        "zh-cn": "新版本 {version}",
+        "ja": "新バージョン {version}",
+        "es": "Nueva versión {version}",
+        "fr": "Nouvelle version {version}",
+        "de": "Neue Version {version}",
+        "ko": "새 버전 {version}",
+        "pt": "Nova versão {version}",
+        "ru": "Новая версия {version}",
+        "it": "Nuova versione {version}",
+        "vi": "Phiên bản mới {version}",
+        "hi": "नया संस्करण {version}",
+        "id": "Versi baru {version}",
+    },
+    "updates.open": {
+        "en": "Open the download page",
+        "zh-tw": "開啟下載頁面",
+        "zh-cn": "打开下载页面",
+        "ja": "ダウンロードページを開く",
+        "es": "Abrir la página de descarga",
+        "fr": "Ouvrir la page de téléchargement",
+        "de": "Downloadseite öffnen",
+        "ko": "다운로드 페이지 열기",
+        "pt": "Abrir a página de download",
+        "ru": "Открыть страницу загрузки",
+        "it": "Apri la pagina di download",
+        "vi": "Mở trang tải xuống",
+        "hi": "डाउनलोड पेज खोलें",
+        "id": "Buka halaman unduhan",
+    },
+    # Library page: filter, editor, saved searches, review --------------
+    "library.card_filter": {
+        "en": "Filter",
+        "zh-tw": "篩選",
+        "zh-cn": "筛选",
+        "ja": "絞り込み",
+        "es": "Filtro",
+        "fr": "Filtre",
+        "de": "Filter",
+        "ko": "필터",
+        "pt": "Filtro",
+        "ru": "Фильтр",
+        "it": "Filtro",
+        "vi": "Bộ lọc",
+        "hi": "फ़िल्टर",
+        "id": "Filter",
+    },
+    "library.filter_tag": {
+        "en": "Tag",
+        "zh-tw": "標籤",
+        "zh-cn": "标签",
+        "ja": "タグ",
+        "es": "Etiqueta",
+        "fr": "Étiquette",
+        "de": "Tag",
+        "ko": "태그",
+        "pt": "Etiqueta",
+        "ru": "Тег",
+        "it": "Etichetta",
+        "vi": "Thẻ",
+        "hi": "टैग",
+        "id": "Tag",
+    },
+    "library.filter_status": {
+        "en": "Reading status",
+        "zh-tw": "閱讀狀態",
+        "zh-cn": "阅读状态",
+        "ja": "読書状況",
+        "es": "Estado de lectura",
+        "fr": "État de lecture",
+        "de": "Lesestatus",
+        "ko": "읽기 상태",
+        "pt": "Estado de leitura",
+        "ru": "Статус чтения",
+        "it": "Stato di lettura",
+        "vi": "Trạng thái đọc",
+        "hi": "पढ़ने की स्थिति",
+        "id": "Status baca",
+    },
+    "library.filter_decision": {
+        "en": "Screening",
+        "zh-tw": "篩選決定",
+        "zh-cn": "筛选决定",
+        "ja": "スクリーニング",
+        "es": "Cribado",
+        "fr": "Sélection",
+        "de": "Screening",
+        "ko": "선별",
+        "pt": "Triagem",
+        "ru": "Отбор",
+        "it": "Screening",
+        "vi": "Sàng lọc",
+        "hi": "स्क्रीनिंग",
+        "id": "Penyaringan",
+    },
+    "library.filter_any": {
+        "en": "Any",
+        "zh-tw": "全部",
+        "zh-cn": "全部",
+        "ja": "すべて",
+        "es": "Cualquiera",
+        "fr": "Tous",
+        "de": "Alle",
+        "ko": "전체",
+        "pt": "Qualquer",
+        "ru": "Любой",
+        "it": "Qualsiasi",
+        "vi": "Bất kỳ",
+        "hi": "कोई भी",
+        "id": "Semua",
+    },
+    "library.status_unread": {
+        "en": "Unread",
+        "zh-tw": "未讀",
+        "zh-cn": "未读",
+        "ja": "未読",
+        "es": "Sin leer",
+        "fr": "Non lu",
+        "de": "Ungelesen",
+        "ko": "읽지 않음",
+        "pt": "Não lido",
+        "ru": "Не прочитано",
+        "it": "Non letto",
+        "vi": "Chưa đọc",
+        "hi": "अपठित",
+        "id": "Belum dibaca",
+    },
+    "library.status_reading": {
+        "en": "Reading",
+        "zh-tw": "閱讀中",
+        "zh-cn": "阅读中",
+        "ja": "読書中",
+        "es": "Leyendo",
+        "fr": "En cours",
+        "de": "In Arbeit",
+        "ko": "읽는 중",
+        "pt": "Lendo",
+        "ru": "Читаю",
+        "it": "In lettura",
+        "vi": "Đang đọc",
+        "hi": "पढ़ रहे हैं",
+        "id": "Sedang dibaca",
+    },
+    "library.status_read": {
+        "en": "Read",
+        "zh-tw": "已讀",
+        "zh-cn": "已读",
+        "ja": "読了",
+        "es": "Leído",
+        "fr": "Lu",
+        "de": "Gelesen",
+        "ko": "읽음",
+        "pt": "Lido",
+        "ru": "Прочитано",
+        "it": "Letto",
+        "vi": "Đã đọc",
+        "hi": "पढ़ा हुआ",
+        "id": "Sudah dibaca",
+    },
+    "library.decision_include": {
+        "en": "Include",
+        "zh-tw": "納入",
+        "zh-cn": "纳入",
+        "ja": "採用",
+        "es": "Incluir",
+        "fr": "Inclure",
+        "de": "Einschließen",
+        "ko": "포함",
+        "pt": "Incluir",
+        "ru": "Включить",
+        "it": "Includi",
+        "vi": "Đưa vào",
+        "hi": "शामिल करें",
+        "id": "Sertakan",
+    },
+    "library.decision_maybe": {
+        "en": "Maybe",
+        "zh-tw": "待定",
+        "zh-cn": "待定",
+        "ja": "保留",
+        "es": "Quizá",
+        "fr": "Peut-être",
+        "de": "Vielleicht",
+        "ko": "보류",
+        "pt": "Talvez",
+        "ru": "Возможно",
+        "it": "Forse",
+        "vi": "Có thể",
+        "hi": "शायद",
+        "id": "Mungkin",
+    },
+    "library.decision_exclude": {
+        "en": "Exclude",
+        "zh-tw": "排除",
+        "zh-cn": "排除",
+        "ja": "除外",
+        "es": "Excluir",
+        "fr": "Exclure",
+        "de": "Ausschließen",
+        "ko": "제외",
+        "pt": "Excluir",
+        "ru": "Исключить",
+        "it": "Escludi",
+        "vi": "Loại",
+        "hi": "बाहर करें",
+        "id": "Keluarkan",
+    },
+    "library.decision_none": {
+        "en": "Undecided",
+        "zh-tw": "尚未決定",
+        "zh-cn": "尚未决定",
+        "ja": "未判定",
+        "es": "Sin decidir",
+        "fr": "Non décidé",
+        "de": "Unentschieden",
+        "ko": "미정",
+        "pt": "Sem decisão",
+        "ru": "Не решено",
+        "it": "Non deciso",
+        "vi": "Chưa quyết định",
+        "hi": "अनिर्णीत",
+        "id": "Belum diputuskan",
+    },
+    "library.stage_title_abstract": {
+        "en": "Title and abstract",
+        "zh-tw": "標題與摘要",
+        "zh-cn": "标题与摘要",
+        "ja": "題名と要旨",
+        "es": "Título y resumen",
+        "fr": "Titre et résumé",
+        "de": "Titel und Abstract",
+        "ko": "제목과 초록",
+        "pt": "Título e resumo",
+        "ru": "Название и аннотация",
+        "it": "Titolo e abstract",
+        "vi": "Tiêu đề và tóm tắt",
+        "hi": "शीर्षक और सारांश",
+        "id": "Judul dan abstrak",
+    },
+    "library.stage_full_text": {
+        "en": "Full text",
+        "zh-tw": "全文",
+        "zh-cn": "全文",
+        "ja": "本文",
+        "es": "Texto completo",
+        "fr": "Texte intégral",
+        "de": "Volltext",
+        "ko": "전문",
+        "pt": "Texto completo",
+        "ru": "Полный текст",
+        "it": "Testo completo",
+        "vi": "Toàn văn",
+        "hi": "पूर्ण पाठ",
+        "id": "Teks lengkap",
+    },
+    "library.col_tags": {
+        "en": "Tags",
+        "zh-tw": "標籤",
+        "zh-cn": "标签",
+        "ja": "タグ",
+        "es": "Etiquetas",
+        "fr": "Étiquettes",
+        "de": "Tags",
+        "ko": "태그",
+        "pt": "Etiquetas",
+        "ru": "Теги",
+        "it": "Etichette",
+        "vi": "Thẻ",
+        "hi": "टैग",
+        "id": "Tag",
+    },
+    "library.edit_tags_placeholder": {
+        "en": "Tags, separated by commas",
+        "zh-tw": "標籤，用逗號分隔",
+        "zh-cn": "标签，用逗号分隔",
+        "ja": "タグ (カンマ区切り)",
+        "es": "Etiquetas, separadas por comas",
+        "fr": "Étiquettes, séparées par des virgules",
+        "de": "Tags, durch Kommas getrennt",
+        "ko": "태그 (쉼표로 구분)",
+        "pt": "Etiquetas, separadas por vírgulas",
+        "ru": "Теги через запятую",
+        "it": "Etichette, separate da virgole",
+        "vi": "Thẻ, cách nhau bằng dấu phẩy",
+        "hi": "टैग, अल्पविराम से अलग",
+        "id": "Tag, dipisahkan koma",
+    },
+    "library.edit_note_placeholder": {
+        "en": "Note",
+        "zh-tw": "筆記",
+        "zh-cn": "笔记",
+        "ja": "メモ",
+        "es": "Nota",
+        "fr": "Note",
+        "de": "Notiz",
+        "ko": "메모",
+        "pt": "Nota",
+        "ru": "Заметка",
+        "it": "Nota",
+        "vi": "Ghi chú",
+        "hi": "नोट",
+        "id": "Catatan",
+    },
+    "library.edit_reason_placeholder": {
+        "en": "Reason for the decision",
+        "zh-tw": "決定的理由",
+        "zh-cn": "决定的理由",
+        "ja": "判定の理由",
+        "es": "Motivo de la decisión",
+        "fr": "Motif de la décision",
+        "de": "Grund der Entscheidung",
+        "ko": "결정 이유",
+        "pt": "Motivo da decisão",
+        "ru": "Причина решения",
+        "it": "Motivo della decisione",
+        "vi": "Lý do quyết định",
+        "hi": "निर्णय का कारण",
+        "id": "Alasan keputusan",
+    },
+    "library.edit_undo": {
+        "en": "Undo decision",
+        "zh-tw": "取消決定",
+        "zh-cn": "取消决定",
+        "ja": "判定を取り消す",
+        "es": "Deshacer decisión",
+        "fr": "Annuler la décision",
+        "de": "Entscheidung zurücknehmen",
+        "ko": "결정 취소",
+        "pt": "Desfazer decisão",
+        "ru": "Отменить решение",
+        "it": "Annulla decisione",
+        "vi": "Hủy quyết định",
+        "hi": "निर्णय वापस लें",
+        "id": "Batalkan keputusan",
+    },
+    "library.edit_many": {
+        "en": "{count} papers selected. Tags are added to all of them.",
+        "zh-tw": "已選取 {count} 篇論文，標籤會加到每一篇。",
+        "zh-cn": "已选取 {count} 篇论文，标签会加到每一篇。",
+        "ja": "{count} 件を選択中。タグはすべてに追加されます。",
+        "es": "{count} artículos seleccionados. Las etiquetas se añaden a todos.",
+        "fr": "{count} articles sélectionnés. Les étiquettes s'ajoutent à tous.",
+        "de": "{count} Artikel ausgewählt. Tags werden allen hinzugefügt.",
+        "ko": "{count}편 선택됨. 태그는 모두에 추가됩니다.",
+        "pt": "{count} artigos selecionados. As etiquetas são adicionadas a todos.",
+        "ru": "Выбрано статей: {count}. Теги добавляются ко всем.",
+        "it": "{count} articoli selezionati. Le etichette vengono aggiunte a tutti.",
+        "vi": "Đã chọn {count} bài báo. Thẻ được thêm vào tất cả.",
+        "hi": "{count} शोध-पत्र चुने गए। टैग सभी में जोड़े जाएँगे।",
+        "id": "{count} makalah dipilih. Tag ditambahkan ke semuanya.",
+    },
+    # Library page: below the table -------------------------------------
+    "library.tab_details": {
+        "en": "Details",
+        "zh-tw": "詳細資料",
+        "zh-cn": "详细信息",
+        "ja": "詳細",
+        "es": "Detalles",
+        "fr": "Détails",
+        "de": "Details",
+        "ko": "세부 정보",
+        "pt": "Detalhes",
+        "ru": "Подробности",
+        "it": "Dettagli",
+        "vi": "Chi tiết",
+        "hi": "विवरण",
+        "id": "Rincian",
+    },
+    "library.tab_notes": {
+        "en": "My notes",
+        "zh-tw": "我的筆記",
+        "zh-cn": "我的笔记",
+        "ja": "自分のメモ",
+        "es": "Mis notas",
+        "fr": "Mes notes",
+        "de": "Meine Notizen",
+        "ko": "내 메모",
+        "pt": "Minhas notas",
+        "ru": "Мои заметки",
+        "it": "Le mie note",
+        "vi": "Ghi chú của tôi",
+        "hi": "मेरे नोट",
+        "id": "Catatan saya",
+    },
+    "library.action_import": {
+        "en": "Import…",
+        "zh-tw": "匯入…",
+        "zh-cn": "导入…",
+        "ja": "取り込み…",
+        "es": "Importar…",
+        "fr": "Importer…",
+        "de": "Importieren…",
+        "ko": "가져오기…",
+        "pt": "Importar…",
+        "ru": "Импорт…",
+        "it": "Importa…",
+        "vi": "Nhập…",
+        "hi": "आयात…",
+        "id": "Impor…",
+    },
+    "library.action_duplicates": {
+        "en": "Find duplicates",
+        "zh-tw": "尋找重複",
+        "zh-cn": "查找重复",
+        "ja": "重複を探す",
+        "es": "Buscar duplicados",
+        "fr": "Chercher les doublons",
+        "de": "Duplikate suchen",
+        "ko": "중복 찾기",
+        "pt": "Buscar duplicados",
+        "ru": "Найти дубликаты",
+        "it": "Trova duplicati",
+        "vi": "Tìm trùng lặp",
+        "hi": "डुप्लिकेट खोजें",
+        "id": "Cari duplikat",
+    },
+    "library.action_delete": {
+        "en": "Delete",
+        "zh-tw": "刪除",
+        "zh-cn": "删除",
+        "ja": "削除",
+        "es": "Eliminar",
+        "fr": "Supprimer",
+        "de": "Löschen",
+        "ko": "삭제",
+        "pt": "Apagar",
+        "ru": "Удалить",
+        "it": "Elimina",
+        "vi": "Xóa",
+        "hi": "हटाएँ",
+        "id": "Hapus",
+    },
+    "library.action_merge": {
+        "en": "Merge",
+        "zh-tw": "合併",
+        "zh-cn": "合并",
+        "ja": "統合",
+        "es": "Fusionar",
+        "fr": "Fusionner",
+        "de": "Zusammenführen",
+        "ko": "병합",
+        "pt": "Mesclar",
+        "ru": "Объединить",
+        "it": "Unisci",
+        "vi": "Gộp",
+        "hi": "मिलाएँ",
+        "id": "Gabungkan",
+    },
+    "library.confirm_delete": {
+        "en": (
+            "Delete {count} paper(s) from the library, with their tags and notes? This cannot "
+            "be undone."
+        ),
+        "zh-tw": "要從文獻庫刪除 {count} 篇論文，連同標籤與筆記嗎？此動作無法復原。",
+        "zh-cn": "要从文献库删除 {count} 篇论文，连同标签与笔记吗？此操作无法撤销。",
+        "ja": "{count} 件の論文をタグとメモごとライブラリから削除しますか? 元に戻せません。",
+        "es": (
+            "¿Eliminar {count} artículo(s) de la biblioteca, con sus etiquetas y notas? No se "
+            "puede deshacer."
+        ),
+        "fr": (
+            "Supprimer {count} article(s) de la bibliothèque, avec étiquettes et notes ? "
+            "Action irréversible."
+        ),
+        "de": (
+            "{count} Artikel samt Tags und Notizen aus der Bibliothek löschen? Das lässt sich "
+            "nicht rückgängig machen."
+        ),
+        "ko": "논문 {count}편을 태그, 메모와 함께 라이브러리에서 삭제할까요? 되돌릴 수 없습니다.",
+        "pt": (
+            "Apagar {count} artigo(s) da biblioteca, com etiquetas e notas? Não é possível "
+            "desfazer."
+        ),
+        "ru": (
+            "Удалить из библиотеки статьи ({count}) вместе с тегами и заметками? Отменить "
+            "нельзя."
+        ),
+        "it": (
+            "Eliminare {count} articolo/i dalla biblioteca, con etichette e note? Non si può "
+            "annullare."
+        ),
+        "vi": "Xóa {count} bài báo khỏi thư viện, cùng thẻ và ghi chú? Không thể hoàn tác.",
+        "hi": "लाइब्रेरी से {count} शोध-पत्र, टैग और नोट सहित हटाएँ? इसे वापस नहीं किया जा सकता।",
+        "id": (
+            "Hapus {count} makalah dari pustaka beserta tag dan catatannya? Tidak dapat "
+            "dibatalkan."
+        ),
+    },
+    "library.confirm_merge": {
+        "en": "Merge {count} papers into “{title}”? This cannot be undone.",
+        "zh-tw": "要把 {count} 篇論文合併成「{title}」嗎？此動作無法復原。",
+        "zh-cn": "要把 {count} 篇论文合并成“{title}”吗？此操作无法撤销。",
+        "ja": "{count} 件を「{title}」に統合しますか? 元に戻せません。",
+        "es": "¿Fusionar {count} artículos en «{title}»? No se puede deshacer.",
+        "fr": "Fusionner {count} articles en « {title} » ? Action irréversible.",
+        "de": (
+            "{count} Artikel zu „{title}“ zusammenführen? Das lässt sich nicht rückgängig "
+            "machen."
+        ),
+        "ko": "논문 {count}편을 “{title}”(으)로 병합할까요? 되돌릴 수 없습니다.",
+        "pt": "Mesclar {count} artigos em “{title}”? Não é possível desfazer.",
+        "ru": "Объединить статьи ({count}) в «{title}»? Отменить нельзя.",
+        "it": "Unire {count} articoli in “{title}”? Non si può annullare.",
+        "vi": "Gộp {count} bài báo thành “{title}”? Không thể hoàn tác.",
+        "hi": "{count} शोध-पत्रों को “{title}” में मिलाएँ? इसे वापस नहीं किया जा सकता।",
+        "id": "Gabungkan {count} makalah menjadi “{title}”? Tidak dapat dibatalkan.",
+    },
+    "library.duplicates_title": {
+        "en": "Possible duplicates",
+        "zh-tw": "可能重複的論文",
+        "zh-cn": "可能重复的论文",
+        "ja": "重複の可能性がある論文",
+        "es": "Posibles duplicados",
+        "fr": "Doublons possibles",
+        "de": "Mögliche Duplikate",
+        "ko": "중복 가능 논문",
+        "pt": "Possíveis duplicados",
+        "ru": "Возможные дубликаты",
+        "it": "Possibili duplicati",
+        "vi": "Có thể trùng lặp",
+        "hi": "संभावित डुप्लिकेट",
+        "id": "Kemungkinan duplikat",
+    },
+    "library.duplicates_hint": {
+        "en": (
+            "Untick what is a different paper. The first ticked one keeps its fields and is "
+            "filled from the others. Merging cannot be undone."
+        ),
+        "zh-tw": (
+            "取消勾選其實是不同論文的項目。第一個勾選的會保留自己的欄位，並用其他的補齊。合併後"
+            "無法復原。"
+        ),
+        "zh-cn": (
+            "取消勾选其实是不同论文的项目。第一个勾选的会保留自己的字段，并用其他的补齐。合并后"
+            "无法撤销。"
+        ),
+        "ja": (
+            "重複ではない論文のチェックを外してください。最初にチェックした論文の項目が残り、足りない項"
+            "目はほかから補われます。統合は元に戻せません。"
+        ),
+        "es": (
+            "Desmarque lo que sea otro artículo. El primero marcado conserva sus campos y se "
+            "completa con los demás. No se puede deshacer."
+        ),
+        "fr": (
+            "Décochez ce qui est un autre article. Le premier coché garde ses champs et est "
+            "complété par les autres. Action irréversible."
+        ),
+        "de": (
+            "Häkchen bei Artikeln entfernen, die keine Duplikate sind. Der erste markierte "
+            "behält seine Felder und wird aus den übrigen ergänzt. Das lässt sich nicht "
+            "rückgängig machen."
+        ),
+        "ko": (
+            "중복이 아닌 논문은 선택을 해제하세요. 첫 번째로 선택한 논문의 항목이 유지되고 "
+            "나머지로 채워집니다. 병합은 되돌릴 수 없습니다."
+        ),
+        "pt": (
+            "Desmarque o que for outro artigo. O primeiro marcado mantém seus campos e é "
+            "completado pelos demais. Não é possível desfazer."
+        ),
+        "ru": (
+            "Снимите отметку со статей, которые не являются дубликатами. Первая отмеченная "
+            "сохраняет свои поля и дополняется из остальных. Отменить нельзя."
+        ),
+        "it": (
+            "Togli la spunta da ciò che è un altro articolo. Il primo spuntato mantiene i suoi "
+            "campi e viene completato dagli altri. Non si può annullare."
+        ),
+        "vi": (
+            "Bỏ chọn những bài không phải là bản trùng. Bài được chọn đầu tiên giữ các trường "
+            "của nó và được bổ sung từ các bài còn lại. Không thể hoàn tác."
+        ),
+        "hi": (
+            "जो अलग शोध-पत्र है उसका चिह्न हटाएँ। पहला चुना हुआ अपने फ़ील्ड रखता है और बाकी से भरा "
+            "जाता है। मिलाना वापस नहीं किया जा सकता।"
+        ),
+        "id": (
+            "Hapus centang pada makalah yang berbeda. Yang pertama dicentang mempertahankan "
+            "isinya dan dilengkapi dari yang lain. Tidak dapat dibatalkan."
+        ),
+    },
+    "library.duplicates_none": {
+        "en": "No duplicates found.",
+        "zh-tw": "沒有找到重複的論文。",
+        "zh-cn": "没有找到重复的论文。",
+        "ja": "重複は見つかりませんでした。",
+        "es": "No se encontraron duplicados.",
+        "fr": "Aucun doublon trouvé.",
+        "de": "Keine Duplikate gefunden.",
+        "ko": "중복을 찾지 못했습니다.",
+        "pt": "Nenhum duplicado encontrado.",
+        "ru": "Дубликаты не найдены.",
+        "it": "Nessun duplicato trovato.",
+        "vi": "Không tìm thấy bài trùng lặp.",
+        "hi": "कोई डुप्लिकेट नहीं मिला।",
+        "id": "Tidak ditemukan duplikat.",
+    },
+    "library.status_saved": {
+        "en": "Saved.",
+        "zh-tw": "已儲存。",
+        "zh-cn": "已保存。",
+        "ja": "保存しました。",
+        "es": "Guardado.",
+        "fr": "Enregistré.",
+        "de": "Gespeichert.",
+        "ko": "저장했습니다.",
+        "pt": "Salvo.",
+        "ru": "Сохранено.",
+        "it": "Salvato.",
+        "vi": "Đã lưu.",
+        "hi": "सहेजा गया।",
+        "id": "Tersimpan.",
+    },
+    "library.status_deleted": {
+        "en": "{count} paper(s) deleted.",
+        "zh-tw": "已刪除 {count} 篇論文。",
+        "zh-cn": "已删除 {count} 篇论文。",
+        "ja": "{count} 件を削除しました。",
+        "es": "{count} artículo(s) eliminado(s).",
+        "fr": "{count} article(s) supprimé(s).",
+        "de": "{count} Artikel gelöscht.",
+        "ko": "논문 {count}편을 삭제했습니다.",
+        "pt": "{count} artigo(s) apagado(s).",
+        "ru": "Удалено статей: {count}.",
+        "it": "{count} articolo/i eliminato/i.",
+        "vi": "Đã xóa {count} bài báo.",
+        "hi": "{count} शोध-पत्र हटाए गए।",
+        "id": "{count} makalah dihapus.",
+    },
+    "library.status_imported": {
+        "en": "{added} added, {merged} already there, {skipped} skipped.",
+        "zh-tw": "新增 {added} 篇，已有 {merged} 篇，略過 {skipped} 筆。",
+        "zh-cn": "新增 {added} 篇，已有 {merged} 篇，跳过 {skipped} 条。",
+        "ja": "追加 {added} 件、既存 {merged} 件、スキップ {skipped} 件。",
+        "es": "{added} añadidos, {merged} ya estaban, {skipped} omitidos.",
+        "fr": "{added} ajoutés, {merged} déjà présents, {skipped} ignorés.",
+        "de": "{added} hinzugefügt, {merged} schon vorhanden, {skipped} übersprungen.",
+        "ko": "{added}편 추가, {merged}편 이미 있음, {skipped}건 건너뜀.",
+        "pt": "{added} adicionados, {merged} já existiam, {skipped} ignorados.",
+        "ru": "Добавлено: {added}, уже было: {merged}, пропущено: {skipped}.",
+        "it": "{added} aggiunti, {merged} già presenti, {skipped} saltati.",
+        "vi": "Đã thêm {added}, đã có {merged}, bỏ qua {skipped}.",
+        "hi": "{added} जोड़े, {merged} पहले से थे, {skipped} छोड़े गए।",
+        "id": "{added} ditambahkan, {merged} sudah ada, {skipped} dilewati.",
+    },
+    "library.tab_saved": {
+        "en": "Saved searches",
+        "zh-tw": "儲存的搜尋",
+        "zh-cn": "保存的搜索",
+        "ja": "保存した検索",
+        "es": "Búsquedas guardadas",
+        "fr": "Recherches enregistrées",
+        "de": "Gespeicherte Suchen",
+        "ko": "저장된 검색",
+        "pt": "Buscas salvas",
+        "ru": "Сохранённые поиски",
+        "it": "Ricerche salvate",
+        "vi": "Tìm kiếm đã lưu",
+        "hi": "सहेजी गई खोजें",
+        "id": "Pencarian tersimpan",
+    },
+    "library.tab_graph": {
+        "en": "Citations",
+        "zh-tw": "引用關係",
+        "zh-cn": "引用关系",
+        "ja": "引用関係",
+        "es": "Citas",
+        "fr": "Citations",
+        "de": "Zitationen",
+        "ko": "인용 관계",
+        "pt": "Citações",
+        "ru": "Цитирования",
+        "it": "Citazioni",
+        "vi": "Trích dẫn",
+        "hi": "उद्धरण",
+        "id": "Sitasi",
+    },
+    "library.tab_review": {
+        "en": "Review",
+        "zh-tw": "回顧流程",
+        "zh-cn": "综述流程",
+        "ja": "レビュー",
+        "es": "Revisión",
+        "fr": "Revue",
+        "de": "Review",
+        "ko": "리뷰",
+        "pt": "Revisão",
+        "ru": "Схема PRISMA",
+        "it": "Revisione",
+        "vi": "Quy trình tổng quan",
+        "hi": "समीक्षा",
+        "id": "Tinjauan",
+    },
+    "library.col_name": {
+        "en": "Name",
+        "zh-tw": "名稱",
+        "zh-cn": "名称",
+        "ja": "名前",
+        "es": "Nombre",
+        "fr": "Nom",
+        "de": "Name",
+        "ko": "이름",
+        "pt": "Nome",
+        "ru": "Название",
+        "it": "Nome",
+        "vi": "Tên",
+        "hi": "नाम",
+        "id": "Nama",
+    },
+    "library.col_last_run": {
+        "en": "Last run",
+        "zh-tw": "上次執行",
+        "zh-cn": "上次执行",
+        "ja": "前回の実行",
+        "es": "Última ejecución",
+        "fr": "Dernière exécution",
+        "de": "Letzter Lauf",
+        "ko": "마지막 실행",
+        "pt": "Última execução",
+        "ru": "Последний запуск",
+        "it": "Ultima esecuzione",
+        "vi": "Lần chạy cuối",
+        "hi": "पिछला रन",
+        "id": "Terakhir dijalankan",
+    },
+    "library.col_new": {
+        "en": "New",
+        "zh-tw": "新增",
+        "zh-cn": "新增",
+        "ja": "新着",
+        "es": "Nuevos",
+        "fr": "Nouveaux",
+        "de": "Neu",
+        "ko": "새 논문",
+        "pt": "Novos",
+        "ru": "Новые",
+        "it": "Nuovi",
+        "vi": "Mới",
+        "hi": "नए",
+        "id": "Baru",
+    },
+    "library.saved_name_placeholder": {
+        "en": "Name for the search",
+        "zh-tw": "搜尋的名稱",
+        "zh-cn": "搜索的名称",
+        "ja": "検索の名前",
+        "es": "Nombre de la búsqueda",
+        "fr": "Nom de la recherche",
+        "de": "Name der Suche",
+        "ko": "검색 이름",
+        "pt": "Nome da busca",
+        "ru": "Название поиска",
+        "it": "Nome della ricerca",
+        "vi": "Tên của tìm kiếm",
+        "hi": "खोज का नाम",
+        "id": "Nama pencarian",
+    },
+    "library.saved_from_search": {
+        "en": "Save the current search",
+        "zh-tw": "儲存目前的搜尋",
+        "zh-cn": "保存当前的搜索",
+        "ja": "現在の検索を保存",
+        "es": "Guardar la búsqueda actual",
+        "fr": "Enregistrer la recherche actuelle",
+        "de": "Aktuelle Suche speichern",
+        "ko": "현재 검색 저장",
+        "pt": "Salvar a busca atual",
+        "ru": "Сохранить текущий поиск",
+        "it": "Salva la ricerca attuale",
+        "vi": "Lưu tìm kiếm hiện tại",
+        "hi": "वर्तमान खोज सहेजें",
+        "id": "Simpan pencarian saat ini",
+    },
+    "library.saved_run": {
+        "en": "Run",
+        "zh-tw": "執行",
+        "zh-cn": "运行",
+        "ja": "実行",
+        "es": "Ejecutar",
+        "fr": "Lancer",
+        "de": "Ausführen",
+        "ko": "실행",
+        "pt": "Executar",
+        "ru": "Запустить",
+        "it": "Esegui",
+        "vi": "Chạy",
+        "hi": "चलाएँ",
+        "id": "Jalankan",
+    },
+    "library.saved_result": {
+        "en": "{new} new of {found} found. The new ones are selected.",
+        "zh-tw": "找到 {found} 篇，其中 {new} 篇是新的，已為你選取。",
+        "zh-cn": "找到 {found} 篇，其中 {new} 篇是新的，已为你选取。",
+        "ja": "{found} 件中 {new} 件が新着です。新着を選択しました。",
+        "es": "{new} nuevos de {found} encontrados. Los nuevos están seleccionados.",
+        "fr": "{new} nouveaux sur {found} trouvés. Les nouveaux sont sélectionnés.",
+        "de": "{new} neue von {found} gefundenen. Die neuen sind ausgewählt.",
+        "ko": "{found}편 중 {new}편이 새 논문이며 선택되어 있습니다.",
+        "pt": "{new} novos de {found} encontrados. Os novos estão selecionados.",
+        "ru": "Новых: {new} из {found} найденных. Новые выделены.",
+        "it": "{new} nuovi su {found} trovati. I nuovi sono selezionati.",
+        "vi": "{new} bài mới trong {found} bài tìm thấy. Bài mới đã được chọn.",
+        "hi": "{found} में से {new} नए। नए चुने हुए हैं।",
+        "id": "{new} baru dari {found} yang ditemukan. Yang baru sudah dipilih.",
+    },
+    "library.graph_empty": {
+        "en": (
+            "No citation links between the listed papers. Follow citations in a search "
+            "(snowball) to record some."
+        ),
+        "zh-tw": "列出的論文之間沒有引用關係。搜尋時追蹤引用（滾雪球）就會記錄下來。",
+        "zh-cn": "列出的论文之间没有引用关系。搜索时追踪引用（滚雪球）就会记录下来。",
+        "ja": (
+            "表示中の論文の間に引用関係がありません。検索で引用をたどる (スノーボール) と記録さ"
+            "れます。"
+        ),
+        "es": (
+            "No hay citas entre los artículos listados. Siga las citas en una búsqueda (bola "
+            "de nieve) para registrarlas."
+        ),
+        "fr": (
+            "Aucune citation entre les articles affichés. Suivez les citations dans une "
+            "recherche (boule de neige) pour en enregistrer."
+        ),
+        "de": (
+            "Keine Zitationen zwischen den angezeigten Artikeln. Bei einer Suche Zitationen "
+            "folgen (Schneeball), um welche zu erfassen."
+        ),
+        "ko": (
+            "표시된 논문 사이에 인용 관계가 없습니다. 검색에서 인용을 따라가면(스노볼) 기록됩니"
+            "다."
+        ),
+        "pt": (
+            "Não há citações entre os artigos listados. Siga as citações em uma busca (bola de "
+            "neve) para registrá-las."
+        ),
+        "ru": (
+            "Между показанными статьями нет цитирований. Следуйте по цитированиям при поиске "
+            "(«снежный ком»), чтобы они появились."
+        ),
+        "it": (
+            "Nessuna citazione tra gli articoli elencati. Segui le citazioni in una ricerca "
+            "(palla di neve) per registrarle."
+        ),
+        "vi": (
+            "Không có trích dẫn giữa các bài báo đang hiện. Hãy lần theo trích dẫn khi tìm "
+            "kiếm (lăn cầu tuyết) để ghi lại."
+        ),
+        "hi": (
+            "सूचीबद्ध शोध-पत्रों के बीच कोई उद्धरण संबंध नहीं है। खोज में उद्धरणों का अनुसरण करें "
+            "(snowball) ताकि वे दर्ज हों।"
+        ),
+        "id": (
+            "Tidak ada sitasi di antara makalah yang ditampilkan. Ikuti sitasi dalam pencarian "
+            "(bola salju) untuk mencatatnya."
+        ),
+    },
+    "library.review_save": {
+        "en": "Save diagram…",
+        "zh-tw": "儲存流程圖…",
+        "zh-cn": "保存流程图…",
+        "ja": "図を保存…",
+        "es": "Guardar diagrama…",
+        "fr": "Enregistrer le diagramme…",
+        "de": "Diagramm speichern…",
+        "ko": "다이어그램 저장…",
+        "pt": "Salvar diagrama…",
+        "ru": "Сохранить схему…",
+        "it": "Salva diagramma…",
+        "vi": "Lưu sơ đồ…",
+        "hi": "आरेख सहेजें…",
+        "id": "Simpan diagram…",
+    },
+    "prisma.identified": {
+        "en": "Records identified",
+        "zh-tw": "辨識到的紀錄",
+        "zh-cn": "识别到的记录",
+        "ja": "特定された文献",
+        "es": "Registros identificados",
+        "fr": "Références identifiées",
+        "de": "Identifizierte Treffer",
+        "ko": "식별된 문헌",
+        "pt": "Registros identificados",
+        "ru": "Найденные записи",
+        "it": "Record identificati",
+        "vi": "Bản ghi được xác định",
+        "hi": "पहचाने गए रिकॉर्ड",
+        "id": "Rekaman teridentifikasi",
+    },
+    "prisma.duplicates": {
+        "en": "Duplicate records removed",
+        "zh-tw": "移除的重複紀錄",
+        "zh-cn": "移除的重复记录",
+        "ja": "除外された重複文献",
+        "es": "Registros duplicados eliminados",
+        "fr": "Doublons supprimés",
+        "de": "Entfernte Duplikate",
+        "ko": "제거된 중복 문헌",
+        "pt": "Registros duplicados removidos",
+        "ru": "Удалённые дубликаты",
+        "it": "Record duplicati rimossi",
+        "vi": "Bản ghi trùng đã loại bỏ",
+        "hi": "हटाए गए डुप्लिकेट रिकॉर्ड",
+        "id": "Rekaman duplikat dihapus",
+    },
+    "prisma.removed_other": {
+        "en": "Records removed for other reasons",
+        "zh-tw": "因其他原因移除的紀錄",
+        "zh-cn": "因其他原因移除的记录",
+        "ja": "その他の理由で除外された文献",
+        "es": "Registros eliminados por otros motivos",
+        "fr": "Références retirées pour d'autres raisons",
+        "de": "Aus anderen Gründen entfernte Treffer",
+        "ko": "기타 사유로 제거된 문헌",
+        "pt": "Registros removidos por outros motivos",
+        "ru": "Записи, удалённые по другим причинам",
+        "it": "Record rimossi per altri motivi",
+        "vi": "Bản ghi bị loại bỏ vì lý do khác",
+        "hi": "अन्य कारणों से हटाए गए रिकॉर्ड",
+        "id": "Rekaman dihapus karena alasan lain",
+    },
+    "prisma.screened": {
+        "en": "Records screened",
+        "zh-tw": "進入篩選的紀錄",
+        "zh-cn": "进入筛选的记录",
+        "ja": "スクリーニングされた文献",
+        "es": "Registros cribados",
+        "fr": "Références examinées",
+        "de": "Gesichtete Treffer",
+        "ko": "선별 대상 문헌",
+        "pt": "Registros triados",
+        "ru": "Просмотренные записи",
+        "it": "Record sottoposti a screening",
+        "vi": "Bản ghi được sàng lọc",
+        "hi": "जाँचे गए रिकॉर्ड",
+        "id": "Rekaman disaring",
+    },
+    "prisma.awaiting": {
+        "en": "Awaiting screening",
+        "zh-tw": "等待篩選",
+        "zh-cn": "等待筛选",
+        "ja": "スクリーニング待ち",
+        "es": "Pendientes de cribado",
+        "fr": "En attente d'examen",
+        "de": "Noch zu sichten",
+        "ko": "선별 대기",
+        "pt": "Aguardando triagem",
+        "ru": "Ожидают отбора",
+        "it": "In attesa di screening",
+        "vi": "Chờ sàng lọc",
+        "hi": "स्क्रीनिंग शेष",
+        "id": "Menunggu penyaringan",
+    },
+    "prisma.excluded": {
+        "en": "Records excluded",
+        "zh-tw": "排除的紀錄",
+        "zh-cn": "排除的记录",
+        "ja": "除外された文献",
+        "es": "Registros excluidos",
+        "fr": "Références exclues",
+        "de": "Ausgeschlossene Treffer",
+        "ko": "제외된 문헌",
+        "pt": "Registros excluídos",
+        "ru": "Исключённые записи",
+        "it": "Record esclusi",
+        "vi": "Bản ghi bị loại",
+        "hi": "बाहर किए गए रिकॉर्ड",
+        "id": "Rekaman dikeluarkan",
+    },
+    "prisma.full_text": {
+        "en": "Reports assessed for eligibility",
+        "zh-tw": "評估資格的全文",
+        "zh-cn": "评估资格的全文",
+        "ja": "適格性を評価した論文",
+        "es": "Publicaciones evaluadas",
+        "fr": "Textes évalués",
+        "de": "Auf Eignung geprüfte Volltexte",
+        "ko": "적격성 평가 대상 논문",
+        "pt": "Publicações avaliadas",
+        "ru": "Оценённые полные тексты",
+        "it": "Testi valutati per l'idoneità",
+        "vi": "Toàn văn được đánh giá",
+        "hi": "पात्रता हेतु आँके गए लेख",
+        "id": "Artikel dinilai kelayakannya",
+    },
+    "prisma.full_text_awaiting": {
+        "en": "Awaiting assessment",
+        "zh-tw": "等待評估",
+        "zh-cn": "等待评估",
+        "ja": "評価待ち",
+        "es": "Pendientes de evaluación",
+        "fr": "En attente d'évaluation",
+        "de": "Noch zu prüfen",
+        "ko": "평가 대기",
+        "pt": "Aguardando avaliação",
+        "ru": "Ожидают оценки",
+        "it": "In attesa di valutazione",
+        "vi": "Chờ đánh giá",
+        "hi": "मूल्यांकन शेष",
+        "id": "Menunggu penilaian",
+    },
+    "prisma.excluded_full_text": {
+        "en": "Reports excluded",
+        "zh-tw": "排除的全文",
+        "zh-cn": "排除的全文",
+        "ja": "除外された論文",
+        "es": "Publicaciones excluidas",
+        "fr": "Textes exclus",
+        "de": "Ausgeschlossene Volltexte",
+        "ko": "제외된 논문",
+        "pt": "Publicações excluídas",
+        "ru": "Исключённые полные тексты",
+        "it": "Testi esclusi",
+        "vi": "Toàn văn bị loại",
+        "hi": "बाहर किए गए लेख",
+        "id": "Artikel dikeluarkan",
+    },
+    "prisma.included": {
+        "en": "Studies included in review",
+        "zh-tw": "納入回顧的研究",
+        "zh-cn": "纳入综述的研究",
+        "ja": "レビューに採用された研究",
+        "es": "Estudios incluidos",
+        "fr": "Études incluses",
+        "de": "Eingeschlossene Studien",
+        "ko": "리뷰에 포함된 연구",
+        "pt": "Estudos incluídos",
+        "ru": "Включённые исследования",
+        "it": "Studi inclusi",
+        "vi": "Nghiên cứu được đưa vào",
+        "hi": "समीक्षा में शामिल अध्ययन",
+        "id": "Studi yang disertakan",
+    },
+    "prisma.no_reason": {
+        "en": "no reason given",
+        "zh-tw": "未填理由",
+        "zh-cn": "未填理由",
+        "ja": "理由なし",
+        "es": "sin motivo",
+        "fr": "sans motif",
+        "de": "ohne Angabe",
+        "ko": "이유 없음",
+        "pt": "sem motivo",
+        "ru": "без причины",
+        "it": "nessun motivo",
+        "vi": "không nêu lý do",
+        "hi": "कारण नहीं दिया",
+        "id": "tanpa alasan",
+    },
+    # AI model card -----------------------------------------------------
+    "model.card": {
+        "en": "AI model",
+        "zh-tw": "AI 模型",
+        "zh-cn": "AI 模型",
+        "ja": "AI モデル",
+        "es": "Modelo de IA",
+        "fr": "Modèle d'IA",
+        "de": "KI-Modell",
+        "ko": "AI 모델",
+        "pt": "Modelo de IA",
+        "ru": "Модель ИИ",
+        "it": "Modello IA",
+        "vi": "Mô hình AI",
+        "hi": "AI मॉडल",
+        "id": "Model AI",
+    },
+    "model.provider": {
+        "en": "Provider",
+        "zh-tw": "供應商",
+        "zh-cn": "提供商",
+        "ja": "提供元",
+        "es": "Proveedor",
+        "fr": "Fournisseur",
+        "de": "Anbieter",
+        "ko": "제공자",
+        "pt": "Provedor",
+        "ru": "Провайдер",
+        "it": "Fornitore",
+        "vi": "Nhà cung cấp",
+        "hi": "प्रदाता",
+        "id": "Penyedia",
+    },
+    "model.local": {
+        "en": "{name} (this computer)",
+        "zh-tw": "{name}（這台電腦）",
+        "zh-cn": "{name}（这台电脑）",
+        "ja": "{name} (このコンピューター)",
+        "es": "{name} (este equipo)",
+        "fr": "{name} (cet ordinateur)",
+        "de": "{name} (dieser Computer)",
+        "ko": "{name} (이 컴퓨터)",
+        "pt": "{name} (este computador)",
+        "ru": "{name} (этот компьютер)",
+        "it": "{name} (questo computer)",
+        "vi": "{name} (máy này)",
+        "hi": "{name} (यह कंप्यूटर)",
+        "id": "{name} (komputer ini)",
+    },
+    "model.custom": {
+        "en": "Another server (OpenAI-compatible)",
+        "zh-tw": "其他伺服器（OpenAI 相容）",
+        "zh-cn": "其他服务器（OpenAI 兼容）",
+        "ja": "その他のサーバー (OpenAI 互換)",
+        "es": "Otro servidor (compatible con OpenAI)",
+        "fr": "Autre serveur (compatible OpenAI)",
+        "de": "Anderer Server (OpenAI-kompatibel)",
+        "ko": "다른 서버 (OpenAI 호환)",
+        "pt": "Outro servidor (compatível com OpenAI)",
+        "ru": "Другой сервер (совместимый с OpenAI)",
+        "it": "Altro server (compatibile OpenAI)",
+        "vi": "Máy chủ khác (tương thích OpenAI)",
+        "hi": "अन्य सर्वर (OpenAI-संगत)",
+        "id": "Server lain (kompatibel OpenAI)",
+    },
+    "model.base_url": {
+        "en": "Server address",
+        "zh-tw": "伺服器位址",
+        "zh-cn": "服务器地址",
+        "ja": "サーバーのアドレス",
+        "es": "Dirección del servidor",
+        "fr": "Adresse du serveur",
+        "de": "Serveradresse",
+        "ko": "서버 주소",
+        "pt": "Endereço do servidor",
+        "ru": "Адрес сервера",
+        "it": "Indirizzo del server",
+        "vi": "Địa chỉ máy chủ",
+        "hi": "सर्वर पता",
+        "id": "Alamat server",
+    },
+    "model.key": {
+        "en": "API key",
+        "zh-tw": "API 金鑰",
+        "zh-cn": "API 密钥",
+        "ja": "API キー",
+        "es": "Clave de API",
+        "fr": "Clé API",
+        "de": "API-Schlüssel",
+        "ko": "API 키",
+        "pt": "Chave de API",
+        "ru": "Ключ API",
+        "it": "Chiave API",
+        "vi": "Khóa API",
+        "hi": "API कुंजी",
+        "id": "Kunci API",
+    },
+    "model.list": {
+        "en": "List models",
+        "zh-tw": "列出模型",
+        "zh-cn": "列出模型",
+        "ja": "モデル一覧",
+        "es": "Listar modelos",
+        "fr": "Lister les modèles",
+        "de": "Modelle anzeigen",
+        "ko": "모델 목록",
+        "pt": "Listar modelos",
+        "ru": "Список моделей",
+        "it": "Elenca modelli",
+        "vi": "Liệt kê mô hình",
+        "hi": "मॉडल सूची",
+        "id": "Daftar model",
+    },
+    "model.listed": {
+        "en": "{count} models available.",
+        "zh-tw": "有 {count} 個模型可用。",
+        "zh-cn": "有 {count} 个模型可用。",
+        "ja": "{count} 個のモデルが使えます。",
+        "es": "{count} modelos disponibles.",
+        "fr": "{count} modèles disponibles.",
+        "de": "{count} Modelle verfügbar.",
+        "ko": "모델 {count}개를 사용할 수 있습니다.",
+        "pt": "{count} modelos disponíveis.",
+        "ru": "Доступно моделей: {count}.",
+        "it": "{count} modelli disponibili.",
+        "vi": "Có {count} mô hình.",
+        "hi": "{count} मॉडल उपलब्ध हैं।",
+        "id": "{count} model tersedia.",
+    },
+    "model.list_failed": {
+        "en": "Could not list the models: {error}",
+        "zh-tw": "無法列出模型：{error}",
+        "zh-cn": "无法列出模型：{error}",
+        "ja": "モデルを一覧できません: {error}",
+        "es": "No se pudieron listar los modelos: {error}",
+        "fr": "Impossible de lister les modèles : {error}",
+        "de": "Modelle konnten nicht angezeigt werden: {error}",
+        "ko": "모델 목록을 가져오지 못했습니다: {error}",
+        "pt": "Não foi possível listar os modelos: {error}",
+        "ru": "Не удалось получить список моделей: {error}",
+        "it": "Impossibile elencare i modelli: {error}",
+        "vi": "Không liệt kê được mô hình: {error}",
+        "hi": "मॉडल सूचीबद्ध नहीं हो सके: {error}",
+        "id": "Tidak dapat menampilkan model: {error}",
+    },
+    "model.note_local": {
+        "en": "Papers are summarised on this computer, no text leaves it. Start the program first.",
+        "zh-tw": "論文在這台電腦上摘要，內容不會外傳。請先啟動該程式。",
+        "zh-cn": "论文在这台电脑上摘要，内容不会外传。请先启动该程序。",
+        "ja": (
+            "論文はこのコンピューターで要約され、本文は外部に送られません。先にプログラムを起動"
+            "してください。"
+        ),
+        "es": (
+            "Los artículos se resumen en este equipo, ningún texto sale de él. Inicie antes el "
+            "programa."
+        ),
+        "fr": (
+            "Les articles sont résumés sur cet ordinateur, aucun texte n'en sort. Lancez "
+            "d'abord le programme."
+        ),
+        "de": (
+            "Artikel werden auf diesem Computer zusammengefasst, kein Text verlässt ihn. "
+            "Zuerst das Programm starten."
+        ),
+        "ko": (
+            "논문은 이 컴퓨터에서 요약되며 본문은 밖으로 나가지 않습니다. 먼저 프로그램을 실행"
+            "하세요."
+        ),
+        "pt": (
+            "Os artigos são resumidos neste computador, nenhum texto sai dele. Inicie o "
+            "programa antes."
+        ),
+        "ru": (
+            "Резюме статей составляются на этом компьютере, текст его не покидает. Сначала "
+            "запустите программу."
+        ),
+        "it": (
+            "Gli articoli vengono riassunti su questo computer, nessun testo ne esce. Avvia "
+            "prima il programma."
+        ),
+        "vi": (
+            "Bài báo được tóm tắt trên máy này, không văn bản nào rời khỏi máy. Hãy khởi động "
+            "chương trình trước."
+        ),
+        "hi": (
+            "शोध-पत्रों का सारांश इसी कंप्यूटर पर बनता है, कोई पाठ बाहर नहीं जाता। पहले प्रोग्राम "
+            "चालू करें।"
+        ),
+        "id": (
+            "Makalah diringkas di komputer ini, tidak ada teks yang keluar. Jalankan "
+            "programnya dahulu."
+        ),
+    },
+    "model.note_hosted": {
+        "en": "The text of each paper is sent to this service.",
+        "zh-tw": "每篇論文的內容會傳送到這個服務。",
+        "zh-cn": "每篇论文的内容会发送到这个服务。",
+        "ja": "各論文の本文がこのサービスに送信されます。",
+        "es": "El texto de cada artículo se envía a este servicio.",
+        "fr": "Le texte de chaque article est envoyé à ce service.",
+        "de": "Der Text jedes Artikels wird an diesen Dienst gesendet.",
+        "ko": "각 논문의 본문이 이 서비스로 전송됩니다.",
+        "pt": "O texto de cada artigo é enviado a este serviço.",
+        "ru": "Текст каждой статьи отправляется в этот сервис.",
+        "it": "Il testo di ogni articolo viene inviato a questo servizio.",
+        "vi": "Nội dung mỗi bài báo được gửi đến dịch vụ này.",
+        "hi": "हर शोध-पत्र का पाठ इस सेवा को भेजा जाता है।",
+        "id": "Teks setiap makalah dikirim ke layanan ini.",
+    },
+    "model.note_anthropic": {
+        "en": "The text of each paper is sent to this service. Its key is under API keys.",
+        "zh-tw": "每篇論文的內容會傳送到這個服務。金鑰在「API 金鑰」區設定。",
+        "zh-cn": "每篇论文的内容会发送到这个服务。密钥在“API 密钥”区设置。",
+        "ja": "各論文の本文がこのサービスに送信されます。キーは「API キー」にあります。",
+        "es": "El texto de cada artículo se envía a este servicio. Su clave está en Claves de API.",
+        "fr": "Le texte de chaque article est envoyé à ce service. Sa clé est sous Clés API.",
+        "de": (
+            "Der Text jedes Artikels wird an diesen Dienst gesendet. Der Schlüssel steht unter "
+            "API-Schlüssel."
+        ),
+        "ko": "각 논문의 본문이 이 서비스로 전송됩니다. 키는 API 키에 있습니다.",
+        "pt": "O texto de cada artigo é enviado a este serviço. A chave fica em Chaves de API.",
+        "ru": (
+            "Текст каждой статьи отправляется в этот сервис. Его ключ находится в разделе "
+            "ключей API."
+        ),
+        "it": (
+            "Il testo di ogni articolo viene inviato a questo servizio. La chiave è in Chiavi "
+            "API."
+        ),
+        "vi": "Nội dung mỗi bài báo được gửi đến dịch vụ này. Khóa nằm ở phần Khóa API.",
+        "hi": "हर शोध-पत्र का पाठ इस सेवा को भेजा जाता है। इसकी कुंजी API कुंजियाँ में है।",
+        "id": "Teks setiap makalah dikirim ke layanan ini. Kuncinya ada di Kunci API.",
+    },
+    # Summary editor and drafts -----------------------------------------
+    "summary.field_motivation": {
+        "en": "Motivation",
+        "zh-tw": "研究動機",
+        "zh-cn": "研究动机",
+        "ja": "研究の動機",
+        "es": "Motivación",
+        "fr": "Motivation",
+        "de": "Motivation",
+        "ko": "연구 동기",
+        "pt": "Motivação",
+        "ru": "Мотивация",
+        "it": "Motivazione",
+        "vi": "Động cơ nghiên cứu",
+        "hi": "प्रेरणा",
+        "id": "Motivasi",
+    },
+    "summary.field_pain_points": {
+        "en": "Pain points",
+        "zh-tw": "痛點",
+        "zh-cn": "痛点",
+        "ja": "課題",
+        "es": "Puntos problemáticos",
+        "fr": "Points de friction",
+        "de": "Problempunkte",
+        "ko": "문제점",
+        "pt": "Pontos problemáticos",
+        "ru": "Проблемы",
+        "it": "Punti critici",
+        "vi": "Vấn đề tồn tại",
+        "hi": "समस्याएँ",
+        "id": "Titik masalah",
+    },
+    "summary.field_research_question": {
+        "en": "Main research question",
+        "zh-tw": "主要研究問題",
+        "zh-cn": "主要研究问题",
+        "ja": "主な研究課題",
+        "es": "Pregunta principal",
+        "fr": "Question principale",
+        "de": "Zentrale Forschungsfrage",
+        "ko": "핵심 연구 질문",
+        "pt": "Pergunta principal",
+        "ru": "Основной вопрос",
+        "it": "Domanda principale",
+        "vi": "Câu hỏi chính",
+        "hi": "मुख्य शोध प्रश्न",
+        "id": "Pertanyaan utama",
+    },
+    "summary.field_research_questions": {
+        "en": "Research questions (id | question)",
+        "zh-tw": "研究問題（編號 | 問題）",
+        "zh-cn": "研究问题（编号 | 问题）",
+        "ja": "研究課題 (番号 | 課題)",
+        "es": "Preguntas (id | pregunta)",
+        "fr": "Questions (id | question)",
+        "de": "Forschungsfragen (Nr. | Frage)",
+        "ko": "연구 질문 (번호 | 질문)",
+        "pt": "Perguntas (id | pergunta)",
+        "ru": "Вопросы (номер | вопрос)",
+        "it": "Domande (id | domanda)",
+        "vi": "Câu hỏi (mã | câu hỏi)",
+        "hi": "शोध प्रश्न (क्रम | प्रश्न)",
+        "id": "Pertanyaan (id | pertanyaan)",
+    },
+    "summary.field_contributions": {
+        "en": "Contributions",
+        "zh-tw": "貢獻",
+        "zh-cn": "贡献",
+        "ja": "貢献",
+        "es": "Contribuciones",
+        "fr": "Contributions",
+        "de": "Beiträge",
+        "ko": "기여",
+        "pt": "Contribuições",
+        "ru": "Вклад",
+        "it": "Contributi",
+        "vi": "Đóng góp",
+        "hi": "योगदान",
+        "id": "Kontribusi",
+    },
+    "summary.field_contributions_detailed": {
+        "en": "Contributions in detail (heading | text)",
+        "zh-tw": "貢獻細項（標題 | 說明）",
+        "zh-cn": "贡献细项（标题 | 说明）",
+        "ja": "貢献の詳細 (見出し | 説明)",
+        "es": "Contribuciones en detalle (título | texto)",
+        "fr": "Contributions détaillées (titre | texte)",
+        "de": "Beiträge im Detail (Titel | Text)",
+        "ko": "기여 상세 (제목 | 설명)",
+        "pt": "Contribuições em detalhe (título | texto)",
+        "ru": "Вклад подробно (заголовок | текст)",
+        "it": "Contributi in dettaglio (titolo | testo)",
+        "vi": "Đóng góp chi tiết (tiêu đề | nội dung)",
+        "hi": "योगदान विवरण (शीर्षक | पाठ)",
+        "id": "Kontribusi rinci (judul | teks)",
+    },
+    "summary.field_technique_table": {
+        "en": "Techniques (name | role)",
+        "zh-tw": "技術（名稱 | 角色）",
+        "zh-cn": "技术（名称 | 作用）",
+        "ja": "技術 (名称 | 役割)",
+        "es": "Técnicas (nombre | papel)",
+        "fr": "Techniques (nom | rôle)",
+        "de": "Techniken (Name | Rolle)",
+        "ko": "기술 (이름 | 역할)",
+        "pt": "Técnicas (nome | papel)",
+        "ru": "Технологии (название | роль)",
+        "it": "Tecniche (nome | ruolo)",
+        "vi": "Kỹ thuật (tên | vai trò)",
+        "hi": "तकनीकें (नाम | भूमिका)",
+        "id": "Teknik (nama | peran)",
+    },
+    "summary.field_literature_table": {
+        "en": "Literature table (first line is the header)",
+        "zh-tw": "文獻表（第一行是表頭）",
+        "zh-cn": "文献表（第一行是表头）",
+        "ja": "文献表 (1 行目は見出し)",
+        "es": "Tabla de literatura (la primera línea es el encabezado)",
+        "fr": "Tableau de littérature (1re ligne : en-tête)",
+        "de": "Literaturtabelle (erste Zeile ist die Kopfzeile)",
+        "ko": "문헌 표 (첫 줄은 머리글)",
+        "pt": "Tabela de literatura (a primeira linha é o cabeçalho)",
+        "ru": "Таблица литературы (первая строка: заголовок)",
+        "it": "Tabella della letteratura (la prima riga è l'intestazione)",
+        "vi": "Bảng tài liệu (dòng đầu là tiêu đề)",
+        "hi": "साहित्य तालिका (पहली पंक्ति शीर्षक)",
+        "id": "Tabel pustaka (baris pertama judul kolom)",
+    },
+    "summary.field_method": {
+        "en": "Method",
+        "zh-tw": "方法",
+        "zh-cn": "方法",
+        "ja": "手法",
+        "es": "Método",
+        "fr": "Méthode",
+        "de": "Methode",
+        "ko": "방법",
+        "pt": "Método",
+        "ru": "Метод",
+        "it": "Metodo",
+        "vi": "Phương pháp",
+        "hi": "विधि",
+        "id": "Metode",
+    },
+    "summary.field_method_sections": {
+        "en": "Method in sections",
+        "zh-tw": "方法分節",
+        "zh-cn": "方法分节",
+        "ja": "手法 (節ごと)",
+        "es": "Método por secciones",
+        "fr": "Méthode par sections",
+        "de": "Methode nach Abschnitten",
+        "ko": "절별 방법",
+        "pt": "Método por seções",
+        "ru": "Метод по разделам",
+        "it": "Metodo per sezioni",
+        "vi": "Phương pháp theo mục",
+        "hi": "खंडवार विधि",
+        "id": "Metode per bagian",
+    },
+    "summary.field_system_flow": {
+        "en": "System flow (one step per line)",
+        "zh-tw": "系統流程（一行一步）",
+        "zh-cn": "系统流程（一行一步）",
+        "ja": "処理の流れ (1 行 1 ステップ)",
+        "es": "Flujo del sistema (un paso por línea)",
+        "fr": "Flux du système (une étape par ligne)",
+        "de": "Systemablauf (ein Schritt pro Zeile)",
+        "ko": "시스템 흐름 (한 줄에 한 단계)",
+        "pt": "Fluxo do sistema (um passo por linha)",
+        "ru": "Ход работы системы (шаг на строку)",
+        "it": "Flusso del sistema (un passo per riga)",
+        "vi": "Luồng hệ thống (mỗi dòng một bước)",
+        "hi": "सिस्टम प्रवाह (प्रति पंक्ति एक चरण)",
+        "id": "Alur sistem (satu langkah per baris)",
+    },
+    "summary.field_evaluation_sections": {
+        "en": "Evaluation in sections",
+        "zh-tw": "評估分節",
+        "zh-cn": "评估分节",
+        "ja": "評価 (節ごと)",
+        "es": "Evaluación por secciones",
+        "fr": "Évaluation par sections",
+        "de": "Evaluation nach Abschnitten",
+        "ko": "절별 평가",
+        "pt": "Avaliação por seções",
+        "ru": "Оценка по разделам",
+        "it": "Valutazione per sezioni",
+        "vi": "Đánh giá theo mục",
+        "hi": "खंडवार मूल्यांकन",
+        "id": "Evaluasi per bagian",
+    },
+    "summary.field_results": {
+        "en": "Results",
+        "zh-tw": "結果",
+        "zh-cn": "结果",
+        "ja": "結果",
+        "es": "Resultados",
+        "fr": "Résultats",
+        "de": "Ergebnisse",
+        "ko": "결과",
+        "pt": "Resultados",
+        "ru": "Результаты",
+        "it": "Risultati",
+        "vi": "Kết quả",
+        "hi": "परिणाम",
+        "id": "Hasil",
+    },
+    "summary.field_headline_metrics": {
+        "en": "Key numbers (label | value | baseline)",
+        "zh-tw": "關鍵數字（項目 | 數值 | 比較基準）",
+        "zh-cn": "关键数字（项目 | 数值 | 比较基准）",
+        "ja": "主要な数値 (項目 | 値 | 基準)",
+        "es": "Cifras clave (etiqueta | valor | referencia)",
+        "fr": "Chiffres clés (libellé | valeur | référence)",
+        "de": "Kennzahlen (Name | Wert | Vergleich)",
+        "ko": "핵심 수치 (항목 | 값 | 기준)",
+        "pt": "Números-chave (rótulo | valor | referência)",
+        "ru": "Ключевые числа (название | значение | базовый уровень)",
+        "it": "Numeri chiave (etichetta | valore | riferimento)",
+        "vi": "Số liệu chính (nhãn | giá trị | mốc so sánh)",
+        "hi": "मुख्य संख्याएँ (नाम | मान | आधार)",
+        "id": "Angka kunci (label | nilai | pembanding)",
+    },
+    "summary.field_core_observation": {
+        "en": "Core observation",
+        "zh-tw": "核心觀察",
+        "zh-cn": "核心观察",
+        "ja": "核心観察",
+        "es": "Observación central",
+        "fr": "Observation centrale",
+        "de": "Kernbeobachtung",
+        "ko": "핵심 관찰",
+        "pt": "Observação central",
+        "ru": "Главное наблюдение",
+        "it": "Osservazione centrale",
+        "vi": "Nhận định cốt lõi",
+        "hi": "मुख्य अवलोकन",
+        "id": "Pengamatan inti",
+    },
+    "summary.field_limitations": {
+        "en": "Limitations",
+        "zh-tw": "研究限制",
+        "zh-cn": "研究局限",
+        "ja": "限界",
+        "es": "Limitaciones",
+        "fr": "Limites",
+        "de": "Einschränkungen",
+        "ko": "한계",
+        "pt": "Limitações",
+        "ru": "Ограничения",
+        "it": "Limiti",
+        "vi": "Hạn chế",
+        "hi": "सीमाएँ",
+        "id": "Keterbatasan",
+    },
+    "summary.field_future_work": {
+        "en": "Future work",
+        "zh-tw": "未來工作",
+        "zh-cn": "未来工作",
+        "ja": "今後の課題",
+        "es": "Trabajo futuro",
+        "fr": "Travaux futurs",
+        "de": "Künftige Arbeiten",
+        "ko": "향후 연구",
+        "pt": "Trabalhos futuros",
+        "ru": "Дальнейшая работа",
+        "it": "Lavori futuri",
+        "vi": "Hướng phát triển",
+        "hi": "भविष्य के कार्य",
+        "id": "Pekerjaan mendatang",
+    },
+    "summary.field_takeaways": {
+        "en": "Takeaways",
+        "zh-tw": "重點",
+        "zh-cn": "要点",
+        "ja": "要点",
+        "es": "Conclusiones clave",
+        "fr": "À retenir",
+        "de": "Kernpunkte",
+        "ko": "요점",
+        "pt": "Pontos-chave",
+        "ru": "Главные выводы",
+        "it": "Punti da ricordare",
+        "vi": "Điểm chính",
+        "hi": "मुख्य बातें",
+        "id": "Poin utama",
+    },
+    "summary.section_abstract": {
+        "en": "Abstract",
+        "zh-tw": "摘要",
+        "zh-cn": "摘要",
+        "ja": "要旨",
+        "es": "Resumen",
+        "fr": "Résumé",
+        "de": "Abstract",
+        "ko": "초록",
+        "pt": "Resumo",
+        "ru": "Аннотация",
+        "it": "Abstract",
+        "vi": "Tóm tắt",
+        "hi": "सारांश",
+        "id": "Abstrak",
+    },
+    "summary.section_introduction": {
+        "en": "Introduction",
+        "zh-tw": "緒論",
+        "zh-cn": "绪论",
+        "ja": "序論",
+        "es": "Introducción",
+        "fr": "Introduction",
+        "de": "Einleitung",
+        "ko": "서론",
+        "pt": "Introdução",
+        "ru": "Введение",
+        "it": "Introduzione",
+        "vi": "Giới thiệu",
+        "hi": "परिचय",
+        "id": "Pendahuluan",
+    },
+    "summary.section_literature_review": {
+        "en": "Literature review",
+        "zh-tw": "文獻探討",
+        "zh-cn": "文献综述",
+        "ja": "文献レビュー",
+        "es": "Revisión de la literatura",
+        "fr": "Revue de littérature",
+        "de": "Literaturübersicht",
+        "ko": "문헌 검토",
+        "pt": "Revisão da literatura",
+        "ru": "Обзор литературы",
+        "it": "Revisione della letteratura",
+        "vi": "Tổng quan tài liệu",
+        "hi": "साहित्य समीक्षा",
+        "id": "Tinjauan pustaka",
+    },
+    "summary.section_methodology": {
+        "en": "Methodology",
+        "zh-tw": "研究方法",
+        "zh-cn": "研究方法",
+        "ja": "研究方法",
+        "es": "Metodología",
+        "fr": "Méthodologie",
+        "de": "Methodik",
+        "ko": "연구 방법",
+        "pt": "Metodologia",
+        "ru": "Методология",
+        "it": "Metodologia",
+        "vi": "Phương pháp nghiên cứu",
+        "hi": "कार्यप्रणाली",
+        "id": "Metodologi",
+    },
+    "summary.section_experiment": {
+        "en": "Experiment and evaluation",
+        "zh-tw": "實驗與評估",
+        "zh-cn": "实验与评估",
+        "ja": "実験と評価",
+        "es": "Experimento y evaluación",
+        "fr": "Expérimentation et évaluation",
+        "de": "Experiment und Evaluation",
+        "ko": "실험과 평가",
+        "pt": "Experimento e avaliação",
+        "ru": "Эксперимент и оценка",
+        "it": "Esperimento e valutazione",
+        "vi": "Thực nghiệm và đánh giá",
+        "hi": "प्रयोग और मूल्यांकन",
+        "id": "Eksperimen dan evaluasi",
+    },
+    "summary.section_conclusion": {
+        "en": "Conclusion",
+        "zh-tw": "結論",
+        "zh-cn": "结论",
+        "ja": "結論",
+        "es": "Conclusión",
+        "fr": "Conclusion",
+        "de": "Schluss",
+        "ko": "결론",
+        "pt": "Conclusão",
+        "ru": "Заключение",
+        "it": "Conclusione",
+        "vi": "Kết luận",
+        "hi": "निष्कर्ष",
+        "id": "Kesimpulan",
+    },
+    "summary.section_references": {
+        "en": "References",
+        "zh-tw": "參考文獻",
+        "zh-cn": "参考文献",
+        "ja": "参考文献",
+        "es": "Referencias",
+        "fr": "Références",
+        "de": "Literaturverzeichnis",
+        "ko": "참고문헌",
+        "pt": "Referências",
+        "ru": "Список литературы",
+        "it": "Riferimenti",
+        "vi": "Tài liệu tham khảo",
+        "hi": "संदर्भ",
+        "id": "Daftar pustaka",
+    },
+    "summary.button": {
+        "en": "Edit summary",
+        "zh-tw": "編輯摘要",
+        "zh-cn": "编辑摘要",
+        "ja": "要約を編集",
+        "es": "Editar resumen",
+        "fr": "Modifier le résumé",
+        "de": "Zusammenfassung bearbeiten",
+        "ko": "요약 편집",
+        "pt": "Editar resumo",
+        "ru": "Изменить резюме",
+        "it": "Modifica riassunto",
+        "vi": "Sửa tóm tắt",
+        "hi": "सारांश संपादित करें",
+        "id": "Ubah ringkasan",
+    },
+    "summary.title": {
+        "en": "Summary",
+        "zh-tw": "摘要內容",
+        "zh-cn": "摘要内容",
+        "ja": "要約",
+        "es": "Resumen",
+        "fr": "Résumé",
+        "de": "Zusammenfassung",
+        "ko": "요약",
+        "pt": "Resumo",
+        "ru": "Резюме",
+        "it": "Riassunto",
+        "vi": "Bản tóm tắt",
+        "hi": "सारांश",
+        "id": "Ringkasan",
+    },
+    "summary.missing": {
+        "en": "Nothing yet for: {sections}",
+        "zh-tw": "還沒有內容的章節：{sections}",
+        "zh-cn": "还没有内容的章节：{sections}",
+        "ja": "まだ内容がない節: {sections}",
+        "es": "Aún sin contenido: {sections}",
+        "fr": "Encore vide : {sections}",
+        "de": "Noch ohne Inhalt: {sections}",
+        "ko": "아직 내용이 없는 절: {sections}",
+        "pt": "Ainda sem conteúdo: {sections}",
+        "ru": "Пока пусто: {sections}",
+        "it": "Ancora senza contenuto: {sections}",
+        "vi": "Chưa có nội dung: {sections}",
+        "hi": "अभी खाली: {sections}",
+        "id": "Belum ada isi: {sections}",
+    },
+    "summary.complete": {
+        "en": "All seven thesis sections have content.",
+        "zh-tw": "論文七個章節都有內容。",
+        "zh-cn": "论文七个章节都有内容。",
+        "ja": "7 つの節すべてに内容があります。",
+        "es": "Las siete secciones de la tesis tienen contenido.",
+        "fr": "Les sept sections du mémoire ont un contenu.",
+        "de": "Alle sieben Abschnitte haben Inhalt.",
+        "ko": "논문의 일곱 절에 모두 내용이 있습니다.",
+        "pt": "As sete seções da tese têm conteúdo.",
+        "ru": "Все семь разделов заполнены.",
+        "it": "Tutte e sette le sezioni hanno contenuto.",
+        "vi": "Cả bảy phần của luận văn đều có nội dung.",
+        "hi": "शोध-प्रबंध के सातों खंडों में सामग्री है।",
+        "id": "Ketujuh bagian tesis sudah berisi.",
+    },
+    "summary.paper_gone": {
+        "en": "Not saved: the list changed meanwhile and no longer has this paper.",
+        "zh-tw": "未儲存：清單在編輯期間已更換，其中沒有這篇論文。",
+        "zh-cn": "未保存：列表在编辑期间已更换，其中没有这篇论文。",
+        "ja": "保存されませんでした。編集中に一覧が変わり、この論文はもうありません。",
+        "es": "No se guardó: la lista cambió mientras tanto y ya no contiene este artículo.",
+        "fr": "Non enregistré : la liste a changé entre-temps et ne contient plus cet article.",
+        "de": "Nicht gespeichert: Die Liste hat sich geändert und enthält diesen Artikel "
+        "nicht mehr.",
+        "ko": "저장되지 않음: 편집하는 동안 목록이 바뀌어 이 논문이 더 이상 없습니다.",
+        "pt": "Não salvo: a lista mudou nesse meio-tempo e não contém mais este artigo.",
+        "ru": "Не сохранено: список изменился, и этой статьи в нём больше нет.",
+        "it": "Non salvato: l'elenco è cambiato nel frattempo e non contiene più questo "
+        "articolo.",
+        "vi": "Chưa lưu: danh sách đã thay đổi và không còn bài báo này.",
+        "hi": "सहेजा नहीं गया: इस बीच सूची बदल गई और इसमें अब यह शोधपत्र नहीं है।",
+        "id": "Tidak disimpan: daftar berubah sementara itu dan tidak lagi memuat makalah ini.",
+    },
+    "summary.discard": {
+        "en": "Close without saving your changes?",
+        "zh-tw": "不儲存變更就關閉嗎？",
+        "zh-cn": "不保存更改就关闭吗？",
+        "ja": "変更を保存せずに閉じますか?",
+        "es": "¿Cerrar sin guardar los cambios?",
+        "fr": "Fermer sans enregistrer les modifications ?",
+        "de": "Ohne Speichern schließen?",
+        "ko": "변경 사항을 저장하지 않고 닫을까요?",
+        "pt": "Fechar sem salvar as alterações?",
+        "ru": "Закрыть без сохранения изменений?",
+        "it": "Chiudere senza salvare le modifiche?",
+        "vi": "Đóng mà không lưu thay đổi?",
+        "hi": "बदलाव सहेजे बिना बंद करें?",
+        "id": "Tutup tanpa menyimpan perubahan?",
+    },
+    "summary.hint_lines": {
+        "en": "One statement per line.",
+        "zh-tw": "一行一句。",
+        "zh-cn": "一行一句。",
+        "ja": "1 行に 1 文。",
+        "es": "Una afirmación por línea.",
+        "fr": "Un énoncé par ligne.",
+        "de": "Eine Aussage pro Zeile.",
+        "ko": "한 줄에 한 문장.",
+        "pt": "Uma afirmação por linha.",
+        "ru": "Одно утверждение на строку.",
+        "it": "Un'affermazione per riga.",
+        "vi": "Mỗi dòng một ý.",
+        "hi": "प्रति पंक्ति एक कथन।",
+        "id": "Satu pernyataan per baris.",
+    },
+    "summary.hint_headed": {
+        "en": "A line starting with # is a heading, the lines after it belong to it.",
+        "zh-tw": "以 # 開頭的行是標題，後面的行屬於它。",
+        "zh-cn": "以 # 开头的行是标题，后面的行属于它。",
+        "ja": "# で始まる行は見出しで、続く行がその内容です。",
+        "es": "Una línea que empieza con # es un título, las siguientes le pertenecen.",
+        "fr": "Une ligne commençant par # est un titre, les suivantes en dépendent.",
+        "de": "Eine Zeile, die mit # beginnt, ist eine Überschrift, die folgenden gehören dazu.",
+        "ko": "#로 시작하는 줄은 제목이고 그다음 줄이 내용입니다.",
+        "pt": "Uma linha que começa com # é um título, as seguintes pertencem a ele.",
+        "ru": "Строка, начинающаяся с #, является заголовком, следующие относятся к нему.",
+        "it": "Una riga che inizia con # è un titolo, le successive gli appartengono.",
+        "vi": "Dòng bắt đầu bằng # là tiêu đề, các dòng sau thuộc về nó.",
+        "hi": "# से शुरू पंक्ति शीर्षक है, उसके बाद की पंक्तियाँ उसकी हैं।",
+        "id": "Baris yang diawali # adalah judul, baris setelahnya adalah isinya.",
+    },
+    "summary.hint_columns": {
+        "en": "Separate the columns with |.",
+        "zh-tw": "欄位用 | 分隔。",
+        "zh-cn": "列用 | 分隔。",
+        "ja": "列は | で区切ります。",
+        "es": "Separe las columnas con |.",
+        "fr": "Séparez les colonnes par |.",
+        "de": "Spalten mit | trennen.",
+        "ko": "열은 |로 구분합니다.",
+        "pt": "Separe as colunas com |.",
+        "ru": "Разделяйте столбцы знаком |.",
+        "it": "Separa le colonne con |.",
+        "vi": "Ngăn các cột bằng |.",
+        "hi": "स्तंभों को | से अलग करें।",
+        "id": "Pisahkan kolom dengan |.",
+    },
+    "summary.hint_paragraph": {
+        "en": "One paragraph.",
+        "zh-tw": "一段文字。",
+        "zh-cn": "一段文字。",
+        "ja": "1 段落。",
+        "es": "Un párrafo.",
+        "fr": "Un paragraphe.",
+        "de": "Ein Absatz.",
+        "ko": "한 단락.",
+        "pt": "Um parágrafo.",
+        "ru": "Один абзац.",
+        "it": "Un paragrafo.",
+        "vi": "Một đoạn.",
+        "hi": "एक अनुच्छेद।",
+        "id": "Satu paragraf.",
+    },
+    "deck.format_docx": {
+        "en": "Word draft",
+        "zh-tw": "Word 草稿",
+        "zh-cn": "Word 草稿",
+        "ja": "Word 草稿",
+        "es": "Borrador Word",
+        "fr": "Brouillon Word",
+        "de": "Word-Entwurf",
+        "ko": "Word 초안",
+        "pt": "Rascunho Word",
+        "ru": "Черновик Word",
+        "it": "Bozza Word",
+        "vi": "Bản nháp Word",
+        "hi": "Word मसौदा",
+        "id": "Draf Word",
+    },
+    "deck.format_tex": {
+        "en": "LaTeX draft",
+        "zh-tw": "LaTeX 草稿",
+        "zh-cn": "LaTeX 草稿",
+        "ja": "LaTeX 草稿",
+        "es": "Borrador LaTeX",
+        "fr": "Brouillon LaTeX",
+        "de": "LaTeX-Entwurf",
+        "ko": "LaTeX 초안",
+        "pt": "Rascunho LaTeX",
+        "ru": "Черновик LaTeX",
+        "it": "Bozza LaTeX",
+        "vi": "Bản nháp LaTeX",
+        "hi": "LaTeX मसौदा",
+        "id": "Draf LaTeX",
+    },
+    "deck.docx_template_label": {
+        "en": "Word template",
+        "zh-tw": "Word 範本",
+        "zh-cn": "Word 模板",
+        "ja": "Word テンプレート",
+        "es": "Plantilla de Word",
+        "fr": "Modèle Word",
+        "de": "Word-Vorlage",
+        "ko": "Word 템플릿",
+        "pt": "Modelo do Word",
+        "ru": "Шаблон Word",
+        "it": "Modello Word",
+        "vi": "Mẫu Word",
+        "hi": "Word टेम्पलेट",
+        "id": "Templat Word",
+    },
+    "deck.docx_template_placeholder": {
+        "en": "Optional: your school's .docx",
+        "zh-tw": "選填：學校的 .docx",
+        "zh-cn": "选填：学校的 .docx",
+        "ja": "任意: 大学の .docx",
+        "es": "Opcional: el .docx de su universidad",
+        "fr": "Facultatif : le .docx de votre école",
+        "de": "Optional: die .docx Ihrer Hochschule",
+        "ko": "선택: 학교의 .docx",
+        "pt": "Opcional: o .docx da sua universidade",
+        "ru": "Необязательно: .docx вашего вуза",
+        "it": "Facoltativo: il .docx della tua università",
+        "vi": "Tùy chọn: tệp .docx của trường",
+        "hi": "वैकल्पिक: आपके संस्थान की .docx",
+        "id": "Opsional: .docx kampus Anda",
+    },
+    # Slide editor ------------------------------------------------------
+    "slides.button": {
+        "en": "Edit slides…",
+        "zh-tw": "編輯投影片…",
+        "zh-cn": "编辑幻灯片…",
+        "ja": "スライドを編集…",
+        "es": "Editar diapositivas…",
+        "fr": "Modifier les diapos…",
+        "de": "Folien bearbeiten…",
+        "ko": "슬라이드 편집…",
+        "pt": "Editar slides…",
+        "ru": "Изменить слайды…",
+        "it": "Modifica diapositive…",
+        "vi": "Sửa slide…",
+        "hi": "स्लाइड संपादित करें…",
+        "id": "Ubah slide…",
+    },
+    "slides.title": {
+        "en": "Slides",
+        "zh-tw": "投影片",
+        "zh-cn": "幻灯片",
+        "ja": "スライド",
+        "es": "Diapositivas",
+        "fr": "Diapositives",
+        "de": "Folien",
+        "ko": "슬라이드",
+        "pt": "Slides",
+        "ru": "Слайды",
+        "it": "Diapositive",
+        "vi": "Slide",
+        "hi": "स्लाइड",
+        "id": "Slide",
+    },
+    "slides.preview_hint": {
+        "en": "Approximate preview. Fonts and line breaks may differ in PowerPoint.",
+        "zh-tw": "預覽僅供參考，字型與換行在 PowerPoint 中可能略有不同。",
+        "zh-cn": "预览仅供参考，字体与换行在 PowerPoint 中可能略有不同。",
+        "ja": "プレビューは目安です。フォントや改行は PowerPoint と異なることがあります。",
+        "es": (
+            "Vista previa aproximada. Las fuentes y los saltos de línea pueden variar en "
+            "PowerPoint."
+        ),
+        "fr": "Aperçu approximatif. Polices et sauts de ligne peuvent différer dans PowerPoint.",
+        "de": "Ungefähre Vorschau. Schriften und Umbrüche können in PowerPoint abweichen.",
+        "ko": "대략적인 미리보기입니다. 글꼴과 줄바꿈은 PowerPoint와 다를 수 있습니다.",
+        "pt": "Prévia aproximada. Fontes e quebras de linha podem variar no PowerPoint.",
+        "ru": "Приблизительный вид. Шрифты и переносы строк в PowerPoint могут отличаться.",
+        "it": "Anteprima approssimativa. Caratteri e a capo possono differire in PowerPoint.",
+        "vi": "Bản xem trước gần đúng. Phông chữ và ngắt dòng có thể khác trong PowerPoint.",
+        "hi": "अनुमानित पूर्वावलोकन। PowerPoint में फ़ॉन्ट और पंक्ति-विराम अलग हो सकते हैं।",
+        "id": "Pratinjau perkiraan. Font dan pemenggalan baris dapat berbeda di PowerPoint.",
+    },
+    "slides.apply": {
+        "en": "Apply text",
+        "zh-tw": "套用文字",
+        "zh-cn": "应用文字",
+        "ja": "文字を反映",
+        "es": "Aplicar texto",
+        "fr": "Appliquer le texte",
+        "de": "Text übernehmen",
+        "ko": "텍스트 적용",
+        "pt": "Aplicar texto",
+        "ru": "Применить текст",
+        "it": "Applica testo",
+        "vi": "Áp dụng chữ",
+        "hi": "पाठ लागू करें",
+        "id": "Terapkan teks",
+    },
+    "slides.add": {
+        "en": "Add slide",
+        "zh-tw": "新增投影片",
+        "zh-cn": "添加幻灯片",
+        "ja": "スライドを追加",
+        "es": "Añadir diapositiva",
+        "fr": "Ajouter une diapo",
+        "de": "Folie hinzufügen",
+        "ko": "슬라이드 추가",
+        "pt": "Adicionar slide",
+        "ru": "Добавить слайд",
+        "it": "Aggiungi diapositiva",
+        "vi": "Thêm slide",
+        "hi": "स्लाइड जोड़ें",
+        "id": "Tambah slide",
+    },
+    "slides.up": {
+        "en": "Move up",
+        "zh-tw": "上移",
+        "zh-cn": "上移",
+        "ja": "上へ",
+        "es": "Subir",
+        "fr": "Monter",
+        "de": "Nach oben",
+        "ko": "위로",
+        "pt": "Mover para cima",
+        "ru": "Вверх",
+        "it": "Sposta su",
+        "vi": "Lên",
+        "hi": "ऊपर",
+        "id": "Naik",
+    },
+    "slides.down": {
+        "en": "Move down",
+        "zh-tw": "下移",
+        "zh-cn": "下移",
+        "ja": "下へ",
+        "es": "Bajar",
+        "fr": "Descendre",
+        "de": "Nach unten",
+        "ko": "아래로",
+        "pt": "Mover para baixo",
+        "ru": "Вниз",
+        "it": "Sposta giù",
+        "vi": "Xuống",
+        "hi": "नीचे",
+        "id": "Turun",
+    },
+    "slides.undo": {
+        "en": "Undo",
+        "zh-tw": "復原",
+        "zh-cn": "撤销",
+        "ja": "元に戻す",
+        "es": "Deshacer",
+        "fr": "Annuler",
+        "de": "Rückgängig",
+        "ko": "실행 취소",
+        "pt": "Desfazer",
+        "ru": "Отменить",
+        "it": "Annulla",
+        "vi": "Hoàn tác",
+        "hi": "पूर्ववत",
+        "id": "Urungkan",
+    },
+    "slides.save_as": {
+        "en": "Save as…",
+        "zh-tw": "另存新檔…",
+        "zh-cn": "另存为…",
+        "ja": "名前を付けて保存…",
+        "es": "Guardar como…",
+        "fr": "Enregistrer sous…",
+        "de": "Speichern unter…",
+        "ko": "다른 이름으로 저장…",
+        "pt": "Salvar como…",
+        "ru": "Сохранить как…",
+        "it": "Salva con nome…",
+        "vi": "Lưu thành…",
+        "hi": "इस रूप में सहेजें…",
+        "id": "Simpan sebagai…",
+    },
+    "slides.save_failed": {
+        "en": "Could not save, is the deck open in PowerPoint? {error}",
+        "zh-tw": "無法儲存，簡報是否正在 PowerPoint 中開啟？{error}",
+        "zh-cn": "无法保存，演示文稿是否正在 PowerPoint 中打开？{error}",
+        "ja": "保存できません。PowerPoint で開いていませんか? {error}",
+        "es": "No se pudo guardar, ¿está la presentación abierta en PowerPoint? {error}",
+        "fr": "Enregistrement impossible, le fichier est-il ouvert dans PowerPoint ? {error}",
+        "de": "Speichern nicht möglich, ist die Datei in PowerPoint geöffnet? {error}",
+        "ko": "저장하지 못했습니다. PowerPoint에서 열려 있나요? {error}",
+        "pt": "Não foi possível salvar, a apresentação está aberta no PowerPoint? {error}",
+        "ru": "Не удалось сохранить, файл открыт в PowerPoint? {error}",
+        "it": "Impossibile salvare, il file è aperto in PowerPoint? {error}",
+        "vi": "Không lưu được, tệp có đang mở trong PowerPoint? {error}",
+        "hi": "सहेजा नहीं जा सका, क्या फ़ाइल PowerPoint में खुली है? {error}",
+        "id": "Tidak dapat menyimpan, apakah berkas terbuka di PowerPoint? {error}",
+    },
+    "slides.new_title": {
+        "en": "New slide",
+        "zh-tw": "新投影片",
+        "zh-cn": "新幻灯片",
+        "ja": "新しいスライド",
+        "es": "Nueva diapositiva",
+        "fr": "Nouvelle diapositive",
+        "de": "Neue Folie",
+        "ko": "새 슬라이드",
+        "pt": "Novo slide",
+        "ru": "Новый слайд",
+        "it": "Nuova diapositiva",
+        "vi": "Slide mới",
+        "hi": "नई स्लाइड",
+        "id": "Slide baru",
+    },
+    "slides.new_body": {
+        "en": "• First point",
+        "zh-tw": "• 第一點",
+        "zh-cn": "• 第一点",
+        "ja": "• 最初の要点",
+        "es": "• Primer punto",
+        "fr": "• Premier point",
+        "de": "• Erster Punkt",
+        "ko": "• 첫 번째 요점",
+        "pt": "• Primeiro ponto",
+        "ru": "• Первый пункт",
+        "it": "• Primo punto",
+        "vi": "• Ý thứ nhất",
+        "hi": "• पहला बिंदु",
+        "id": "• Poin pertama",
+    },
+    # Command-line models -----------------------------------------------
+    "model.cli": {
+        "en": "{name} (command line)",
+        "zh-tw": "{name}（命令列）",
+        "zh-cn": "{name}（命令行）",
+        "ja": "{name} (コマンドライン)",
+        "es": "{name} (línea de comandos)",
+        "fr": "{name} (ligne de commande)",
+        "de": "{name} (Kommandozeile)",
+        "ko": "{name} (명령줄)",
+        "pt": "{name} (linha de comando)",
+        "ru": "{name} (командная строка)",
+        "it": "{name} (riga di comando)",
+        "vi": "{name} (dòng lệnh)",
+        "hi": "{name} (कमांड लाइन)",
+        "id": "{name} (baris perintah)",
+    },
+    "model.cli_custom": {
+        "en": "Another program (command line)",
+        "zh-tw": "其他程式（命令列）",
+        "zh-cn": "其他程序（命令行）",
+        "ja": "その他のプログラム (コマンドライン)",
+        "es": "Otro programa (línea de comandos)",
+        "fr": "Autre programme (ligne de commande)",
+        "de": "Anderes Programm (Kommandozeile)",
+        "ko": "다른 프로그램 (명령줄)",
+        "pt": "Outro programa (linha de comando)",
+        "ru": "Другая программа (командная строка)",
+        "it": "Altro programma (riga di comando)",
+        "vi": "Chương trình khác (dòng lệnh)",
+        "hi": "अन्य प्रोग्राम (कमांड लाइन)",
+        "id": "Program lain (baris perintah)",
+    },
+    "model.command": {
+        "en": "Command",
+        "zh-tw": "指令",
+        "zh-cn": "命令",
+        "ja": "コマンド",
+        "es": "Comando",
+        "fr": "Commande",
+        "de": "Befehl",
+        "ko": "명령",
+        "pt": "Comando",
+        "ru": "Команда",
+        "it": "Comando",
+        "vi": "Lệnh",
+        "hi": "कमांड",
+        "id": "Perintah",
+    },
+    "model.note_cli": {
+        "en": (
+            "The program runs once per paper, with the text on its input, under the account it "
+            "is signed in to, and sends the text to its own service. Install it and sign in "
+            "first."
+        ),
+        "zh-tw": (
+            "每篇論文執行一次該程式，內容從標準輸入送入，以它已登入的帳號處理，並傳送到它自己的"
+            "服務。請先安裝並登入。"
+        ),
+        "zh-cn": (
+            "每篇论文运行一次该程序，内容从标准输入送入，以它已登录的账号处理，并发送到它自己的"
+            "服务。请先安装并登录。"
+        ),
+        "ja": (
+            "論文ごとにプログラムを 1 回実行し、本文を標準入力で渡します。ログイン中のアカウン"
+            "トで処理され、本文はそのサービスに送られます。先にインストールしてログインしてくだ"
+            "さい。"
+        ),
+        "es": (
+            "El programa se ejecuta una vez por artículo, con el texto en su entrada, con la "
+            "cuenta en la que ha iniciado sesión, y envía el texto a su propio servicio. "
+            "Instálelo e inicie sesión antes."
+        ),
+        "fr": (
+            "Le programme est lancé une fois par article, le texte sur son entrée, avec le "
+            "compte connecté, et envoie le texte à son propre service. Installez-le et "
+            "connectez-vous d'abord."
+        ),
+        "de": (
+            "Das Programm läuft einmal pro Artikel, mit dem Text auf seiner Eingabe, unter dem "
+            "angemeldeten Konto, und sendet den Text an seinen eigenen Dienst. Zuerst "
+            "installieren und anmelden."
+        ),
+        "ko": (
+            "논문마다 프로그램을 한 번 실행하며, 본문은 표준 입력으로 전달되고 로그인된 계정으"
+            "로 처리되어 해당 서비스로 전송됩니다. 먼저 설치하고 로그인하세요."
+        ),
+        "pt": (
+            "O programa é executado uma vez por artigo, com o texto na entrada, na conta em "
+            "que está conectado, e envia o texto ao próprio serviço. Instale-o e entre na "
+            "conta antes."
+        ),
+        "ru": (
+            "Программа запускается для каждой статьи, текст подаётся на её вход, работа идёт "
+            "под учётной записью, в которую выполнен вход, и текст уходит в её сервис. Сначала "
+            "установите её и войдите."
+        ),
+        "it": (
+            "Il programma viene eseguito una volta per articolo, con il testo in ingresso, con "
+            "l'account a cui è collegato, e invia il testo al proprio servizio. Installalo e "
+            "accedi prima."
+        ),
+        "vi": (
+            "Chương trình chạy một lần cho mỗi bài báo, nhận văn bản qua đầu vào, dùng tài "
+            "khoản đã đăng nhập và gửi văn bản đến dịch vụ của nó. Hãy cài đặt và đăng nhập "
+            "trước."
+        ),
+        "hi": (
+            "प्रोग्राम हर शोध-पत्र के लिए एक बार चलता है, पाठ उसके इनपुट पर जाता है, जिस खाते में "
+            "साइन इन है उसी से, और पाठ उसकी अपनी सेवा को भेजा जाता है। पहले इसे इंस्टॉल करें और "
+            "साइन इन करें।"
+        ),
+        "id": (
+            "Program dijalankan sekali per makalah, teks diberikan lewat masukannya, dengan "
+            "akun yang sedang masuk, dan teks dikirim ke layanannya sendiri. Pasang dan masuk "
+            "lebih dulu."
+        ),
+    },
     "settings.vpn_access": {
         "en": "I have institutional / VPN access (download IEEE PDFs)",
         "zh-tw": "我有學校或機構的 VPN 存取權(可下載 IEEE PDF)",

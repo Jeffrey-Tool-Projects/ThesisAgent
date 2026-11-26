@@ -16,7 +16,7 @@ matches how you plan to use the project.
 | Developer / contributor | `pip install -e ".[dev]"` from a clone | Full toolchain — pytest, pytest-asyncio, pytest-httpx, pytest-qt, ruff, bandit + every runtime extra. |
 
 The published distribution name on PyPI is `thesisagents`. The
-console scripts installed are `thesisagents` (CLI),
+commands installed are `thesisagents` (CLI),
 `thesisagents-mcp` (MCP server), `thesisagents-gui` (desktop UI).
 
 ## Supported runtimes
@@ -108,7 +108,7 @@ doesn't pollute the system Python:
 ### Windows (PowerShell)
 
 ```powershell
-git clone https://github.com/Integration-Automation/ThesisAgents.git
+git clone https://github.com/Jeffrey-Tool-Projects/ThesisAgent.git
 cd ThesisAgents
 
 py -3.12 -m venv .venv
@@ -124,7 +124,7 @@ python -m pytest tests/
 ### macOS / Linux (bash / zsh)
 
 ```bash
-git clone https://github.com/Integration-Automation/ThesisAgents.git
+git clone https://github.com/Jeffrey-Tool-Projects/ThesisAgent.git
 cd ThesisAgents
 
 python3.12 -m venv .venv
@@ -170,23 +170,38 @@ On a headless Linux box (CI, server) the GUI still imports if you
 set `QT_QPA_PLATFORM=offscreen` — Qt renders into an in-memory
 buffer instead of an X server.
 
-## Windows: prebuilt `.exe`
+## Windows: installer or zip
 
-Every release ships a self-contained Windows zip built with
-Nuitka. Download `thesisagents-windows-x86_64.zip` from the
-[GitHub Releases page](https://github.com/Integration-Automation/ThesisAgents/releases),
-unzip anywhere, and run `thesisagents.exe` directly. The bundle
+Every release ships a Windows build made with Nuitka, as an installer
+and as a zip. `thesisagents-setup-windows-x86_64.exe` installs for the
+current user, needs no administrator rights, adds a start menu entry, and
+can put `thesisagents-cli` on `PATH`. A newer installer replaces the
+installed version. It is not signed, so SmartScreen warns the first time:
+choose **More info**, then **Run anyway**, after checking the download
+against its `.sha256` file.
+
+For the zip, download `thesisagents-windows-x86_64.zip` from the
+[GitHub Releases page](https://github.com/Jeffrey-Tool-Projects/ThesisAgent/releases),
+unzip anywhere, and open `thesisagents.exe` for the desktop app. The bundle
 includes Python, every dependency (including PySide6), and the 11
 source plugins — no separate Python install is needed.
 
-The bundle entry point is `python -m thesisagents`, so all the
-same CLI flags work:
+The zip holds the same program twice. `thesisagents.exe` is a windowed
+program, so the desktop app opens without a console window.
+`thesisagents-cli.exe` is the console program for a terminal. Its entry
+point is `python -m thesisagents`, so all the same CLI flags work:
 
 ```powershell
-.\thesisagents.exe --query "diffusion models" --max 10 --out .\exports\
-.\thesisagents.exe --paper "https://arxiv.org/abs/1706.03762" --out .\exports\
-.\thesisagents.exe gui     # opens the desktop UI
+.\thesisagents-cli.exe --query "diffusion models" --max 10 --out .\exports\
+.\thesisagents-cli.exe --paper "https://arxiv.org/abs/1706.03762" --out .\exports\
+.\thesisagents.exe         # opens the desktop UI
 ```
+
+Releases up to v0.1.26 had only `thesisagents.exe`, as a console program.
+A script that calls it with CLI flags should call `thesisagents-cli.exe`
+now: `thesisagents.exe` still runs the command and prints into the
+terminal it was typed into, but the shell does not wait for a windowed
+program, so its exit code and captured output are lost.
 
 A `.sha256` companion is attached to every release for integrity
 checking.
@@ -195,7 +210,7 @@ checking.
 
 ```bash
 # From a Git ref directly
-pip install "git+https://github.com/Integration-Automation/ThesisAgents@dev"
+pip install "git+https://github.com/Jeffrey-Tool-Projects/ThesisAgent@dev"
 
 # From a local clone (editable — picks up your changes live)
 pip install -e .

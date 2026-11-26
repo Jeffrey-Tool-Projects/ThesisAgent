@@ -41,7 +41,6 @@ from __future__ import annotations
 
 import asyncio
 import contextlib
-import json
 import logging
 from collections.abc import AsyncIterator, Iterable, Mapping
 from dataclasses import dataclass
@@ -332,16 +331,20 @@ def _plan_doi(
 
 
 def _plan_url(key: str, title: str, url: str, has_valid_doi: bool) -> _Planned:
-    parts = urlsplit(url)
+    try:
+        parts = urlsplit(url)
+        _ = parts.port
+    except ValueError as err:
+        # "http://[bad" raised out of the check and took the whole export along.
+        return _invalid_url(key, title, url, _clip(f"not a URL: {err}"))
+    if any(char.isspace() for char in url):
+        return _invalid_url(key, title, url, "not a URL: it contains a space")
     scheme = parts.scheme.lower()
     host = (parts.hostname or "").lower()
     if scheme not in ("http", "https"):
         return _skipped(key, title, url, "not an http(s) URL, nothing to probe")
     if not host:
-        return _Planned(
-            key, title, KIND_URL, url,
-            verdict=Verdict(VerificationStatus.INVALID, detail="URL has no host"),
-        )
+        return _invalid_url(key, title, url, "URL has no host")
     if host in _DOI_HOSTS:
         # A doi.org link is a DOI in URL clothing: check the DOI it names.
         return _plan_doi(key, title, KIND_URL, url, canonical_doi(url))
@@ -358,6 +361,13 @@ def _plan_url(key: str, title: str, url: str, has_valid_doi: bool) -> _Planned:
             key, title, KIND_URL, url, target=(KIND_URL, upgraded), http_upgraded=True
         )
     return _Planned(key, title, KIND_URL, url, target=(KIND_URL, url))
+
+
+def _invalid_url(key: str, title: str, url: str, reason: str) -> _Planned:
+    return _Planned(
+        key, title, KIND_URL, url,
+        verdict=Verdict(VerificationStatus.INVALID, detail=reason),
+    )
 
 
 def _skipped(key: str, title: str, url: str, reason: str) -> _Planned:
@@ -580,6 +590,8 @@ async def _probe(client: httpx.AsyncClient, kind: str, value: str) -> Verdict:
             VerificationStatus.TIMEOUT,
             detail=f"no answer within {_TIMEOUT_SECONDS:g} s",
         )
+    except httpx.InvalidURL as err:  # not an HTTPError
+        return Verdict(VerificationStatus.INVALID, detail=_clip(f"not a URL: {err}"))
     except httpx.HTTPError as err:
         return Verdict(
             VerificationStatus.UNREACHABLE,
@@ -639,7 +651,7 @@ def _verdict_for_doi_http_error(status: int) -> Verdict:
 def _json_object(response: httpx.Response) -> dict[str, Any]:
     try:
         payload = response.json()
-    except (json.JSONDecodeError, UnicodeDecodeError, ValueError):
+    except ValueError:  # covers json.JSONDecodeError and UnicodeDecodeError
         return {}
     return payload if isinstance(payload, dict) else {}
 
@@ -668,8 +680,15 @@ async def _probe_url(client: httpx.AsyncClient, url: str) -> Verdict:
     for _hop in range(_MAX_REDIRECTS + 1):
         status, location = await _status_and_location(client, current)
         if status in _HTTP_REDIRECTS and location:
-            target = urljoin(current, location)
-            reason = _reason_not_to_follow(target)
+            try:
+                target = urljoin(current, location)
+                reason = _reason_not_to_follow(target)
+            except ValueError:
+                # The page exists and points somewhere unusable. That is the
+                # server's mistake, not one in the bibliography.
+                return Verdict(
+                    VerificationStatus.SKIPPED, detail="redirects to a malformed URL"
+                )
             if reason is not None:
                 return Verdict(
                     VerificationStatus.OK, resolved_url=target, detail=reason

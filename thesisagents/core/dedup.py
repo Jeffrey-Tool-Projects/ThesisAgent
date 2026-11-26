@@ -249,4 +249,6 @@ def merge_papers(canonical: Paper, other: Paper) -> Paper:
     if not updates:
         return canonical
     updates["provenance"] = canonical.provenance + tuple(added_provenance)
-    return replace(canonical, **updates)
+    return replace(  # NOSONAR dataclasses.replace returns the same dataclass type
+        canonical, **updates
+    )

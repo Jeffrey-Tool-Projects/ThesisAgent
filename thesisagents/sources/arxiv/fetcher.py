@@ -9,6 +9,8 @@ No API key required.
 
 from __future__ import annotations
 
+import re
+
 from thesisagents.core.exceptions import (
     ParseError,
     RateLimitError,
@@ -25,6 +27,8 @@ from .parser import parse_atom_feed
 _LOG = get_logger(__name__)
 _ENDPOINT = "https://export.arxiv.org/api/query"
 _SOURCE_NAME = "arxiv"
+#: The field prefixes of the arXiv query language.
+_FIELD_PREFIX_RE = re.compile(r"(?:ti|au|abs|co|jr|cat|rn|id|all):\S")
 
 
 class ArxivFetcher(Fetcher):
@@ -89,8 +93,11 @@ class ArxivFetcher(Fetcher):
 
     @staticmethod
     def _build_params(query: Query) -> dict[str, str]:
+        # A query that names a field itself (``ti:"..."``, as the open access
+        # resolver sends) is passed as it is: "all:ti:..." searches no title.
+        own_field = _FIELD_PREFIX_RE.match(query.keywords)
         return {
-            "search_query": f"all:{query.keywords}",
+            "search_query": query.keywords if own_field else f"all:{query.keywords}",
             "start": "0",
             "max_results": str(query.max_results),
             "sortBy": "relevance",

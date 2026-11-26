@@ -1,10 +1,10 @@
 # ThesisAgents
 
-[![CI](https://github.com/Integration-Automation/ThesisAgents/actions/workflows/ci.yml/badge.svg)](https://github.com/Integration-Automation/ThesisAgents/actions/workflows/ci.yml)
-[![Release](https://github.com/Integration-Automation/ThesisAgents/actions/workflows/release.yml/badge.svg?branch=main)](https://github.com/Integration-Automation/ThesisAgents/actions/workflows/release.yml)
+[![CI](https://github.com/Jeffrey-Tool-Projects/ThesisAgent/actions/workflows/ci.yml/badge.svg)](https://github.com/Jeffrey-Tool-Projects/ThesisAgent/actions/workflows/ci.yml)
+[![Release](https://github.com/Jeffrey-Tool-Projects/ThesisAgent/actions/workflows/release.yml/badge.svg?branch=main)](https://github.com/Jeffrey-Tool-Projects/ThesisAgent/actions/workflows/release.yml)
 [![PyPI](https://img.shields.io/pypi/v/thesisagents.svg)](https://pypi.org/project/thesisagents/)
 [![Python](https://img.shields.io/pypi/pyversions/thesisagents.svg)](https://pypi.org/project/thesisagents/)
-[![License: MIT](https://img.shields.io/github/license/Integration-Automation/ThesisAgents.svg)](https://github.com/Integration-Automation/ThesisAgents/blob/main/LICENSE)
+[![License: MIT](https://img.shields.io/github/license/Jeffrey-Tool-Projects/ThesisAgent.svg)](https://github.com/Jeffrey-Tool-Projects/ThesisAgent/blob/main/LICENSE)
 [![Docs](https://readthedocs.org/projects/thesisagents/badge/?version=latest)](https://thesisagents.readthedocs.io/en/latest/)
 
 > **Languages**: **English** · [繁體中文](readmes/README.zh-TW.md) · [简体中文](readmes/README.zh-CN.md) · [日本語](readmes/README.ja.md) · [Español](readmes/README.es.md) · [Français](readmes/README.fr.md) · [Deutsch](readmes/README.de.md) · [한국어](readmes/README.ko.md) · [Português](readmes/README.pt.md) · [Русский](readmes/README.ru.md) · [Italiano](readmes/README.it.md) · [Tiếng Việt](readmes/README.vi.md) · [हिन्दी](readmes/README.hi.md) · [Bahasa Indonesia](readmes/README.id.md)
@@ -64,7 +64,7 @@ it.
 6. export(papers=[{...paper, "summary": {...}}], language="zh-tw", ...)
 ```
 
-All eighteen MCP tools (including `list_sources`, `list_exports`,
+All twenty-five MCP tools (including `list_sources`, `list_exports`,
 `download_pdfs`, `pptx_inspect` / `pptx_review` / `pptx_update_slide` /
 `pptx_add_slide` / etc.) are
 documented in [`docs/mcp.md`](docs/mcp.md).
@@ -242,7 +242,7 @@ entry per paper in the `PaperCollection` tuple.
   (inspect / update_slide / delete_slide / reorder_slides / add_slide)
   works against any deck the exporter produces, plus the equivalent
   `pptx_*` MCP tools so an LLM agent can iterate on a generated deck.
-- **MCP server**: 18 tools — `list_sources` + `list_exports`
+- **MCP server**: 25 tools — `list_sources` + `list_exports`
   (discovery), `search`, `snowball`, `library_add`, `library_search`, `library_stats`, `fetch_paper`, `fetch_pdf_text`,
   `download_pdfs`, `pptx_validate_template`, `export`, and the six `pptx_*` deck tools
   (`inspect`, `review`, `update_slide`, `delete_slide`,
@@ -255,7 +255,7 @@ entry per paper in the `PaperCollection` tuple.
     text via `fetch_pdf_text`, writes a structured summary in-context,
     and passes it to `export`.
   - **Python pipeline (`--enrich`)** — the CLI calls Anthropic's API
-    itself; default model `claude-opus-4-7`.
+    itself; default model `claude-opus-5-5`.
 - **Visible-Chrome publisher flows**: Scholar SERP, IEEE `/rest/search`,
   and every paywalled-PDF download (ieeexplore / dl.acm / link.springer
   / sciencedirect / wiley / oup / nature / science / …) run inside a
@@ -388,14 +388,15 @@ py -m thesisagents --paper "https://arxiv.org/abs/1706.03762" `
 | `--source` / `-s` | Comma-separated source list. Default `arxiv`. |
 | `--max` / `-n` | Max results per source (1..200). Default 25. |
 | `--year-from` / `--year-to` | Inclusive year filter. |
-| `--export` / `-e` | Formats: any of `pptx,xlsx,md,bib,json,ris,csv,csl`. Default depends on mode (see below). |
+| `--export` / `-e` | Formats: any of `pptx,xlsx,md,bib,json,ris,csv,csl,docx,tex`. Default depends on mode (see below). |
 | `--out` / `-o` | Output directory. Default `./exports`. |
 | `--filename-stem` | Override the generated filename stem. |
 | `--no-abstract` | Omit abstract content from exports. |
 | `--lang` / `-l` | Deck language: one of 14 — `en`, `zh-tw`, `zh-cn`, `ja`, `es`, `fr`, `de`, `ko`, `pt`, `ru`, `it`, `vi`, `hi`, `id`. Default `en`. |
 | `--enrich` | Fail-loud variant of auto-enrich. Needs `ANTHROPIC_API_KEY` and `[intelligence]` extra. (Auto-enrich is default when the key is set.) |
 | `--lightweight` | Skip enrichment + force the abstract-only deck. Use only for quick / unattended runs; **when an LLM agent is driving, prefer the LLM-as-agent flow** below. |
-| `--llm-model` | Override default `claude-opus-4-7` for enrichment. |
+| `--llm-model` | Override default `claude-opus-5-5` for enrichment. |
+| `--llm-command COMMAND` | Command line of a command-line provider (`claude-cli`, `cli`, …), the paper on standard input. |
 | `--no-pdf` | Skip the automatic PDF download. Also disables the per-paper PPT gate (no PDF → no full content). |
 | `--no-oa-resolve` | Skip the post-dedup OA PDF resolver (Unpaywall + S2 + arXiv + CORE.ac.uk). |
 | `--top-tier-only` | Restrict results to arXiv + a curated CS-flagship whitelist (S&P, CCS, NDSS, USENIX Security, NeurIPS, ICML, ICSE, …). Off by default. |
@@ -420,7 +421,10 @@ py -m thesisagents --paper "https://arxiv.org/abs/1706.03762" `
 | Variable | Used by | Purpose |
 |---|---|---|
 | `ANTHROPIC_API_KEY` | `--enrich` | LLM auth. Not needed for the LLM-as-agent path over MCP. |
-| `THESISAGENTS_LLM_MODEL` | `--enrich` | Override the default `claude-opus-4-7`. |
+| `THESISAGENTS_LLM_PROVIDER` | `--enrich` | Who runs the model: `anthropic`, `openai`, `gemini`, `mistral`, `deepseek`, `xai`, `groq`, `openrouter`, `together`, `fireworks`, `dashscope`, `moonshot`, on this computer `ollama`, `lmstudio`, `llamacpp`, `vllm`, or `custom` with `THESISAGENTS_LLM_BASE_URL`. Or an AI program on the command line: `claude-cli`, `gemini-cli`, `codex-cli`, `ollama-cli`, or `cli` with `THESISAGENTS_LLM_COMMAND`. |
+| `THESISAGENTS_LLM_COMMAND` | `--enrich` | The command line of a command-line provider, which gets the paper on standard input (for example `claude -p --model opus`). Replaces the provider's own. |
+| `THESISAGENTS_LLM_CLI_TIMEOUT` | `--enrich` | Seconds one paper may take with a command-line provider (default 600). |
+| `THESISAGENTS_LLM_MODEL` | `--enrich` | Override the default `claude-opus-5-5`. |
 | `THESISAGENTS_S2_API_KEY` | Semantic Scholar + OA resolver | Higher rate limit; also used by the OA resolver's S2 `openAccessPdf` step. Free key at <https://www.semanticscholar.org/product/api>. |
 | `THESISAGENTS_NCBI_API_KEY` | PubMed | Raises NCBI's anonymous limit (3/s) to 10/s. Optional. |
 | `THESISAGENTS_CONTACT_EMAIL` | PubMed, ACM, Crossref, OpenAlex, **Unpaywall** | Polite-pool tag + enables the OA resolver's Unpaywall step (biggest PDF-coverage win for IEEE / ACM / Springer / Elsevier-paywalled papers; typical lift 40-70 pp). |
@@ -481,10 +485,11 @@ Tools:
 | `library_add` | Papers → a literature library (the SQLite file at `library`), kept for later sessions. Adding is a merge: a paper already there is updated, not duplicated. `relations` stores the citation links `snowball` returns. |
 | `library_search` | Query → papers already in the library, scored like a search, with no network access. Each comes with its history: first and last seen, and which sources returned it. |
 | `library_stats` | Library → how many papers, runs and citation links it holds, the papers per source, and the latest imports. |
+| `library_update`, `library_delete`, `library_import`, `library_duplicates`, `library_merge`, `library_saved_search`, `library_prisma` | Library → tags, notes, reading status and screening decisions, deleting and merging papers, importing BibTeX / RIS, searches that report only what is new, and the PRISMA flow. |
 | `fetch_paper` | arXiv / DOI / PMID / IEEE identifier → single paper. |
 | `fetch_pdf_text` | Download one PDF, return extracted body text. **The MCP path to "I read the paper".** |
 | `download_pdfs` | Batch-download a papers list's PDFs into `{out_dir}/pdfs/`. Returns per-paper results keyed by BibTeX key. |
-| `export` | Papers list + formats → writes `.pptx/.xlsx/.md/.bib/.json/.ris/.csv/.csl.json`. Accepts a `summary` field per paper for the rich thesis-style schema, `max_slides_per_paper` (default 25), and `dark_mode` (default `false` — the project default is the light navy-band deck, pass `true` for the dark OLED / low-light post-pass). Verifies every DOI / URL before writing (`verify_identifiers`, default `true`): a wrong or unreachable identifier fails the call and names the paper, and the response carries a `verification` report. `library` names a literature library to keep the identifier checks in, so an identifier verified by an earlier call is not checked again. `pptx_template` (with an optional `pptx_template_config`) builds the deck on your own PowerPoint template. |
+| `export` | Papers list + formats → writes `.pptx/.xlsx/.md/.bib/.json/.ris/.csv/.csl.json/.docx/.tex`. Accepts a `summary` field per paper for the rich thesis-style schema, `max_slides_per_paper` (default 25), and `dark_mode` (default `false` — the project default is the light navy-band deck, pass `true` for the dark OLED / low-light post-pass). Verifies every DOI / URL before writing (`verify_identifiers`, default `true`): a wrong or unreachable identifier fails the call and names the paper, and the response carries a `verification` report. `library` names a literature library to keep the identifier checks in, so an identifier verified by an earlier call is not checked again. `pptx_template` (with an optional `pptx_template_config`) builds the deck on your own PowerPoint template. |
 | `pptx_validate_template` | Template → whether it can be used for `export(pptx_template=...)`: the layout each kind of slide would use, plus errors and warnings that say what to change. Nothing is rendered. |
 | `pptx_inspect` | Read slide / shape structure of an existing deck. |
 | `pptx_review` | Audit a deck in one call — overflow + colour contracts + `paper_rule` section completeness. Auto-detects the deck language; also the CLI `python -m thesisagents review <deck.pptx>`. |
@@ -514,11 +519,11 @@ ThesisAgents/
 ├── thesisagents/                 # main package
 │   ├── core/                        # Paper / PaperSummary / RqResult / dedup / ranking / pipeline
 │   ├── fetchers/                    # HTTPS-only async client, token-bucket rate limit
-│   ├── exporters/                   # pptx (thesis-style) · xlsx · bib · md · json · ris · csv · csl · pptx_edit · i18n
+│   ├── exporters/                   # pptx (thesis-style) · xlsx · bib · md · json · ris · csv · csl · docx · tex · pptx_edit · i18n
 │   ├── intelligence/                # PDF fetch + Anthropic summariser  ([intelligence] extra)
 │   ├── library/                     # SQLite literature library kept across runs
 │   ├── evaluation/                  # offline search-quality benchmark (docs/search-quality.md)
-│   ├── mcp/                         # FastMCP server (18 tools)
+│   ├── mcp/                         # FastMCP server (25 tools)
 │   ├── sources/<name>/              # plugin folders: arxiv, semantic_scholar,
 │   │                                #   openalex, pubmed, acm, ieee, scholar,
 │   │                                #   dblp, crossref, openaire, springer,
@@ -553,13 +558,14 @@ pip install thesisagents[gui]
 thesisagents-gui                 # or: thesisagents gui
 ```
 
-The window has a sidebar with five pages: **Search**, **Library** (a read-only view of a library file: an overview, its papers with their citation links and identifier checks, and the searches that filled it), **Enrich** (drives
+The window has a sidebar with five pages: **Search**, **Library** (a library file with your tags, notes and screening decisions, BibTeX / RIS import, merging duplicates, saved searches that show only what is new, a citation graph and the PRISMA flow: an overview, its papers with their citation links and identifier checks, and the searches that filled it), **Enrich** (drives
 the LLM-as-agent / Python-pipeline enrichment over a `collection_ready`
 signal), **Deck** (the Dark mode toggle, slide cap, identifier check and
-deck template flow through to `ExportOptions`) and **Settings** (persists
-API keys via QSettings). The Windows release zip ships the
-Nuitka-compiled bundle with PySide6 included, so `thesisagents.exe gui`
-works without a separate Python install.
+deck template flow through to `ExportOptions`) and **Settings** (API keys
+and preferences). The Windows release zip ships the
+Nuitka-compiled bundle with PySide6 included: opening `thesisagents.exe`
+starts the desktop app with no console window and no separate Python
+install, and `thesisagents-cli.exe` beside it is the command line.
 The Search page can also follow citations from the top results
 (snowball), keep results in a library file and search that library with
 no network, and the Deck page can build the deck on your own PowerPoint
@@ -576,7 +582,7 @@ medium one above them, and below 760 px the sidebar collapses to icons
 and form labels move above their fields. The window resizes down to
 640×480, with HiDPI scaling on by default. **Settings → Theme** picks
 light, dark or follow-the-system, applied at once and independent of
-the deck's own dark mode. Results can be sorted, filtered and ticked so only some papers go on to Enrich, Deck and Export, the snowball bounds can be adjusted, a running search or enrichment can be cancelled, and the form is remembered between starts. The Deck page can check a template before exporting and review any finished deck, and without an API key the Enrich page hands the papers to an LLM agent as a JSON file and imports its summaries. The Deck page can also download the PDFs, leaving IEEE out until Settings declares institutional / VPN access, and a new interface language applies at once, with the work carried over. The same switch keeps `ieee` out of searches. The Search page can also read local PDFs into the results, like the CLI's `--pdf`. The status line says how many PDFs came through Chrome and warns when a publisher PDF could not use it. **Settings → Style** switches between the classic navy look and Material 3. `Ctrl+1` … `Ctrl+5` switch pages.
+the deck's own dark mode. Results can be sorted, filtered and ticked so only some papers go on to Enrich, Deck and Export, the snowball bounds can be adjusted, a running search or enrichment can be cancelled, and the form is remembered between starts. The Deck page can check a template before exporting and review any finished deck, and without an API key the Enrich page hands the papers to an LLM agent as a JSON file and imports its summaries. The Deck page can also download the PDFs, leaving IEEE out until Settings declares institutional / VPN access, and a new interface language applies at once, with the work carried over. The same switch keeps `ieee` out of searches. The Search page can also read local PDFs into the results, like the CLI's `--pdf`. The status line says how many PDFs came through Chrome and warns when a publisher PDF could not use it. **Settings → Style** switches between the classic navy look and Material 3. **Settings → Font size** sets the text of the whole app from 8 to 24 pt at once, also with `Ctrl++`, `Ctrl+-` and `Ctrl+0` (back to the default), and the layout adapts to it. **Log** in the status bar (`Ctrl+L`) shows what the app is doing, with a log file to attach to a bug report, and a banner says when Chrome waits for you to solve a captcha. API keys are kept in the system credential store (Windows Credential Manager, macOS Keychain, Secret Service), not in a settings file. Windows has an installer that needs no administrator rights, and the app says when a new version is out (once a day, can be switched off). **Settings → AI model** chooses who writes the summaries: Anthropic, eleven other services, or a model on your own computer (Ollama, LM Studio, llama.cpp, vLLM), so no text has to leave it. **Edit summary** on the Enrich and Library pages edits a paper's summary by hand and shows which of the seven thesis sections have nothing yet. **Word draft** and **LaTeX draft** export a literature review with APA citations, a comparison table and references, into your school's Word template if you have one. **Edit slides…** on the Deck page changes texts, order and number of slides of a finished deck, with a preview and undo. **Settings → AI model** also offers AI programs on the command line (Claude Code, Gemini CLI, Codex, Ollama, or any command), which summarise with the account you are signed in to, no API key needed. `Ctrl+1` … `Ctrl+5` switch pages.
 
 Full reference: [`docs/gui.md`](docs/gui.md).
 

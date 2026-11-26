@@ -374,8 +374,7 @@ A text box rendered taller than the 7.05" cap. Causes:
 Run the headless overflow check:
 
 ```bash
-python -c "from thesisagents.exporters.pptx import inspect_overflow; \
-           inspect_overflow('exports/your.pptx')"
+thesisagents review exports/your.pptx
 ```
 
 It lists every shape that overflows and by how much.
@@ -408,6 +407,33 @@ thesisagents gui
 
 These are also pinned by `app.py` if unset, but a host
 override of either to a wrong value can cause this symptom.
+
+### A console window opens behind the app (Windows release)
+
+Releases up to v0.1.26 shipped one console executable. Later ones open
+`thesisagents.exe` without a console. If the window still appears, you
+opened `thesisagents-cli.exe`, which is the command line. With pip,
+`thesisagents-gui` opens without a console as well, and `thesisagents gui`
+keeps the terminal.
+
+### The app does not start and shows nothing (Windows release)
+
+A failure at start-up is shown in a dialog and written to
+`%LOCALAPPDATA%\ThesisAgents\logs\thesisagents.log`. If not even that
+appears, run `.\thesisagents-cli.exe gui` in a terminal to see the error.
+
+### A search hangs for minutes, then a source returns nothing
+
+Google Scholar or IEEE asked for a captcha in the Chrome window. The banner
+above the page says so and counts down. Solve it in Chrome and the search
+goes on.
+
+### `OpenType support missing for "...", script 11`
+
+Harmless: Qt tries each font before the one that can draw the Hindi
+entry of the language lists (script 11 is Devanagari) and prints a line
+per attempt. The app no longer prints them. To see them again, set
+`QT_LOGGING_RULES="qt.text.font.db.info=true"`.
 
 ### `tofu` boxes for some characters
 
@@ -522,6 +548,6 @@ If none of the above matches:
 2. Copy the **smallest** reproducer (CLI command, MCP tool call
    sequence, or Python snippet) and the **complete** stack trace.
 3. Open an issue at
-   <https://github.com/Integration-Automation/ThesisAgents/issues>
+   <https://github.com/Jeffrey-Tool-Projects/ThesisAgent/issues>
    with the above + `python --version` + `pip freeze | grep -E
    "thesisagents|httpx|python-pptx|PySide6"`.

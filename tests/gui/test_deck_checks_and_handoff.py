@@ -114,8 +114,9 @@ def test_an_existing_summary_is_kept_when_the_file_has_none(tmp_path):
 def test_bad_handoff_files_are_refused(tmp_path, content, message):
     target = tmp_path / "bad.json"
     target.write_text(content, encoding="utf-8")
+    collection = _collection()
     with pytest.raises(HandoffError, match=message):
-        read_handoff(target, _collection())
+        read_handoff(target, collection)
 
 
 @pytest.mark.parametrize("summary", [[1, 2], "abc"])
@@ -147,8 +148,9 @@ def test_an_oversized_file_is_refused_before_parsing(tmp_path, monkeypatch):
     monkeypatch.setattr(handoff, "MAX_HANDOFF_BYTES", 10)
     target = tmp_path / "big.json"
     write_handoff(_collection(), target, language="en")
+    collection = _collection()
     with pytest.raises(HandoffError, match="larger than"):
-        read_handoff(target, _collection())
+        read_handoff(target, collection)
 
 
 def test_enrich_page_exports_and_imports_for_an_agent(qtbot, tmp_path):

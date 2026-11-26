@@ -134,26 +134,27 @@ async def test_search_parses_serp(monkeypatch):
 async def test_search_captcha_raises_unavailable(monkeypatch):
     transport = MockTransport(200, _fixture("captcha.html"))
     install_mock(monkeypatch, "thesisagents.sources.scholar.fetcher", transport)
+    fetcher = _new_fetcher()
+    query = Query(keywords="x", sources=("scholar",), max_results=1)
     with pytest.raises(SourceUnavailableError):
-        await _new_fetcher().search(
-            Query(keywords="x", sources=("scholar",), max_results=1)
-        )
+        await fetcher.search(query)
 
 
 async def test_fetch_by_id_unsupported(monkeypatch):
     transport = MockTransport(200, "")
     install_mock(monkeypatch, "thesisagents.sources.scholar.fetcher", transport)
+    fetcher = _new_fetcher()
     with pytest.raises(ParseError):
-        await _new_fetcher().fetch_by_id("anything")
+        await fetcher.fetch_by_id("anything")
 
 
 async def test_search_403_surfaces_unavailable(monkeypatch):
     transport = MockTransport(403, "Forbidden")
     install_mock(monkeypatch, "thesisagents.sources.scholar.fetcher", transport)
+    fetcher = _new_fetcher()
+    query = Query(keywords="x", sources=("scholar",), max_results=1)
     with pytest.raises(SourceUnavailableError):
-        await _new_fetcher().search(
-            Query(keywords="x", sources=("scholar",), max_results=1)
-        )
+        await fetcher.search(query)
 
 
 async def test_webrunner_backend_used_when_available(monkeypatch):
@@ -174,7 +175,8 @@ async def test_webrunner_backend_used_when_available(monkeypatch):
         Query(keywords="attention", sources=("scholar",), max_results=10)
     )
     assert captured["query"].keywords == "attention"
-    assert papers and papers[0].title == "Attention Is All You Need"
+    assert papers
+    assert papers[0].title == "Attention Is All You Need"
 
 
 async def test_webrunner_failure_falls_back_to_httpx(monkeypatch):
@@ -194,7 +196,8 @@ async def test_webrunner_failure_falls_back_to_httpx(monkeypatch):
         Query(keywords="attention", sources=("scholar",), max_results=1)
     )
     # httpx fallback succeeded.
-    assert papers and papers[0].title
+    assert papers
+    assert papers[0].title
 
 
 def test_webrunner_is_available_respects_disable_env(monkeypatch):
@@ -204,25 +207,3 @@ def test_webrunner_is_available_respects_disable_env(monkeypatch):
 
     monkeypatch.setenv("THESISAGENTS_DISABLE_WEBRUNNER", "1")
     assert webrunner_backend.is_available() is False
-
-
-def test_chrome_args_always_visible_no_profile(monkeypatch):
-    """Always-visible policy: no --headless flag ever, profile only when set."""
-    from thesisagents.sources.scholar import webrunner_backend
-
-    monkeypatch.delenv("THESISAGENTS_CHROME_PROFILE_DIR", raising=False)
-    args = webrunner_backend._build_chrome_args()  # noqa: SLF001
-    assert "--headless=new" not in args
-    assert not any(a.startswith("--headless") for a in args)
-    assert "--disable-blink-features=AutomationControlled" in args
-    assert not any(a.startswith("--user-data-dir=") for a in args)
-
-
-def test_chrome_args_with_profile_dir_passes_user_data_dir(monkeypatch):
-    from thesisagents.sources.scholar import webrunner_backend
-
-    monkeypatch.setenv("THESISAGENTS_CHROME_PROFILE_DIR", "D:/scholar-profile")
-    args = webrunner_backend._build_chrome_args()  # noqa: SLF001
-    assert "--user-data-dir=D:/scholar-profile" in args
-    # Still no headless flag — visible is mandatory.
-    assert not any(a.startswith("--headless") for a in args)

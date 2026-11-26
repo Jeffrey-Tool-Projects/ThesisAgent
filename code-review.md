@@ -5,7 +5,7 @@
 - 審核者：工作區程式審核
 - 日期：2026-10-22
 - 對象：`ThesisAgents`（工作樹熱點：論文搜尋與簡報產生）
-- 結論：需修正
+- 結論：需修正（2026-11-26 起五項發現皆已關閉）
 
 ## 審核規範
 
@@ -44,7 +44,7 @@
 - 位置：`thesisagents/fetchers/webrunner_pdf.py` 第 50 至 69 行、第 83 至 88 行。呼叫點在 `thesisagents/core/pdf_download.py` 第 140 至 142 行。瀏覽器選項在 `thesisagents/fetchers/webrunner_browser.py` 第 76 至 93 行。
 - 說明：`should_use_webrunner` 用 `host.endswith(suffix)` 判斷付費牆。後綴沒有要求點邊界，因此 `evilieee.org` 會命中 `ieee.org`，`notacm.org` 會命中 `acm.org`，`notwiley.com`、`notoup.com`、`fakescience.org` 等同理。`pdf_url` 來自 OpenAlex、Semantic Scholar、Unpaywall、CORE，或 MCP `download_pdfs` 的呼叫端，不是固定主機清單。命中後 `download_via_browser` 會以可見 Chrome 開啟該 URL。若設定了 `THESISAGENTS_CHROME_PROFILE_DIR`，這個視窗使用使用者的 Chrome 設定檔，而且 `make_driver` 加上 `--no-sandbox`，PDF 下載偏好又把 Safe Browsing 設為關閉。瀏覽器本身的 cookie 網域比對仍有點邊界，不表示出版商 cookie 一定會被送到仿冒主機。風險是攻擊頁面跑在該設定檔與放寬過的 Chrome 裡。
 - 依據：安全（外部 HTTP 與瀏覽器載入的主機範圍）。`architecture.md` 第 6 節要求外部服務只經 `fetchers/http.py` 或可見 Chrome 輔助，主機分類錯誤會把不該走 Chrome 的 URL 送進去。`tests/test_webrunner_pdf.py` 只斷言正例出版商與少數開放主機，沒有仿冒後綴的反例。
-- 狀態：未關閉
+- 狀態：已關閉（2026-11-26，U-20261126-02）：比對改為網域本身或其子網域，並補仿冒網域的反例測試。
 - 建議：比對改為主機等於後綴，或主機以「點加後綴」結尾。為 `notieee.org` 這類名稱補反例測試。設定檔路徑只在通過比對後才套用。
 
 #### CR-02
@@ -53,7 +53,7 @@
 - 位置：`thesisagents/core/pdf_download.py` 第 1 至 14 行與第 61 至 76、163 行。`thesisagents/core/oa_resolver.py` 第 61 至 68、193 至 207、241 至 253、286 至 300 行。`thesisagents/intelligence/pdf.py` 第 1 至 6、35 至 45 行。`thesisagents/fetchers/http.py` 第 70 至 76 行。`thesisagents/core/constants.py` 第 8 至 10 行。
 - 說明：檔案註解寫 PDF 下載與 PDF 文字擷取沿用各來源的 token bucket。bucket 實際只在各 `sources/*/fetcher.py` 送搜尋請求前呼叫 `acquire`。`get_client` 只做 HTTPS 傳輸、逾時與連線池，`AsyncHTTPTransport(retries=0)`。`HTTP_MAX_RETRIES` 與 `HTTP_BACKOFF_BASE_SECONDS` 沒有其他讀取點，屬死碼。OA 解析另用 `unpaywall`、`semantic_scholar_oa`、`core_ac_uk` 三個 client 鍵，併發上限 5，不進入 Semantic Scholar 搜尋那條每秒 1 次的 bucket。PDF 下載併發上限 4，同樣不取得 bucket。`docs/configuration.md` 寫有金鑰時 Semantic Scholar 可到每秒 10 次、NCBI 可到每秒 10 次，對應 fetcher 仍固定每秒 1 次與每秒 3 次。這兩處程式比文件保守，不會因此超速。超速風險在 OA 與 PDF 這兩條旁路。
 - 依據：死碼、文件與 docstring 不一致、效能與上游禮貌使用。搜尋路徑的 429 仍由 `core/pipeline.py` 做有限次退避，故不列為缺陷。
-- 狀態：未關閉（建議）
+- 狀態：已關閉（2026-11-26，U-20261126-02）：更正註解與文件數字、刪除未使用的重試常數，PDF 下載加上每個主機最多 2 個併發。OA 解析的 Semantic Scholar 查詢維持現狀，它只在 Unpaywall 查無結果後執行，併發上限 5，遇 429 會改用其他來源。
 - 建議：讓 PDF、OA 與文字擷取走與該上游相同的 bucket，或改寫註解，刪除未使用的重試常數。文件上的每秒 10 次若尚未實作，應改成與 `RateLimit` 相同的數字。
 
 #### CR-03
@@ -62,7 +62,7 @@
 - 位置：`thesisagents/core/pdf_download.py` 第 171 至 178、196 至 211、249 至 266 行。`thesisagents/intelligence/pdf.py` 第 35 至 45 行。`thesisagents/mcp/server.py` 的 `fetch_pdf_text`（約第 231 至 245 行）。
 - 說明：第一個 `pdf_url` 若不是付費牆主機，以及 HTML 裡 `citation_pdf_url` 的第二跳，都直接 `client.get`。第二跳用 `urljoin` 接上頁面給的位址，不再呼叫 `should_use_webrunner`。`HttpsOnlyTransport` 會拒絕非 HTTPS，包含重新導向後的非 HTTPS，這一點已讀過 `fetchers/http.py` 第 27 至 34 行。傳輸層不拒絕 loopback、鏈路本機或私有網段上的 HTTPS。cookie 只在 `pdf_cookies._domain_matches` 認為網域相符時附加，比對有前導點，沒有 CR-01 那種無點邊界的後綴錯誤。這不能阻止對使用者本機能連上的內網 HTTPS 服務發請求。MCP `fetch_pdf_text` 的 URL 由呼叫端給定，範圍相同。
 - 依據：安全（外部 HTTP 的目標範圍）。公開 OA 主機不應整表封鎖，故不升為缺陷。
-- 狀態：未關閉（建議）
+- 狀態：已關閉（2026-11-26，U-20261126-02）：傳輸層拒絕本機與私有網段的位址（含重新導向後），第二跳的付費牆網址改走 Chrome。只檢查位址字面值，不檢查名稱解析結果，因為學校代理伺服器常有私有位址。
 - 建議：在送出前拒絕非 HTTPS，以及 loopback、鏈路本機與私有網段。第二跳若主機屬於付費牆清單，應與第一跳使用同一條瀏覽器路徑。
 
 #### CR-04
@@ -71,7 +71,7 @@
 - 位置：`thesisagents/fetchers/webrunner_browser.py` 第 76 至 93 行。`thesisagents/sources/scholar/webrunner_backend.py` 第 97 至 114 行的 `_build_chrome_args` 同樣列出 `--no-sandbox`，實際啟動仍走 `make_driver`。
 - 說明：每一個 Chrome 都加上 `--no-sandbox`。PDF 下載把 `safebrowsing.enabled` 設為 False。兩處都沒有說明為何使用者桌面上的可見視窗也要關掉沙箱與 Safe Browsing。此視窗會開啟出版商頁面，並在設定了 `THESISAGENTS_CHROME_PROFILE_DIR` 時載入該設定檔。CR-01 修正主機比對之後，這項放寬仍然存在。
 - 依據：安全（瀏覽器載入外部頁面時的隔離）。未看到 `shell=True` 或把使用者字串拼進 shell，故不把這項寫成命令注入。
-- 狀態：未關閉（建議）
+- 狀態：已關閉（2026-11-26，U-20261126-02）：`--no-sandbox` 只在 Linux root 使用，PDF 下載不再關閉 Safe Browsing，Scholar 的重複參數清單已刪除。
 - 建議：桌面路徑不要加 `--no-sandbox`，除非有註明僅限無法使用沙箱的環境。PDF 下載不要關掉 Safe Browsing。若必須保留，在 `make_driver` 的 docstring 寫明失敗模式與適用範圍。
 
 #### CR-05
@@ -80,7 +80,7 @@
 - 位置：`thesisagents/fetchers/http.py` 第 61 至 67 行。`docs/configuration.md` 環境變數表中 `THESISAGENTS_CONTACT_EMAIL` 那一列（約第 37 行）。
 - 說明：預設 User-Agent 寫死「set THESISAGENTS_CONTACT」。程式與 `docs/configuration.md`、`architecture.md` 使用的名稱是 `THESISAGENTS_CONTACT_EMAIL`，而且 User-Agent 並不讀取該變數。郵件實際由 OpenAlex、Crossref、ACM 的 `mailto`、PubMed 的 `email` 查詢參數，以及 Unpaywall 的 `email` 參數送出。同一列文件把 NCBI 的 `tool` 與 `email` 寫成標頭。`thesisagents/sources/pubmed/fetcher.py` 第 98 至 102 行把它們放在查詢參數，這與 E-utilities 的用法一致，是文件用詞錯誤，不是多送了一份金鑰。
 - 依據：文件同步。不外洩金鑰，也不改變 HTTPS 限制。
-- 狀態：未關閉（備註）
+- 狀態：已關閉（2026-11-26，U-20261126-02）：User-Agent 不再提到錯誤的變數名稱，文件改為查詢參數。
 - 建議：User-Agent 改為真實的變數名稱，或在有設定聯絡郵件時放入郵件。文件改為查詢參數。
 
 沒有其他已確認的缺陷。命令注入、寫死可用金鑰、路徑穿越未成立，見下方已核對。

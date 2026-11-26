@@ -53,8 +53,10 @@ def test_meta_height_grows_to_two_lines_then_shrinks_to_fit():
     long, long_overflow = _content_meta_height_in(f"{LONG_TITLE} · Paper 1 of 3")
     huge, huge_overflow = _content_meta_height_in(f"{LONG_TITLE * 3} · Paper 1 of 3")
     assert (short, short_overflow) == (0.5, False)
-    assert long > 0.5 and not long_overflow
-    assert huge == long and huge_overflow          # capped at two lines, shrink-to-fit
+    assert long > 0.5
+    assert not long_overflow
+    assert huge == long                            # capped at two lines
+    assert huge_overflow                           # and shrink-to-fit
 
 
 def test_a_long_title_no_longer_overflows_the_lightweight_deck(tmp_path):

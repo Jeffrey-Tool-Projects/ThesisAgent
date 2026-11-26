@@ -81,8 +81,14 @@ _ABSTRACT_END_RE = re.compile(
     r")",
     re.IGNORECASE,
 )
-_EMAIL_RE = re.compile(r"\S+@\S+\.\S+")
-_AUTHOR_SEPARATOR_RE = re.compile(r",\s*|\s+and\s+|;\s*", re.IGNORECASE)
+#: Splits an authors line at ``,`` / ``;`` / `` and ``. The lookbehind starts
+#: the `` and `` branch only at the first space of a run and the possessive
+#: ``\s++`` never gives a space back, so a long run of spaces is scanned once.
+#: It splits exactly where ``,\s*|\s+and\s+|;\s*`` did.
+_AUTHOR_SEPARATOR_RE = re.compile(
+    r",\s*|(?<!\s)\s++and\s+|;\s*",  # NOSONAR linear, see above
+    re.IGNORECASE,
+)
 
 # Lines that page-1 boilerplate uses — never the title, never an author.
 _BOILERPLATE_PREFIXES = (
@@ -131,8 +137,10 @@ def extract_metadata(text: str) -> ExtractedMetadata:
     if not text:
         return ExtractedMetadata()
     head = text[:6000]
-    arxiv_id = _extract_arxiv_id(text)
-    doi = _extract_doi(text)
+    # From the first page only: further on stand the references, and their
+    # first identifier made the paper into the one it cites.
+    arxiv_id = _extract_arxiv_id(head)
+    doi = _extract_doi(head)
     abstract_start, abstract = _extract_abstract(text)
     pre_abstract = head[:abstract_start] if abstract_start is not None else head
     title, authors = _extract_title_and_authors(pre_abstract)
@@ -162,7 +170,14 @@ def _extract_doi(text: str) -> str | None:
 
 
 def _extract_year(head: str) -> int | None:
-    """Pick the first plausible 4-digit publication year in page 1."""
+    """Pick the first plausible 4-digit publication year in page 1.
+
+    Identifiers are taken out first: the arXiv stamp "arXiv:2005.11401" begins
+    with a year and a month, and read as 2005 it dated every preprint of 2020
+    to the years 2001 to 2012.
+    """
+    for pattern in (_ARXIV_RE, _ARXIV_URL_RE, _DOI_RE):
+        head = pattern.sub(" ", head)
     for raw in _YEAR_RE.findall(head):
         year = int(raw)
         # Reject years that show up because of a phone number, ZIP code,
@@ -312,8 +327,14 @@ _FLAT_AUTHOR_END_RE = re.compile(
 #: "Xin Lai1 Yuhui Yuan3 Ruihang Chu1": split after a mark that is followed
 #: by the next capitalised name.
 _FLAT_FOOTNOTE_SPLIT_RE = re.compile(r"(?<=[A-Za-z])[\d∗*†‡§⋆][\d,∗*†‡§⋆]*\s+(?=[A-Z])")
-#: An ORCID iD and its "iD" badge, which pypdf leaves next to the name.
-_ORCID_RE = re.compile(r"\s*\biD\b\s*|\s*\d{4}-\d{4}-\d{4}-\d{3}[\dX]")
+#: An ORCID iD and its "iD" badge, which pypdf leaves next to the name,
+#: with the spaces before them. The leading spaces are taken only from the
+#: first space of a run (lookbehind) and never given back (possessive), so a
+#: long run of spaces with no iD after it is scanned once. It replaces
+#: exactly what ``\s*\biD\b\s*|\s*\d{4}-\d{4}-\d{4}-\d{3}[\dX]`` did.
+_ORCID_RE = re.compile(
+    r"(?:(?<!\s)\s++)?(?:\biD\b\s*|\d{4}-\d{4}-\d{4}-\d{3}[\dX])"  # NOSONAR linear, see above
+)
 
 
 def _extract_from_flat_text(head: str) -> tuple[str | None, tuple[str, ...]]:
@@ -396,23 +417,75 @@ def _collect_authors(lines: list[str]) -> tuple[str, ...]:
     """Pull author names from the lines immediately after the title."""
     names: list[str] = []
     for line in lines:
-        if any(tok in line.lower() for tok in _NON_AUTHOR_TOKENS):
+        if _ends_author_block(line):
             break
-        if _EMAIL_RE.search(line):
-            break
-        if not _looks_like_authors_line(line):
-            # Author lines often span multiple typeset lines — give it
-            # one more chance before bailing.
-            if names:
+        if _looks_like_authors_line(line):
+            if _add_author_names(line, names):
                 break
-            continue
-        for raw in _AUTHOR_SEPARATOR_RE.split(line):
-            cleaned = _clean_author(raw)
-            if cleaned and cleaned not in names:
-                names.append(cleaned)
-            if len(names) >= _MAX_AUTHORS:
-                return tuple(names)
+        elif names:
+            # A line that does not read as authors before any name was
+            # found is skipped (author lines often follow a wrapped title
+            # line). Once names were found, it ends the block.
+            break
     return tuple(names)
+
+
+def _ends_author_block(line: str) -> bool:
+    """Whether ``line`` lies past the author block of a page-1 header.
+
+    Guards ``_collect_authors`` from reading an affiliation, a section
+    heading or a contact line as more names: a line with any
+    ``_NON_AUTHOR_TOKENS`` entry or an e-mail address ends the block.
+
+    Example: ``_ends_author_block("Department of Physics, MIT")`` and
+    ``_ends_author_block("{ab, cd}@mit.edu")`` are True,
+    ``_ends_author_block("Alice Smith, Bob Jones")`` is False.
+    """
+    lowered = line.lower()
+    if any(tok in lowered for tok in _NON_AUTHOR_TOKENS):
+        return True
+    return _has_email_token(line)
+
+
+def _has_email_token(line: str) -> bool:
+    """Whether ``line`` holds a token shaped like an e-mail address.
+
+    Guards ``_ends_author_block``: a contact line ends the author block.
+    It answers exactly what ``re.search(r"\\S+@\\S+\\.\\S+", line)``
+    answered, a whitespace-free token with an ``@`` after its first
+    character, then at least one character, a dot, and one more character.
+    Plain string scanning keeps it linear: every regex form of that test
+    retried the scan from each ``@`` of a long token, so a line of 20,000
+    ``@`` took seconds (SonarCloud S8786).
+
+    Example: ``_has_email_token("{ab, cd}@mit.edu")`` is True,
+    ``_has_email_token("Alice Smith, Bob Jones")`` is False.
+    """
+    for token in line.split():
+        at = token.find("@", 1)
+        if at != -1 and "." in token[at + 2 : -1]:
+            return True
+    return False
+
+
+def _add_author_names(line: str, names: list[str]) -> bool:
+    """Append the cleaned names on ``line`` to ``names``, True once the cap is hit.
+
+    Guards the author list against duplicates (a name already in ``names``
+    is skipped) and against running past ``_MAX_AUTHORS``: it stops at the
+    cap and returns True so the caller stops reading lines.
+
+    Example: with ``names = []``, ``_add_author_names("Alice Smith, Bob
+    Jones", names)`` returns False and leaves ``names == ["Alice Smith",
+    "Bob Jones"]``.
+    """
+    for raw in _AUTHOR_SEPARATOR_RE.split(line):
+        cleaned = _clean_author(raw)
+        if cleaned and cleaned not in names:
+            names.append(cleaned)
+        if len(names) >= _MAX_AUTHORS:
+            return True
+    return False
 
 
 _AUTHOR_NOISE_RE = re.compile(r"[†‡§*∗⋆0-9]+")

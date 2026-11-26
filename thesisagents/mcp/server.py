@@ -119,6 +119,7 @@ from thesisagents.exporters import export_collection, pptx_edit, review
 from thesisagents.exporters.template import validate_template
 from thesisagents.fetchers.http import shutdown_clients
 from thesisagents.library import Library
+from thesisagents.mcp.curation_tools import register_curation_tools
 from thesisagents.mcp.library_tools import register_library_tools
 from thesisagents.utils.logging import get_logger
 
@@ -147,7 +148,10 @@ _SEARCH_SNOWBALL_MAX_TOTAL = 50
 
 
 def _as_tool_error(func: Callable[..., Any]) -> Callable[..., Any]:
-    """Re-raise :class:`ThesisAgentsError` from a tool as the SDK's ``ToolError``, message intact.
+    """Re-raise a tool's own errors as the SDK's ``ToolError``, message intact.
+
+    Those are :class:`ThesisAgentsError` and ``ValueError``, which the core uses for a bad
+    argument ("max_results must be in [1, 200]").
 
     The SDK reports a ``ToolError`` to the client as the tool's error text. The 1.x SDK also
     wraps any other exception that way, but 2.x treats other exceptions as a crash and the
@@ -160,7 +164,7 @@ def _as_tool_error(func: Callable[..., Any]) -> Callable[..., Any]:
         async def async_wrapper(*args: Any, **kwargs: Any) -> Any:
             try:
                 return await func(*args, **kwargs)
-            except ThesisAgentsError as error:
+            except (ThesisAgentsError, ValueError) as error:
                 raise ToolError(str(error)) from error
 
         return async_wrapper
@@ -169,7 +173,7 @@ def _as_tool_error(func: Callable[..., Any]) -> Callable[..., Any]:
     def sync_wrapper(*args: Any, **kwargs: Any) -> Any:
         try:
             return func(*args, **kwargs)
-        except ThesisAgentsError as error:
+        except (ThesisAgentsError, ValueError) as error:
             raise ToolError(str(error)) from error
 
     return sync_wrapper
@@ -191,6 +195,7 @@ def build_server() -> FastMCP:
     _register_search_tools(server)
     _register_snowball_tool(server)
     register_library_tools(_tool(server))
+    register_curation_tools(_tool(server))
     _register_export_tool(server)
     _register_pdf_tool(server)
     _register_pdf_download_tool(server)
@@ -349,6 +354,31 @@ def _register_pdf_download_tool(server: FastMCP) -> None:
         }
 
 
+def _search_sources(
+    sources: list[str] | None, exclude_sources: list[str] | None
+) -> tuple[str, ...]:
+    """Resolve the ``search`` tool's source mix: ``sources`` minus ``exclude_sources``.
+
+    ``sources`` falls back to the default mix when omitted, and the
+    exclusion is applied after that, so the no-VPN call
+    ``exclude_sources=["ieee"]`` keeps every other default source. Guards
+    against an empty mix: excluding every source raises
+    ``ThesisAgentsError`` instead of running a search over nothing.
+
+    Example: ``_search_sources(["arxiv", "ieee"], ["ieee"]) == ("arxiv",)``.
+    """
+    chosen = tuple(sources) if sources else DEFAULT_SOURCES
+    if not exclude_sources:
+        return chosen
+    excluded = set(exclude_sources)
+    chosen = tuple(s for s in chosen if s not in excluded)
+    if not chosen:
+        raise ThesisAgentsError(
+            "exclude_sources removed every source — nothing left to search"
+        )
+    return chosen
+
+
 def _register_search_tools(server: FastMCP) -> None:
     @_tool(server)
     async def search(
@@ -418,14 +448,7 @@ def _register_search_tools(server: FastMCP) -> None:
         because it broke, not because nothing matched.
         """
         normalised = normalize_query(keywords)
-        chosen = tuple(sources) if sources else DEFAULT_SOURCES
-        if exclude_sources:
-            excluded = set(exclude_sources)
-            chosen = tuple(s for s in chosen if s not in excluded)
-            if not chosen:
-                raise ThesisAgentsError(
-                    "exclude_sources removed every source — nothing left to search"
-                )
+        chosen = _search_sources(sources, exclude_sources)
         query = Query(
             keywords=normalised,
             sources=chosen,
@@ -547,6 +570,7 @@ def _register_export_tool(server: FastMCP) -> None:
         library: str | None = None,
         pptx_template: str | None = None,
         pptx_template_config: str | None = None,
+        docx_template: str | None = None,
     ) -> dict[str, Any]:
         """Export a list of papers (from search / fetch_paper) to disk.
 
@@ -564,6 +588,9 @@ def _register_export_tool(server: FastMCP) -> None:
         When given, the verdicts are kept there: a DOI or URL that verified in
         an earlier call is not checked again for 30 days. A failure is always
         checked again.
+
+        ``docx_template`` is a Word document (.docx) the ``docx`` literature
+        review draft is written into, such as a school's thesis template.
 
         ``pptx_template`` builds the deck on a PowerPoint template (.pptx /
         .potx) instead of the built-in navy-band deck, and
@@ -598,7 +625,8 @@ def _register_export_tool(server: FastMCP) -> None:
         paper_objs = tuple(Paper.from_dict(p) for p in papers)
         query = Query(
             keywords=normalize_query(keywords),
-            sources=("arxiv",),
+            # Shown on the cover of a deck and in the workbook.
+            sources=tuple(sorted({p.source for p in paper_objs if p.source})) or ("arxiv",),
             max_results=Query.clamp_max_results(len(paper_objs)),
         )
         collection = PaperCollection(query=query, papers=paper_objs)
@@ -628,6 +656,7 @@ def _register_export_tool(server: FastMCP) -> None:
             verify_identifiers=verify_identifiers,
             pptx_template=pptx_template,
             pptx_template_config=pptx_template_config,
+            docx_template=docx_template,
         )
         store = Library(library) if library else None
         try:

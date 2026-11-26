@@ -58,6 +58,31 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 
 | ID | Date | Title | Tags | Batch |
 |---|---|---|---|---|
+| U-20261126-21 | 2026-11-26 | Command-line models: keys kept out, timeouts that hold, the right command | #done #intelligence #review #bugfix | [2026-11](2026-11.md) |
+| U-20261126-20 | 2026-11-26 | Summaries by an AI program on the command line | #done #intelligence #gui | [2026-11](2026-11.md) |
+| U-20261126-19 | 2026-11-26 | Summaries are written by Claude Opus 5.5 | #done #intelligence | [2026-11](2026-11.md) |
+| U-20261126-18 | 2026-11-26 | Disabled controls look disabled, the sidebar keeps its bold caption | #done #gui #bugfix | [2026-11](2026-11.md) |
+| U-20261126-17 | 2026-11-26 | The pip GUI command opens without a console | #done #gui #packaging | [2026-11](2026-11.md) |
+| U-20261126-16 | 2026-11-26 | IEEE results by relevance, rate limits as the source asks, the hidden window quiet | #done #sources #gui | [2026-11](2026-11.md) |
+| U-20261126-15 | 2026-11-26 | Review of the whole project, with fixes | #done #review #bugfix #library #sources #exporters #gui | [2026-11](2026-11.md) |
+| U-20261126-14 | 2026-11-26 | The stack overflow when the font size changes | #done #gui #bugfix | [2026-11](2026-11.md) |
+| U-20261126-13 | 2026-11-26 | Wording fixes in 11 languages, and GUI tests that cannot reach real settings | #done #gui #i18n #tests | [2026-11](2026-11.md) |
+| U-20261126-12 | 2026-11-26 | The two largest modules are split | #done #refactor #pptx #gui | [2026-11](2026-11.md) |
+| U-20261126-11 | 2026-11-26 | A tool for judging search results by hand | #done #evaluation | [2026-11](2026-11.md) |
+| U-20261126-10 | 2026-11-26 | Slide editor in the GUI, edits keep the look of the text | #done #gui #pptx #mcp #i18n | [2026-11](2026-11.md) |
+| U-20261126-09 | 2026-11-26 | Summary editor, comparison table, Word and LaTeX literature review drafts | #done #gui #export #i18n | [2026-11](2026-11.md) |
+| U-20261126-08 | 2026-11-26 | Summaries from many model providers, local ones included | #done #intelligence #gui #cli #i18n | [2026-11](2026-11.md) |
+| U-20261126-07 | 2026-11-26 | The Library page edits: notes, screening, imports, saved searches, citation graph, PRISMA | #done #gui #library #i18n | [2026-11](2026-11.md) |
+| U-20261126-06 | 2026-11-26 | The library can be edited: tags, notes, screening, merging, imports, saved searches, PRISMA | #done #library #cli #mcp | [2026-11](2026-11.md) |
+| U-20261126-05 | 2026-11-26 | Update notice, Windows installer, a real version number | #done #gui #release #i18n | [2026-11](2026-11.md) |
+| U-20261126-04 | 2026-11-26 | API keys move to the system credential store | #done #gui #security #i18n | [2026-11](2026-11.md) |
+| U-20261126-03 | 2026-11-26 | Log window, captcha banner and start-up errors in the GUI | #done #gui #i18n | [2026-11](2026-11.md) |
+| U-20261126-02 | 2026-11-26 | Code review findings closed, icon and technique header fixed | #done #security #gui #pptx | [2026-11](2026-11.md) |
+| U-20261126-01 | 2026-11-26 | The interface font size is adjustable | #done #gui #i18n | [2026-11](2026-11.md) |
+| U-20261125-01 | 2026-11-25 | The Windows app opens without a console, Qt font lines gone | #done #gui #release | [2026-11](2026-11.md) |
+| U-20261121-01 | 2026-11-21 | CI saves its pip cache from main only | #done #ci | [2026-11](2026-11.md) |
+| U-20261120-05 | 2026-11-20 | CI installs from a hash-locked lock, caches stop evicting the Nuitka cache | #done #ci #security | [2026-11](2026-11.md) |
+| U-20261120-04 | 2026-11-20 | SonarCloud new-code issues on main cleared | #done #quality #sonar | [2026-11](2026-11.md) |
 | U-20261120-03 | 2026-11-20 | The Nuitka release build compiles with 4 jobs | #done #ci #release | [2026-11](2026-11.md) |
 | U-20261120-02 | 2026-11-20 | Project agents run on the newest Opus | #done #agents | [2026-11](2026-11.md) |
 | U-20261120-01 | 2026-11-20 | CI retries the Linux Qt library install | #done #ci | [2026-11](2026-11.md) |
@@ -117,6 +142,6 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 
 | File | Period | Entries |
 |---|---|---:|
-| [2026-11.md](2026-11.md) | 2026-11 | 16 |
+| [2026-11.md](2026-11.md) | 2026-11 | 19 |
 | [2026-10.md](2026-10.md) | 2026-10 | 13 |
 | [2026-09.md](2026-09.md) | 2026-09 | 25 |

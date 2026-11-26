@@ -54,6 +54,7 @@ python -m nuitka `
   --onefile `
   --output-filename=thesisagents `
   --include-package=thesisagents `
+  --include-package-data=thesisagents `
   --include-package-data=pptx `
   --include-package-data=openpyxl `
   --assume-yes-for-downloads `
@@ -81,6 +82,23 @@ Nuitka's cache directory rather than in `./<entrypoint>.build/`:
 `%LOCALAPPDATA%\Nuitka\Nuitka\Cache` on Windows, `~/.cache/Nuitka` on
 Linux, `~/Library/Caches/Nuitka` on macOS. Set `NUITKA_CACHE_DIR` to
 move it.
+
+## Desktop app without a console window
+
+The command above builds a console program, so opening it from Explorer
+shows a console window behind the desktop app. For Windows, build with
+`--standalone` (no `--onefile`), then split the executable in the
+`.dist` folder the way the release does:
+
+```powershell
+python scripts/split_windows_exe.py <name>.dist\thesisagents.exe
+```
+
+`thesisagents.exe` is then windowed and `thesisagents-cli.exe` beside it
+keeps the console for the CLI. Do not use
+`--windows-console-mode=attach` or `disable` instead, the reasons are in
+[`releases.md`](releases.md) ("Two executables: windowed app and console
+CLI"). The split has only been tried on `--standalone` builds.
 
 ## Build the MCP server (`thesisagents-mcp`)
 

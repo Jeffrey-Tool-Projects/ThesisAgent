@@ -27,19 +27,32 @@ Tables (version 1)
                    provider and depth that found them.
 ``verifications``  the export preflight's verdict per DOI / URL, so an
                    identifier checked last week is not looked up again.
+
+Added in version 2 (what the reader records, see ``curation.py``)
+-----------------------------------------------------------------
+``annotations``    reading status and note of a paper.
+``tags``           the tags of a paper, one row each, compared without case.
+``screening``      the decision of a systematic review per paper and stage.
+``saved_searches`` named queries that can be run again (``saved.py``).
+
+Version 3 adds no table. It stores the identity keys of every paper once
+more, because the way they are formed changed: titles in other scripts keep
+their letters, and a DOI is one whether or not it is written as a link.
 """
 
 from __future__ import annotations
 
+import json
 import sqlite3
 from collections.abc import Callable, Iterator
 from contextlib import contextmanager
 
-from thesisagents.core.exceptions import LibraryError
+from thesisagents.core.exceptions import LibraryError, ThesisAgentsError
+from thesisagents.core.models import Paper
 
 #: "THAG" in ASCII. Lets a library be told from any other SQLite file.
 APPLICATION_ID: int = 0x54484147
-SCHEMA_VERSION: int = 1
+SCHEMA_VERSION: int = 3
 
 
 @contextmanager
@@ -61,14 +74,23 @@ def transaction(conn: sqlite3.Connection) -> Iterator[sqlite3.Connection]:
         with transaction(conn):
             conn.execute("INSERT INTO runs ...")
             conn.execute("INSERT INTO observations ...")
+
+    Inside another transaction it joins that one, so several edits can be
+    made one (``Library.together``).
     """
+    if conn.in_transaction:
+        yield conn
+        return
     conn.execute("BEGIN IMMEDIATE")
+    body_finished = False
     try:
         yield conn
-    except BaseException:
-        conn.execute("ROLLBACK")
-        raise
-    conn.execute("COMMIT")
+        body_finished = True
+    finally:
+        # ``finally`` also runs when the caller leaves early (an exception in
+        # the ``with`` body, or the generator being closed), so no exit path
+        # leaves the write lock held.
+        conn.execute("COMMIT" if body_finished else "ROLLBACK")
 
 
 _VERSION_1: tuple[str, ...] = (
@@ -146,8 +168,75 @@ def _create_version_1(conn: sqlite3.Connection) -> None:
         conn.execute(statement)
 
 
+_VERSION_2: tuple[str, ...] = (
+    """
+    CREATE TABLE annotations (
+        paper_id INTEGER PRIMARY KEY REFERENCES papers(id) ON DELETE CASCADE,
+        status TEXT NOT NULL DEFAULT 'unread',
+        note TEXT NOT NULL DEFAULT '',
+        updated_at TEXT NOT NULL
+    )
+    """,
+    """
+    CREATE TABLE tags (
+        paper_id INTEGER NOT NULL REFERENCES papers(id) ON DELETE CASCADE,
+        tag TEXT NOT NULL COLLATE NOCASE,
+        PRIMARY KEY (paper_id, tag)
+    )
+    """,
+    "CREATE INDEX tags_tag ON tags(tag)",
+    """
+    CREATE TABLE screening (
+        paper_id INTEGER NOT NULL REFERENCES papers(id) ON DELETE CASCADE,
+        stage TEXT NOT NULL,
+        decision TEXT NOT NULL,
+        reason TEXT NOT NULL,
+        decided_at TEXT NOT NULL,
+        PRIMARY KEY (paper_id, stage)
+    )
+    """,
+    """
+    CREATE TABLE saved_searches (
+        name TEXT PRIMARY KEY COLLATE NOCASE,
+        query TEXT NOT NULL,
+        created_at TEXT NOT NULL,
+        last_run_at TEXT,
+        last_new INTEGER
+    )
+    """,
+)
+
+
+def _add_version_2(conn: sqlite3.Connection) -> None:
+    for statement in _VERSION_2:
+        conn.execute(statement)
+
+
+def _add_version_3(conn: sqlite3.Connection) -> None:
+    """Give every paper the identity keys it would get today, beside the old ones.
+
+    The failure this prevents: a paper with a Chinese title and no DOI was
+    stored under a key made of the title's ASCII letters. Importing the same
+    file again would store it once more. A key another paper owns is left
+    with its owner, and a record that cannot be read keeps its old keys.
+    """
+    for paper_id, record in conn.execute("SELECT id, record FROM papers").fetchall():
+        try:
+            keys = Paper.from_dict(json.loads(record)).identity_keys()
+        except (ThesisAgentsError, ValueError, KeyError, TypeError, AttributeError):
+            continue
+        conn.executemany(
+            "INSERT OR IGNORE INTO identity_keys (key, paper_id) VALUES (?, ?)",
+            [(key, paper_id) for key in keys],
+        )
+
+
 #: ``MIGRATIONS[n]`` upgrades a database from version ``n`` to ``n + 1``.
-MIGRATIONS: tuple[Callable[[sqlite3.Connection], None], ...] = (_create_version_1,)
+MIGRATIONS: tuple[Callable[[sqlite3.Connection], None], ...] = (
+    _create_version_1,
+    _add_version_2,
+    _add_version_3,
+)
 
 
 def prepare(conn: sqlite3.Connection, path: str) -> int:
@@ -163,7 +252,7 @@ def prepare(conn: sqlite3.Connection, path: str) -> int:
     upgrade that fails halfway leaves the previous version intact. ``conn``
     must be in autocommit mode (``isolation_level=None``).
 
-    Example: a fresh file ends at version 1. A file that says version 3 raises
+    Example: a fresh file ends at version 3. A file that says version 9 raises
     ``LibraryError`` naming both numbers.
     """
     try:
@@ -196,9 +285,14 @@ def prepare(conn: sqlite3.Connection, path: str) -> int:
             "--library at another file."
         )
     while version < SCHEMA_VERSION:
-        migrate = MIGRATIONS[version]
         with transaction(conn):
-            migrate(conn)
+            # Read again under the write lock: another process may have
+            # upgraded the file while this one waited, and creating the
+            # same tables twice fails.
+            version = conn.execute("PRAGMA user_version").fetchone()[0]
+            if version >= SCHEMA_VERSION:
+                break
+            MIGRATIONS[version](conn)
             version += 1
             # PRAGMA values cannot be bound as parameters. Both are integers
             # defined in this module, never user input.

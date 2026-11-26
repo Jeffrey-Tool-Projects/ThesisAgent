@@ -17,6 +17,7 @@ from __future__ import annotations
 from typing import Any
 
 from thesisagents.core.models import Paper
+from thesisagents.utils.markup import plain_text
 
 _SOURCE = "doaj"
 
@@ -24,12 +25,12 @@ _SOURCE = "doaj"
 def parse_result(result: dict[str, Any]) -> Paper:
     """Map one entry from ``results[]`` to a ``Paper``."""
     bib = result.get("bibjson") or {}
-    title = (bib.get("title") or "").strip()
+    title = plain_text(bib.get("title"))
     authors = tuple(_authors(bib.get("author")))
     year = _to_int(bib.get("year"))
     venue = ((bib.get("journal") or {}).get("title") or "").strip() or None
     doi = _doi(bib.get("identifier"))
-    abstract = (bib.get("abstract") or "").strip()
+    abstract = plain_text(bib.get("abstract"))
     article_id = (result.get("id") or "").strip()
     url = _article_url(article_id, bib.get("link"), doi)
     pdf_url = _pdf_url(bib.get("link"))

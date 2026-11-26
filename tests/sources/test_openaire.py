@@ -86,7 +86,8 @@ async def test_search_year_filter_passes_to_api(monkeypatch):
     assert request.url.params.get("fromPublicationDate") == "2025-01-01"
     assert request.url.params.get("toPublicationDate") == "2026-12-31"
     assert request.url.params.get("type") == "publication"
-    assert request.url.params.get("sortBy") == "publicationDate DESC"
+    assert request.url.params.get("sortBy") == "relevance DESC"
+    assert request.url.path == "/graph/v2/researchProducts"
 
 
 async def test_search_respects_max_results(monkeypatch):
@@ -164,6 +165,36 @@ def test_parse_product_pdf_url_priority():
     assert parse_product(record).pdf_url == "https://open.example/paper.pdf"
 
 
+def test_parse_product_skips_an_empty_instance_entry():
+    """A ``null`` in ``instances`` used to raise AttributeError in the PDF lookup
+    (the landing-URL lookup already skipped it). Both now pass over it."""
+    record = {
+        "id": "x",
+        "mainTitle": "T",
+        "instances": [
+            None,
+            {"accessRight": "OPEN", "urls": ["https://open.example/paper.pdf"]},
+        ],
+    }
+    paper = parse_product(record)
+    assert paper.pdf_url == "https://open.example/paper.pdf"
+    assert paper.url == "https://open.example/paper.pdf"
+
+
 def test_parse_product_year_from_partial_date():
     record = {"id": "x", "mainTitle": "T", "publicationDate": "2025"}
     assert parse_product(record).year == 2025
+
+
+def test_the_access_right_is_an_object_in_v2():
+    record = {
+        "id": "x", "mainTitle": "T", "pids": None, "container": None, "descriptions": None,
+        "instances": [
+            {"accessRight": {"code": "c_14cb", "label": "CLOSED"}, "urls": ["https://a/x"]},
+            {"accessRight": {"code": "c_abf2", "label": "Open"}, "urls": ["https://b/y"]},
+            {"accessRight": None, "urls": None},
+        ],
+    }
+    paper = parse_product(record)
+    assert paper.url == "https://a/x"
+    assert paper.pdf_url == "https://b/y"

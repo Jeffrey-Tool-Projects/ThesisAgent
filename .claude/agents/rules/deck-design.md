@@ -33,7 +33,7 @@ The exporter MUST set a typeface on every run.
 | ru | Inter (Latin) | — | Inter has full Cyrillic |
 | hi | Inter (Latin) | Nirmala UI | Win Devanagari default |
 
-Implementation pattern (`thesisagents/exporters/pptx.py`):
+Implementation pattern (`thesisagents/exporters/pptx_finish.py`, the table in `pptx_style.py`):
 - Module-level `_FONT_FAMILIES: dict[str, tuple[str, str | None]]` keyed
   by language → `(latin_family, east_asian_family)`.
 - `_apply_typography(prs, language)` post-build pass walks every slide,
@@ -248,7 +248,7 @@ Combined with a small font + default vertical-top alignment, the result
 looks like a quick screenshot from Excel, not a thesis-defence visual.
 
 The exporter ships an academic-style replacement in
-`thesisagents/exporters/pptx.py::_add_table` → `_style_table_cell`.
+`thesisagents/exporters/pptx_text.py::_add_table` → `_style_table_cell`.
 The rules:
 
 | Element | Spec |

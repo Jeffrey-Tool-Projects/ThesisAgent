@@ -123,7 +123,7 @@ class PaperSummary:
     future_work: tuple[str, ...] = ()
 
     # Provenance
-    model: str = ""               # "claude-opus-4-7 (LLM-as-agent, read 12-page PDF)"
+    model: str = ""               # "claude-opus-5-5 (LLM-as-agent, read 12-page PDF)"
     raw_text_chars: int = 0       # length of source text that was summarised
     language: str = "en"
 ```
@@ -358,7 +358,8 @@ class ExportOptions:
 
 | Field | Notes |
 |---|---|
-| `formats` | Validated against `ALL_EXPORTS = ("bib", "md", "pptx", "xlsx", "pdf", "json", "ris", "csv", "csl")`. |
+| `docx_template` | A Word document the `docx` draft is written into, or `None`. |
+| `formats` | Validated against `ALL_EXPORTS = ("bib", "md", "pptx", "xlsx", "pdf", "json", "ris", "csv", "csl", "docx", "tex")`. |
 | `out_dir` | Created if missing. Path-traversal-safe (resolved via `utils.path_safety`). |
 | `filename_stem` | When `None`, the pipeline generates `{slug-of-query}-{YYYYMMDD-HHMMSS}`. Hand-authored regen scripts typically set this to the BibTeX key. |
 | `pptx_template` | A PowerPoint template whose layouts, background and logo the deck is built on. `None` is the built-in navy-band deck. Checked against the template contract before any slide is rendered, and a template that does not meet it raises `TemplateError` with every problem. See [Deck templates](pptx_templates.md). |
@@ -489,7 +490,9 @@ its `source`, `source_id`, `url` and `title`. One field departs from
 "first value wins": a later, higher `citation_count` replaces the
 stored one.
 
-**Tables** (schema version 1, in `thesisagents/library/schema.py`):
+**Tables** (schema version 1, in `thesisagents/library/schema.py`,
+version 2 adds tags, notes, screening and saved searches, version 3
+stores the identity keys anew):
 
 | Table | Holds |
 |---|---|

@@ -6,7 +6,7 @@ the project's invariants.
 ## Quick start
 
 ```bash
-git clone https://github.com/Integration-Automation/ThesisAgents.git
+git clone https://github.com/Jeffrey-Tool-Projects/ThesisAgent.git
 cd ThesisAgents
 python -m venv .venv
 .\.venv\Scripts\Activate.ps1            # Windows PowerShell
@@ -242,8 +242,7 @@ thesisagents --query "diffusion models" --source arxiv --max 3 --out ./smoke/
 thesisagents --paper "https://arxiv.org/abs/1706.03762" --out ./smoke/single/
 
 # (only when touching pptx / i18n) overflow check
-python -c "from thesisagents.exporters.pptx import inspect_overflow; \
-           inspect_overflow('./smoke/your-deck.pptx')"
+thesisagents review ./smoke/your-deck.pptx
 ```
 
 CI runs the same set on Ubuntu + Windows × Python 3.12 / 3.13 /
@@ -298,6 +297,6 @@ See [Releases](releases.md) for the auto-bump flow, the
 ## Asking for help
 
 Open an issue at
-<https://github.com/Integration-Automation/ThesisAgents/issues>
+<https://github.com/Jeffrey-Tool-Projects/ThesisAgent/issues>
 or a draft PR with a question label. The maintainers are happy
 to weigh in on design questions before you write the code.

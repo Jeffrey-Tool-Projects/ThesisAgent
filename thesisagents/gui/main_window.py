@@ -14,12 +14,16 @@ The window adapts to its width (see ``widgets/responsive.py``):
 
 The pages are told when the size class changes (``apply_breakpoint``), so
 each one decides how to re-arrange itself. ``Ctrl+1`` ... ``Ctrl+5`` switch
-pages from the keyboard (Search, Library, Enrich, Deck, Settings).
+pages from the keyboard (Search, Library, Enrich, Deck, Settings), and
+``Ctrl++`` / ``Ctrl+-`` / ``Ctrl+0`` change the interface font size. The
+widths above are for text of the default size and grow with it.
 """
 
 from __future__ import annotations
 
-from PySide6.QtCore import QByteArray, QSettings, Qt
+import contextlib
+
+from PySide6.QtCore import QByteArray, QSettings, QTimer
 from PySide6.QtGui import QCloseEvent, QGuiApplication, QKeySequence, QResizeEvent, QShortcut
 from PySide6.QtWidgets import (
     QApplication,
@@ -28,14 +32,23 @@ from PySide6.QtWidgets import (
     QLabel,
     QMainWindow,
     QProgressBar,
+    QPushButton,
     QScrollArea,
     QStackedWidget,
     QStatusBar,
+    QTableView,
     QVBoxLayout,
     QWidget,
 )
 
 from thesisagents.core.models import PaperCollection
+from thesisagents.gui.activity import activity
+from thesisagents.gui.font_size import (
+    current_font_size,
+    layout_scale,
+    set_font_size,
+    table_row_height,
+)
 from thesisagents.gui.i18n import t
 from thesisagents.gui.pages.deck import DeckPage
 from thesisagents.gui.pages.enrich import EnrichPage
@@ -43,13 +56,18 @@ from thesisagents.gui.pages.library import LibraryPage
 from thesisagents.gui.pages.search import SearchPage
 from thesisagents.gui.pages.settings import (
     SettingsPage,
+    saved_font_size,
     saved_style,
     saved_theme,
     settings_store,
 )
 from thesisagents.gui.theme import THEME_SYSTEM, apply_theme
+from thesisagents.gui.update_check import UpdateCheck, open_download_page
+from thesisagents.gui.widgets.log_dialog import LogDialog
 from thesisagents.gui.widgets.nav_rail import NavRail
+from thesisagents.gui.widgets.notice_banner import NoticeBanner
 from thesisagents.gui.widgets.responsive import Breakpoint, breakpoint_for_width
+from thesisagents.utils.notices import CAPTCHA_WAITING, Notice
 
 # The floor fits a 1366 x 768 laptop at 125 % scaling with room to spare:
 # the compact layout (icon sidebar, stacked panes, wrapped form rows) is
@@ -58,6 +76,9 @@ _MIN_WIDTH = 640
 _MIN_HEIGHT = 480
 _DEFAULT_WIDTH = 1280
 _DEFAULT_HEIGHT = 800
+# Restyling the window takes about half a second, so a burst of font size
+# steps (a held key, the spin box arrows) is applied once, after this pause.
+_FONT_SIZE_DELAY_MS = 150
 # QSettings key holding the window's size, position and maximised state.
 _GEOMETRY_KEY = "window/geometry"
 #: Windows built by a language switch. The window that replaces another has
@@ -89,6 +110,7 @@ class MainWindow(QMainWindow):
         super().__init__(parent)
         self._ui_language = ui_language
         self._breakpoint: Breakpoint | None = None
+        self._layout_scale = 1.0
         self._busy_pages: set[str] = set()
         self.setWindowTitle(t("app.title", ui_language))
         self.setMinimumSize(_MIN_WIDTH, _MIN_HEIGHT)
@@ -108,10 +130,10 @@ class MainWindow(QMainWindow):
         self._stack = QStackedWidget(self)
         self._headers: list[QWidget] = []
         bodies: tuple[QWidget, ...] = (
-            self._search_page,
-            self._library_page,
-            self._enrich_page,
-            self._deck_page,
+            self._scrollable(self._search_page),
+            self._scrollable(self._library_page),
+            self._scrollable(self._enrich_page),
+            self._scrollable(self._deck_page),
             self._scrollable(self._settings_page),
         )
         for index, (icon, label_key, subtitle_key) in enumerate(_PAGE_META):
@@ -130,7 +152,14 @@ class MainWindow(QMainWindow):
         row.setContentsMargins(0, 0, 0, 0)
         row.setSpacing(0)
         row.addWidget(self._nav)
-        row.addWidget(self._stack, stretch=1)
+        content = QWidget(central)
+        column = QVBoxLayout(content)
+        column.setContentsMargins(0, 0, 0, 0)
+        column.setSpacing(0)
+        self._banner = NoticeBanner(ui_language, content)
+        column.addWidget(self._banner)
+        column.addWidget(self._stack, stretch=1)
+        row.addWidget(content, stretch=1)
         self.setCentralWidget(central)
 
         self._build_status_bar()
@@ -138,8 +167,9 @@ class MainWindow(QMainWindow):
         for index in range(len(_PAGE_META)):
             shortcut = QShortcut(QKeySequence(f"Ctrl+{index + 1}"), self)
             shortcut.activated.connect(lambda i=index: self._nav.set_current(i))
+        self._build_font_size_controls()
         QGuiApplication.styleHints().colorSchemeChanged.connect(self._on_system_scheme)
-        self._apply_breakpoint(breakpoint_for_width(self.width()))
+        self._fit_font_size()
         self._restore_forms()
 
     # --- construction ---------------------------------------------------
@@ -170,16 +200,17 @@ class MainWindow(QMainWindow):
         return frame
 
     def _scrollable(self, page: QWidget) -> QScrollArea:
-        """Wrap a page that has no results pane, so it scrolls when short.
+        """Wrap a page, so it scrolls when the window is too small for it.
 
-        ``widgetResizable=True`` makes the page stretch with the scroll
-        area's width instead of sitting at its size hint.
+        ``widgetResizable=True`` makes the page stretch with the scroll area
+        instead of sitting at its size hint. At the default font size every
+        page but Settings fits the smallest window, so nothing scrolls. With
+        enlarged text the alternative is widgets squeezed onto each other.
         """
         scroll = QScrollArea(self)
         scroll.setWidget(page)
         scroll.setWidgetResizable(True)
         scroll.setFrameShape(QFrame.Shape.NoFrame)
-        scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
         return scroll
 
     def _build_status_bar(self) -> None:
@@ -191,7 +222,40 @@ class MainWindow(QMainWindow):
         self._busy_bar.setTextVisible(False)
         self._busy_bar.setVisible(False)
         bar.addPermanentWidget(self._busy_bar)
+        self._update_button = QPushButton("", bar)
+        self._update_button.setObjectName("StatusButton")
+        self._update_button.setProperty("primary", True)
+        self._update_button.clicked.connect(open_download_page)
+        self._update_button.setVisible(False)
+        bar.addPermanentWidget(self._update_button)
+        self._update_check = UpdateCheck(self)
+        self._update_check.found.connect(self.show_update)
+        self._log_dialog: LogDialog | None = None
+        log_button = QPushButton(t("log.button", self._ui_language), bar)
+        log_button.setObjectName("StatusButton")
+        log_button.setToolTip(t("log.title", self._ui_language) + " (Ctrl+L)")
+        log_button.clicked.connect(self.show_log)
+        bar.addPermanentWidget(log_button)
+        QShortcut(QKeySequence("Ctrl+L"), self).activated.connect(self.show_log)
+        activity().notice.connect(self._on_notice)
+        activity().unexpected_error.connect(self._on_unexpected_error)
         self.setStatusBar(bar)
+
+    def _build_font_size_controls(self) -> None:
+        """The zoom shortcuts, and the timer that applies a burst of steps once."""
+        self._font_timer = QTimer(self)
+        self._font_timer.setSingleShot(True)
+        self._font_timer.setInterval(_FONT_SIZE_DELAY_MS)
+        self._font_timer.timeout.connect(self._apply_font_size)
+        page = self._settings_page
+        for keys, action in (
+            # Ctrl+= is Ctrl++ without the Shift that layouts put the + under.
+            (("Ctrl++", "Ctrl+="), lambda: page.set_font_size(page.font_size_box().value() + 1)),
+            (("Ctrl+-",), lambda: page.set_font_size(page.font_size_box().value() - 1)),
+            (("Ctrl+0",), page.reset_font_size),
+        ):
+            for key in keys:
+                QShortcut(QKeySequence(key), self).activated.connect(action)
 
     def _wire_pages(self) -> None:
         # Data flow between steps: Search → Enrich (raw collection) and
@@ -206,6 +270,7 @@ class MainWindow(QMainWindow):
         # The Library page follows the Search page's library file, and hands
         # its papers on to Enrich and Deck the same way a search does.
         self._search_page.library_path_changed.connect(self._library_page.set_library_path)
+        self._library_page.set_query_provider(self._search_page.current_query)
         self._library_page.collection_ready.connect(self._enrich_page.set_collection)
         self._library_page.collection_ready.connect(self._deck_page.set_collection)
         self._library_page.collection_ready.connect(self._on_search_collection)
@@ -218,24 +283,32 @@ class MainWindow(QMainWindow):
         ):
             page.busy_changed.connect(lambda busy, k=key: self._on_busy_changed(k, busy))
         self._settings_page.theme_changed.connect(self._on_theme_changed)
+        self._settings_page.font_size_changed.connect(self._on_font_size_changed)
         self._settings_page.language_changed.connect(self._on_language_changed)
         self._settings_page.access_changed.connect(self._search_page.apply_access)
+        # Emitted by every save, whatever was changed.
+        self._settings_page.access_changed.connect(lambda _on: self._enrich_page.refresh_model())
 
     # --- responsive -----------------------------------------------------
 
     def resizeEvent(self, event: QResizeEvent) -> None:  # noqa: N802 - Qt override
         super().resizeEvent(event)
-        self._apply_breakpoint(breakpoint_for_width(event.size().width()))
+        self._apply_breakpoint(breakpoint_for_width(event.size().width(), layout_scale()))
 
     def _apply_breakpoint(self, breakpoint: Breakpoint) -> None:
-        """Re-arrange the sidebar and every page for ``breakpoint``."""
-        if breakpoint == self._breakpoint:
+        """Re-arrange the sidebar and every page for ``breakpoint`` and the font size."""
+        scale = layout_scale()
+        if (breakpoint, scale) == (self._breakpoint, self._layout_scale):
             return
+        if breakpoint != self._breakpoint:
+            # Only then: a font size change alone keeps a rail the user folded.
+            self._nav.set_compact(breakpoint is Breakpoint.COMPACT)
         self._breakpoint = breakpoint
-        self._nav.set_compact(breakpoint is Breakpoint.COMPACT)
-        margin = 12 if breakpoint is Breakpoint.COMPACT else 24
+        self._layout_scale = scale
+        compact = breakpoint is Breakpoint.COMPACT
+        margin, top, bottom = (12, 8, 6) if compact else (24, 14, 10)
         for frame in self._headers:
-            frame.layout().setContentsMargins(margin, 14, margin, 10)
+            frame.layout().setContentsMargins(margin, top, margin, bottom)
         for page in (
             self._search_page, self._library_page, self._enrich_page,
             self._deck_page, self._settings_page,
@@ -288,11 +361,15 @@ class MainWindow(QMainWindow):
         with its ticks, the open library, the Enrich and Deck collections and
         the current page.
         """
+        # A size picked a moment ago may still be waiting for the timer.
+        self._apply_font_size()
         store = settings_store()
         store.setValue(_GEOMETRY_KEY, self.saveGeometry())
         self.save_forms(store)
         replacement = MainWindow(ui_language=language)
         replacement.adopt_work(self)
+        # Repeats today's answer in the new window, without asking again.
+        replacement.check_for_updates()
         replacement.statusBar().showMessage(t("settings.saved_message", language), 8000)
         _REPLACEMENTS.append(replacement)
         replacement.destroyed.connect(
@@ -300,7 +377,24 @@ class MainWindow(QMainWindow):
         )
         replacement.show()
         self.close()
+        self._detach()
         return replacement
+
+    def _detach(self) -> None:
+        """Stop hearing the application, which the replacement now does.
+
+        The hidden window stayed connected until exit: it flashed the taskbar
+        for a captcha the new window already showed, and applied the theme a
+        second time when the system switched to dark. It is not deleted here,
+        because whoever made it may still hold it.
+        """
+        for signal, slot in (
+            (activity().notice, self._on_notice),
+            (activity().unexpected_error, self._on_unexpected_error),
+            (QGuiApplication.styleHints().colorSchemeChanged, self._on_system_scheme),
+        ):
+            with contextlib.suppress(RuntimeError, TypeError):
+                signal.disconnect(slot)
 
     def adopt_work(self, old: MainWindow) -> None:
         """Take over ``old``'s results, collections and current page."""
@@ -324,6 +418,68 @@ class MainWindow(QMainWindow):
         if isinstance(app, QApplication):
             apply_theme(app, choice, saved_style())
         self._nav.refresh_icons()
+        self._library_page.graph().repaint_colours()
+
+    def check_for_updates(self) -> None:
+        """Look for a newer release (``app.py`` calls this once the window shows)."""
+        self._update_check.start()
+
+    def show_update(self, version: str) -> None:
+        """Offer the download page of ``version`` in the status bar."""
+        self._update_button.setText(
+            t("updates.available", self._ui_language, version=version)
+        )
+        self._update_button.setToolTip(t("updates.open", self._ui_language))
+        self._update_button.setVisible(True)
+
+    def update_button(self) -> QPushButton:
+        return self._update_button
+
+    def show_log(self) -> LogDialog:
+        """Open the log window, or bring the open one to the front."""
+        if self._log_dialog is None:
+            self._log_dialog = LogDialog(self._ui_language, self)
+        self._log_dialog.show()
+        self._log_dialog.raise_()
+        return self._log_dialog
+
+    def _on_notice(self, notice: object) -> None:
+        if not isinstance(notice, Notice):
+            return
+        self._banner.show_notice(notice)
+        if notice.kind == CAPTCHA_WAITING:
+            # Flash the taskbar entry: the user is likely in another window.
+            QApplication.alert(self)
+
+    def _on_unexpected_error(self, error: str) -> None:
+        self.statusBar().showMessage(
+            t("error.unexpected", self._ui_language, error=error), 15000
+        )
+
+    def notice_banner(self) -> NoticeBanner:
+        return self._banner
+
+    def _on_font_size_changed(self, points: int) -> None:
+        """Say the new size at once and apply it when the steps stop coming."""
+        label = t("settings.font_size_label", self._ui_language)
+        self.statusBar().showMessage(f"{label} {points} pt", 3000)
+        self._font_timer.start()
+
+    def _apply_font_size(self) -> None:
+        points = saved_font_size()
+        app = QApplication.instance()
+        if not isinstance(app, QApplication) or points == current_font_size():
+            return
+        set_font_size(app, points)
+        apply_theme(app, saved_theme(), saved_style())
+        self._fit_font_size()
+
+    def _fit_font_size(self) -> None:
+        """Re-fit what does not follow the font by itself: rows, sidebar, layout."""
+        for table in self.findChildren(QTableView):
+            table.verticalHeader().setDefaultSectionSize(table_row_height())
+        self._nav.refresh_width()
+        self._apply_breakpoint(breakpoint_for_width(self.width(), layout_scale()))
 
     def _on_system_scheme(self, _scheme: object) -> None:
         """Follow the OS switching light / dark, when the theme is "system"."""

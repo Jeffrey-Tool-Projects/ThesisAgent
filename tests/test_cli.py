@@ -41,7 +41,7 @@ def _stub_download_pdfs(monkeypatch, tmp_path):
     monkeypatch.setattr("builtins.input", lambda _prompt="": "y")
 
 
-@pytest.fixture()
+@pytest.fixture
 def patched_pipeline(monkeypatch, sample_papers):
     """Stub cli's run_search + shutdown_clients and return a dict that captures
     the Query passed to run_search (``patched_pipeline["query"]``).
@@ -199,7 +199,8 @@ def test_cli_single_paper_mode(tmp_path, monkeypatch, capsys, sample_papers):
     assert code == 0
     assert (tmp_path / "single.md").exists()
     assert (tmp_path / "single.bib").exists()
-    assert captured_identifiers and captured_identifiers[0].value == "2401.08741"
+    assert captured_identifiers
+    assert captured_identifiers[0].value == "2401.08741"
     captured = capsys.readouterr().out
     assert "Sample Paper on Attention" in captured
 
@@ -698,7 +699,7 @@ def _stub_enrich_collection(monkeypatch) -> list[str]:
     """Replace enrich_collection with a no-op that records its calls."""
     calls: list[str] = []
 
-    async def fake_enrich(collection, language=None, model=None):  # noqa: ARG001
+    async def fake_enrich(collection, **_choice):
         calls.append("called")
         return collection
 
@@ -903,7 +904,7 @@ def _collection_with_doi(doi: str) -> PaperCollection:
     return PaperCollection(query=query, papers=(paper,))
 
 
-@pytest.fixture()
+@pytest.fixture
 def pipeline_returning(monkeypatch):
     """Make the CLI's search return a given collection, with no client shutdown."""
 
@@ -1043,7 +1044,8 @@ def test_cli_diagnostics_prints_and_writes_the_breakdown(
     assert "Ranking diagnostics for: attention" in out
     assert "[  1] keep " in out
     assert "[  2] prune " in out
-    assert "total " in out and "= relevance " in out
+    assert "total " in out
+    assert "= relevance " in out
     # Reasons are spelled out only for papers that are not "keep".
     assert "        - no query term appears in the title or abstract" in out
     assert "        rule: prune_below_relevance=0.10" in out
@@ -1260,7 +1262,7 @@ def _found(sid: str, title: str):
     )
 
 
-@pytest.fixture()
+@pytest.fixture
 def citation_graph(monkeypatch, sample_papers):
     seed_id = sample_papers[0].source_id
     provider = _GraphProvider(

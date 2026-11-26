@@ -1,10 +1,10 @@
 # ThesisAgents
 
-[![CI](https://github.com/Integration-Automation/ThesisAgents/actions/workflows/ci.yml/badge.svg)](https://github.com/Integration-Automation/ThesisAgents/actions/workflows/ci.yml)
-[![Release](https://github.com/Integration-Automation/ThesisAgents/actions/workflows/release.yml/badge.svg?branch=main)](https://github.com/Integration-Automation/ThesisAgents/actions/workflows/release.yml)
+[![CI](https://github.com/Jeffrey-Tool-Projects/ThesisAgent/actions/workflows/ci.yml/badge.svg)](https://github.com/Jeffrey-Tool-Projects/ThesisAgent/actions/workflows/ci.yml)
+[![Release](https://github.com/Jeffrey-Tool-Projects/ThesisAgent/actions/workflows/release.yml/badge.svg?branch=main)](https://github.com/Jeffrey-Tool-Projects/ThesisAgent/actions/workflows/release.yml)
 [![PyPI](https://img.shields.io/pypi/v/thesisagents.svg)](https://pypi.org/project/thesisagents/)
 [![Python](https://img.shields.io/pypi/pyversions/thesisagents.svg)](https://pypi.org/project/thesisagents/)
-[![License: MIT](https://img.shields.io/github/license/Integration-Automation/ThesisAgents.svg)](https://github.com/Integration-Automation/ThesisAgents/blob/main/LICENSE)
+[![License: MIT](https://img.shields.io/github/license/Jeffrey-Tool-Projects/ThesisAgent.svg)](https://github.com/Jeffrey-Tool-Projects/ThesisAgent/blob/main/LICENSE)
 [![Docs](https://readthedocs.org/projects/thesisagents/badge/?version=latest)](https://thesisagents.readthedocs.io/en/latest/)
 
 > **语言**: [English](../README.md) · [繁體中文](README.zh-TW.md) · **简体中文** · [日本語](README.ja.md) · [Español](README.es.md) · [Français](README.fr.md) · [Deutsch](README.de.md) · [한국어](README.ko.md) · [Português](README.pt.md) · [Русский](README.ru.md) · [Italiano](README.it.md) · [Tiếng Việt](README.vi.md) · [हिन्दी](README.hi.md) · [Bahasa Indonesia](README.id.md)
@@ -199,7 +199,7 @@ for key in irrelevant_keys:
   (inspect / update_slide / delete_slide / reorder_slides / add_slide)
   可对导出器产出的任何幻灯片运作,加上对应的 `pptx_*` MCP 工具,好让
   一个 LLM agent 能在产出的幻灯片上反复迭代。
-- **MCP 服务器**:18 个工具 —— `list_sources` + `list_exports`
+- **MCP 服务器**:25 个工具 —— `list_sources` + `list_exports`
   (发现)、`search`、`snowball`、`library_add`、`library_search`、`library_stats`、`fetch_paper`、`fetch_pdf_text`、`download_pdfs`、`pptx_validate_template`、
   `export`,以及六个 `pptx_*` 幻灯片工具(`inspect`、`review`、
   `update_slide`、`delete_slide`、`reorder_slides`、`add_slide`)。让任何
@@ -210,7 +210,7 @@ for key in irrelevant_keys:
     `fetch_pdf_text` 读 PDF 正文,就地写出一份结构化摘要,再传给
     `export`。
   - **Python pipeline(`--enrich`)** —— CLI 自己调用 Anthropic 的 API;
-    默认模型 `claude-opus-4-7`。
+    默认模型 `claude-opus-5-5`。
 - **可见 Chrome 的出版商流程**:Scholar SERP、IEEE `/rest/search`,以及
   每一次付费墙 PDF 下载(ieeexplore / dl.acm / link.springer /
   sciencedirect / wiley / oup / nature / science / …)都在一个真实可见的
@@ -293,14 +293,15 @@ py -m thesisagents --paper "https://arxiv.org/abs/1706.03762" `
 | `--source` / `-s` | 逗号分隔的来源清单。默认 `arxiv`。 |
 | `--max` / `-n` | 每来源最多结果数(1..200)。默认 25。 |
 | `--year-from` / `--year-to` | 含边界的年份筛选。 |
-| `--export` / `-e` | 格式:`pptx,xlsx,md,bib,json,ris,csv,csl` 之任意组合。默认依模式而定(见下)。 |
+| `--export` / `-e` | 格式:`pptx,xlsx,md,bib,json,ris,csv,csl,docx,tex` 之任意组合。默认依模式而定(见下)。 |
 | `--out` / `-o` | 输出目录。默认 `./exports`。 |
 | `--filename-stem` | 覆盖生成的文件名主干。 |
 | `--no-abstract` | 从导出中省略摘要内容。 |
 | `--lang` / `-l` | 幻灯片语言:14 种之一 —— `en`、`zh-tw`、`zh-cn`、`ja`、`es`、`fr`、`de`、`ko`、`pt`、`ru`、`it`、`vi`、`hi`、`id`。默认 `en`。 |
 | `--enrich` | 自动增强的失败即报变体。需要 `ANTHROPIC_API_KEY` 与 `[intelligence]` extra。(设了密钥时自动增强是默认。) |
 | `--lightweight` | 跳过增强 + 强制只有摘要的幻灯片。只用于快速 / 无人值守的运行;**当有 LLM agent 在驱动时,优先用下面的 LLM-as-agent 流程**。 |
-| `--llm-model` | 覆盖增强用的默认 `claude-opus-4-7`。 |
+| `--llm-model` | 覆盖增强用的默认 `claude-opus-5-5`。 |
+| `--llm-command COMMAND` | 命令行模型来源（`claude-cli`、`cli`…）的命令，论文从标准输入送入。 |
 | `--no-pdf` | 跳过自动 PDF 下载。也会禁用每篇论文的 PPT 闸(没 PDF → 没完整内容)。 |
 | `--no-oa-resolve` | 跳过去重后的 OA PDF 解析器(Unpaywall + S2 + arXiv + CORE.ac.uk)。 |
 | `--top-tier-only` | 把结果限制到 arXiv + 一份精选的计算机旗舰白名单(S&P、CCS、NDSS、USENIX Security、NeurIPS、ICML、ICSE …)。默认关闭。 |
@@ -325,7 +326,10 @@ py -m thesisagents --paper "https://arxiv.org/abs/1706.03762" `
 | 变量 | 使用者 | 用途 |
 |---|---|---|
 | `ANTHROPIC_API_KEY` | `--enrich` | LLM 认证。走 MCP 的 LLM-as-agent 路径不需要。 |
-| `THESISAGENTS_LLM_MODEL` | `--enrich` | 覆盖默认的 `claude-opus-4-7`。 |
+| `THESISAGENTS_LLM_PROVIDER` | `--enrich` | 由谁运行模型：`anthropic`, `openai`, `gemini`, `mistral`, `deepseek`, `xai`, `groq`, `openrouter`, `together`, `fireworks`, `dashscope`, `moonshot`，这台电脑上的 `ollama`, `lmstudio`, `llamacpp`, `vllm`，或搭配 `THESISAGENTS_LLM_BASE_URL` 的 `custom`。或命令行上的 AI 程序：`claude-cli`、`gemini-cli`、`codex-cli`、`ollama-cli`，或搭配 `THESISAGENTS_LLM_COMMAND` 的 `cli`。 |
+| `THESISAGENTS_LLM_COMMAND` | `--enrich` | 命令行模型来源的命令，论文内容从标准输入送入（例如 `claude -p --model opus`），取代该来源的默认命令。 |
+| `THESISAGENTS_LLM_CLI_TIMEOUT` | `--enrich` | 命令行模型来源处理一篇论文的时限，单位秒（默认 600）。 |
+| `THESISAGENTS_LLM_MODEL` | `--enrich` | 覆盖默认的 `claude-opus-5-5`。 |
 | `THESISAGENTS_S2_API_KEY` | Semantic Scholar + OA 解析器 | 更高的速率限制;也被 OA 解析器的 S2 `openAccessPdf` 步骤使用。免费密钥在 <https://www.semanticscholar.org/product/api>。 |
 | `THESISAGENTS_NCBI_API_KEY` | PubMed | 把 NCBI 的匿名限制(3/s)提高到 10/s。可选。 |
 | `THESISAGENTS_CONTACT_EMAIL` | PubMed、ACM、Crossref、OpenAlex、**Unpaywall** | 礼貌池标记 + 启用 OA 解析器的 Unpaywall 步骤(对 IEEE / ACM / Springer / Elsevier 付费墙论文的 PDF 覆盖率提升最大;典型提升 40-70 pp)。 |
@@ -386,10 +390,11 @@ claude mcp add thesisagents -- ".venv\Scripts\python.exe" -m thesisagents.mcp
 | `library_add` | 论文 → 文献库 (`library` 指向的 SQLite 文件),保留给之后的会话使用。加入就是合并: 已经存在的论文会被更新,不会重复。`relations` 可存入 `snowball` 返回的引用关系。 |
 | `library_search` | 查询 → 文献库里已有的论文,评分方式与搜索相同,不需要网络。每篇都附上它的记录: 第一次与最近一次看到的时间,以及哪些来源返回过它。 |
 | `library_stats` | 文献库 → 它保存了多少论文、运行记录与引用关系,各来源的论文数,以及最近几次导入。 |
+| `library_update`, `library_delete`, `library_import`, `library_duplicates`, `library_merge`, `library_saved_search`, `library_prisma` | 文献库 → 标签、笔记、阅读状态与筛选决定，删除与合并论文，导入 BibTeX / RIS，只报告新论文的保存搜索，以及 PRISMA 流程。 |
 | `fetch_paper` | arXiv / DOI / PMID / IEEE 标识符 → 单篇论文。 |
 | `fetch_pdf_text` | 下载一份 PDF,返回提取出的正文文本。**这是「我读了论文」的 MCP 路径。** |
 | `download_pdfs` | 批量把一份论文清单的 PDF 下载到 `{out_dir}/pdfs/`。返回以 BibTeX 键为索引的每篇论文结果。 |
-| `export` | 论文清单 + 格式 → 写出 `.pptx/.xlsx/.md/.bib/.json/.ris/.csv/.csl.json`。每篇论文可接受一个 `summary` 字段,用于丰富论文答辩级 schema、`max_slides_per_paper`(默认 25)与 `dark_mode`(默认 `false` —— 项目默认是浅色深蓝带幻灯片,传 `true` 走深色 OLED / 低光后处理)。 写入前会验证每个 DOI / 网址 (`verify_identifiers`,默认 `true`): 标识符错误或无法连接时调用会失败并指出是哪篇论文,响应中附有 `verification` 报告。 `library` 指定用来保存标识符检查结果的文献库,先前调用已通过检查的标识符就不会再检查一次。 `pptx_template` (可搭配可选的 `pptx_template_config`) 会在你自己的 PowerPoint 模板上生成幻灯片。 |
+| `export` | 论文清单 + 格式 → 写出 `.pptx/.xlsx/.md/.bib/.json/.ris/.csv/.csl.json/.docx/.tex`。每篇论文可接受一个 `summary` 字段,用于丰富论文答辩级 schema、`max_slides_per_paper`(默认 25)与 `dark_mode`(默认 `false` —— 项目默认是浅色深蓝带幻灯片,传 `true` 走深色 OLED / 低光后处理)。 写入前会验证每个 DOI / 网址 (`verify_identifiers`,默认 `true`): 标识符错误或无法连接时调用会失败并指出是哪篇论文,响应中附有 `verification` 报告。 `library` 指定用来保存标识符检查结果的文献库,先前调用已通过检查的标识符就不会再检查一次。 `pptx_template` (可搭配可选的 `pptx_template_config`) 会在你自己的 PowerPoint 模板上生成幻灯片。 |
 | `pptx_validate_template` | 模板 → 它能否用于 `export(pptx_template=...)`: 每一种幻灯片将使用的版式,以及说明该改什么的错误与警告。不会生成任何幻灯片。 |
 | `pptx_inspect` | 读取既有幻灯片的 slide / shape 结构。 |
 | `pptx_review` | 一次调用审核一份幻灯片 —— 溢出 + 颜色契约 + `paper_rule` 章节完整度。自动检测幻灯片语言;也是 CLI `python -m thesisagents review <deck.pptx>`。 |
@@ -419,11 +424,11 @@ ThesisAgents/
 ├── thesisagents/                 # main package
 │   ├── core/                        # Paper / PaperSummary / RqResult / dedup / ranking / pipeline
 │   ├── fetchers/                    # HTTPS-only async client, token-bucket rate limit
-│   ├── exporters/                   # pptx (thesis-style) · xlsx · bib · md · json · ris · csv · csl · pptx_edit · i18n
+│   ├── exporters/                   # pptx (thesis-style) · xlsx · bib · md · json · ris · csv · csl · docx · tex · pptx_edit · i18n
 │   ├── intelligence/                # PDF fetch + Anthropic summariser  ([intelligence] extra)
 │   ├── library/                     # SQLite literature library kept across runs
 │   ├── evaluation/                  # offline search-quality benchmark (docs/search-quality.md)
-│   ├── mcp/                         # FastMCP server (18 tools)
+│   ├── mcp/                         # FastMCP server (25 tools)
 │   ├── sources/<name>/              # plugin folders: arxiv, semantic_scholar,
 │   │                                #   openalex, pubmed, acm, ieee, scholar,
 │   │                                #   dblp, crossref, openaire, springer,
@@ -458,12 +463,13 @@ pip install thesisagents[gui]
 thesisagents-gui                 # or: thesisagents gui
 ```
 
-窗口有一个侧边栏,含五个页面:**Search**、**Library**(文献库文件的只读视图：概况、收录论文及其引用关系与标识符检查，以及积累它的历次搜索)、**Enrich**(经由一个
+窗口有一个侧边栏,含五个页面:**Search**、**Library**(文献库文件，可加标签、笔记与筛选决定，导入 BibTeX / RIS，合并重复论文，保存只显示新论文的搜索，并有引用关系图与 PRISMA 流程：概况、收录论文及其引用关系与标识符检查，以及积累它的历次搜索)、**Enrich**(经由一个
 `collection_ready` 信号驱动 LLM-as-agent / Python-pipeline 增强)、
 **Deck**(深色模式切换、幻灯片上限、标识符检查与幻灯片模板会流向
-`ExportOptions`),以及 **Settings**(经由 QSettings 保存 API 密钥)。
-Windows 发行版 zip 发货的是 Nuitka 编译的包,已含 PySide6,所以
-`thesisagents.exe gui` 不必另外装 Python 就能运作。
+`ExportOptions`),以及 **Settings**(API 密钥与偏好设置)。
+Windows 发行版 zip 发货的是 Nuitka 编译的包,已含 PySide6。打开
+`thesisagents.exe` 就会启动桌面应用,不显示控制台窗口,也不必另外装 Python。
+同一文件夹里的 `thesisagents-cli.exe` 则是命令行程序。
 Search 页面还可以沿着引用关系扩充最前面的结果 (滚雪球)、把结果保存到文献库文件并在没有网络时搜索该文献库,Deck 页面则可以在你自己的 PowerPoint 模板上生成幻灯片。
 **UI 以全部 14 种语言发货**(English、繁體中文、简体中文、日本語、
 Español、Français、Deutsch、한국어、Português、Русский、Italiano、
@@ -474,7 +480,7 @@ Tiếng Việt、हिन्दी、Bahasa Indonesia)—— 首次运行会从
 结果旁边,中等宽度时放在结果上方,宽度低于 760 px 时侧边栏收起为图标,
 表单标签移到字段上方。窗口可以缩小到 640×480,并默认开启 HiDPI 缩放。
 **Settings → Theme** 可选浅色、深色或跟随系统,立即生效,且与幻灯片本身的
-深色模式无关。结果可以排序、筛选并勾选，只把勾选的论文交给 Enrich、Deck 与导出，滚雪球的范围可以调整，执行中的搜索或丰富化可以取消，表单内容在下次启动时会保留。Deck 页面可在导出前检查模板，也能审查任何完成的幻灯片。没有 API 密钥时，Enrich 页面会把论文以 JSON 文件交给 LLM 代理，再导入它写的摘要。Deck 页面也能下载 PDF，在 Settings 声明机构 / VPN 访问权限之前会跳过 IEEE，新的界面语言会立即生效并保留当前工作。同一个开关也会让搜索跳过 `ieee`。Search 页面也能像 CLI 的 `--pdf` 一样，把本地 PDF 读入结果。状态栏会显示经由 Chrome 下载的 PDF 数量，出版商 PDF 无法使用 Chrome 时也会发出警告。**Settings → Style** 可在经典海军蓝外观与 Material 3 之间切换。`Ctrl+1` … `Ctrl+5` 切换页面。
+深色模式无关。结果可以排序、筛选并勾选，只把勾选的论文交给 Enrich、Deck 与导出，滚雪球的范围可以调整，执行中的搜索或丰富化可以取消，表单内容在下次启动时会保留。Deck 页面可在导出前检查模板，也能审查任何完成的幻灯片。没有 API 密钥时，Enrich 页面会把论文以 JSON 文件交给 LLM 代理，再导入它写的摘要。Deck 页面也能下载 PDF，在 Settings 声明机构 / VPN 访问权限之前会跳过 IEEE，新的界面语言会立即生效并保留当前工作。同一个开关也会让搜索跳过 `ieee`。Search 页面也能像 CLI 的 `--pdf` 一样，把本地 PDF 读入结果。状态栏会显示经由 Chrome 下载的 PDF 数量，出版商 PDF 无法使用 Chrome 时也会发出警告。**Settings → Style** 可在经典海军蓝外观与 Material 3 之间切换。**Settings → Font size** 可立即把整个应用的文字大小调整为 8 到 24 pt，也可以用 `Ctrl++`、`Ctrl+-` 和 `Ctrl+0`(恢复默认)，布局会随之调整。状态栏的 **Log**(`Ctrl+L`)显示程序正在做什么，并有日志文件可附在错误报告中，Chrome 等你完成验证时上方会出现提示。API 密钥存放在系统的凭据管理器(Windows 凭据管理器、macOS 钥匙串、Secret Service)，不会写进设置文件。Windows 提供不需管理员权限的安装程序，有新版本时程序会提示(每天检查一次，可关闭)。**Settings → AI model** 可选择由谁撰写摘要：Anthropic、其他十一种服务，或你电脑上的模型(Ollama、LM Studio、llama.cpp、vLLM)，用后者时论文内容不会外传。增强页与文献库页的 **Edit summary** 可手动编辑摘要，并指出论文七个章节中还没有内容的部分。**Word draft** 与 **LaTeX draft** 导出含 APA 引用、比较表与参考文献的文献综述草稿，也能写进学校的 Word 模板。幻灯片页的 **Edit slides…** 可修改已完成演示文稿的文字、顺序与页数，附预览与撤销。**Settings → AI model** 也能选择命令行上的 AI 程序（Claude Code、Gemini CLI、Codex、Ollama 或任何命令），以你已登录的账号写摘要，不需要 API 密钥。`Ctrl+1` … `Ctrl+5` 切换页面。
 
 完整参考:[`docs/gui.md`](../docs/gui.md)。
 

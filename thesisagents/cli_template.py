@@ -31,6 +31,15 @@ def add_template_arguments(parser: argparse.ArgumentParser) -> None:
         ),
     )
     parser.add_argument(
+        "--docx-template",
+        metavar="FILE",
+        default=None,
+        help=(
+            "Write the docx draft into a copy of this Word document (.docx), "
+            "for example a school's thesis template. Its styles decide the look."
+        ),
+    )
+    parser.add_argument(
         "--pptx-template-config",
         metavar="FILE",
         default=None,

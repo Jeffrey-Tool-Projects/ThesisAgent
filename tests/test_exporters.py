@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import json
 
+import pytest
+
 from thesisagents.core.models import ExportOptions, PaperCollection, Query
 from thesisagents.exporters import export_collection
 
@@ -236,7 +238,8 @@ def test_csljson_does_not_collide_with_json_dump(sample_papers, tmp_path):
     written = export_collection(collection, options)
     assert written["json"].name == "test.json"
     assert written["csl"].name == "test.csl.json"
-    assert written["json"].exists() and written["csl"].exists()
+    assert written["json"].exists()
+    assert written["csl"].exists()
 
 
 def test_csljson_single_token_author(tmp_path):
@@ -1782,7 +1785,8 @@ def test_table_cell_renders_math_subscript():
     assert any(_baseline(r) == "-25000" for r in math_runs)   # "$z_a$" subscript
     # A plain header cell stays upright with no baseline shift.
     hdr_runs = [r for p in table.cell(0, 0).text_frame.paragraphs for r in p.runs]
-    assert hdr_runs and all(_baseline(r) is None for r in hdr_runs)
+    assert hdr_runs
+    assert all(_baseline(r) is None for r in hdr_runs)
 
 
 def test_stacked_section_body_renders_math_subscript():
@@ -1791,6 +1795,7 @@ def test_stacked_section_body_renders_math_subscript():
     # _add_textbox(math=True); without that flag it flattened "$I(z_a;z_b)$" to
     # ASCII even though bullets / KPIs / tables already rendered it. Regression.
     from pptx import Presentation
+    from pptx.util import Inches
 
     from thesisagents.exporters import pptx as pptx_mod
 
@@ -1800,7 +1805,7 @@ def test_stacked_section_body_renders_math_subscript():
         slide,
         "互資訊式語意分解",
         "訓練目標最小化互資訊 $I(z_a;z_b|E_p)$ 以保證分離",
-        pptx_mod.Inches(2),
+        Inches(2),
     )
     body = next(s for s in slide.shapes if s.name == "body")
     runs = [r for p in body.text_frame.paragraphs for r in p.runs]
@@ -1913,13 +1918,12 @@ def test_export_collection_wraps_write_errors(sample_papers, tmp_path, monkeypat
         raise PermissionError(13, "file is open in another application")
 
     monkeypatch.setattr(bibtex_mod.Path, "write_text", _locked, raising=True)
+    collection = _collection(sample_papers)
+    options = ExportOptions(
+        formats=("bib",), out_dir=str(tmp_path), filename_stem="locked"
+    )
     with pytest.raises(ExportError, match="could not write the output file"):
-        export_collection(
-            _collection(sample_papers),
-            ExportOptions(
-                formats=("bib",), out_dir=str(tmp_path), filename_stem="locked"
-            ),
-        )
+        export_collection(collection, options)
 
 
 def test_pptx_shape_error_names_the_summary_field(tmp_path):
@@ -1955,3 +1959,16 @@ def test_pptx_shape_error_names_the_summary_field(tmp_path):
     message = str(excinfo.value)
     assert message.count("render failed") == 1   # not double-wrapped
     assert "bee2026long" in message              # names the offending paper
+
+
+@pytest.mark.parametrize(("language", "header"), [
+    ("zh-tw", ("技術", "於本研究之角色")),
+    ("zh-cn", ("技术", "在本研究中的作用")),
+    ("ko", ("기술", "본 연구에서의 역할")),
+    ("id", ("Teknik", "Peran dalam makalah ini")),
+])
+def test_technique_table_header_is_in_the_deck_language(language, header):
+    """zh-cn decks got the Traditional pair and ten languages the English one."""
+    from thesisagents.exporters.i18n import t
+
+    assert (t(language, "label_technique"), t(language, "label_technique_role")) == header

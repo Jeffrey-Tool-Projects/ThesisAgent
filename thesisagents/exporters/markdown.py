@@ -27,15 +27,16 @@ class MarkdownExporter(Exporter):
     def _render(
         self, collection: PaperCollection, options: ExportOptions
     ) -> str:
-        lines: list[str] = []
-        lines.append(f"# Paper search: `{collection.query.keywords}`")
-        lines.append("")
-        lines.append(_render_metadata(collection))
-        lines.append("")
-        lines.append(f"**{len(collection)} papers** after de-duplication and ranking.")
-        lines.append("")
-        lines.append("## Results")
-        lines.append("")
+        lines: list[str] = [
+            f"# Paper search: `{collection.query.keywords}`",
+            "",
+            _render_metadata(collection),
+            "",
+            f"**{len(collection)} papers** after de-duplication and ranking.",
+            "",
+            "## Results",
+            "",
+        ]
         for index, paper in enumerate(collection.papers, start=1):
             lines.extend(_render_paper(index, paper, options.include_abstract))
             lines.append("")
@@ -73,8 +74,5 @@ def _render_paper(index: int, paper: Paper, include_abstract: bool) -> list[str]
     if identifier_line:
         block.append(f"- **IDs**: {identifier_line}")
     if include_abstract and paper.abstract:
-        block.append("")
-        block.append("**Abstract**")
-        block.append("")
-        block.append(paper.short_abstract())
+        block.extend(("", "**Abstract**", "", paper.short_abstract()))
     return block

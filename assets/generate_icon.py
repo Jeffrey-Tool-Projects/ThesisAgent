@@ -7,7 +7,7 @@ PowerPoint metaphor). The arrow between them carries the
 "transformation" idea without spelling it out.
 
 Run this script whenever the design needs to change; it writes
-``assets/icon.ico`` (multi-resolution: 16, 32, 48, 64, 128, 256)
+``thesisagents/gui/icon.ico`` (multi-resolution: 16, 32, 48, 64, 128, 256)
 and ``assets/icon-256.png`` (single 256x256 PNG for README / docs /
 GUI use). The .ico is committed to the repo so the build pipeline
 doesn't need Pillow installed.
@@ -168,7 +168,7 @@ def main() -> int:
     assets_dir = Path(__file__).resolve().parent
     master, variants = _multi_resolution_icon()
 
-    ico_path = assets_dir / "icon.ico"
+    ico_path = assets_dir.parent / "thesisagents" / "gui" / "icon.ico"
     master.save(
         ico_path,
         format="ICO",

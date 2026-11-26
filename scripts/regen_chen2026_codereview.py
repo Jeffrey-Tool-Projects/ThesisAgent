@@ -321,18 +321,24 @@ def _build_summary() -> PaperSummary:
         contributions_detailed=(
             (
                 "一、多階段 CoT 審查流程",
-                "思維鏈(Chain-of-Thought, CoT)把審查拆成五步、每步落檔,並注入七條全域"
-                "規則,消融顯示為框架內單項貢獻最大者(約 +34 分)。",
+                (
+                    "思維鏈(Chain-of-Thought, CoT)把審查拆成五步、每步落檔,並注入七條全域"
+                    "規則,消融顯示為框架內單項貢獻最大者(約 +34 分)。"
+                ),
             ),
             (
                 "二、RAG 領域規則注入",
-                "RAG(檢索增強生成)以 FAISS(向量索引庫)餘弦 ≥ 0.7 把最相關專案規則"
-                "動態注入為條件式第八條,回應缺乏領域規範。",
+                (
+                    "RAG(檢索增強生成)以 FAISS(向量索引庫)餘弦 ≥ 0.7 把最相關專案規則"
+                    "動態注入為條件式第八條,回應缺乏領域規範。"
+                ),
             ),
             (
                 "三、KD + QLoRA 輕量化",
-                "知識蒸餾(KD)+ QLoRA(4-bit 量化 LoRA 微調)把教師大模型的審查能力移轉到"
-                "30B 級可部署的學生模型(Qwen3-Coder-30B-A3B / gemma-4-31B-it),適配器可拆卸。",
+                (
+                    "知識蒸餾(KD)+ QLoRA(4-bit 量化 LoRA 微調)把教師大模型的審查能力移轉到"
+                    "30B 級可部署的學生模型(Qwen3-Coder-30B-A3B / gemma-4-31B-it),適配器可拆卸。"
+                ),
             ),
             (
                 "四、LLM-as-a-Judge-Our 五維評估",
@@ -400,7 +406,7 @@ def _bake_font_scale(text_frame, scale: float) -> None:
     norm.set("fontScale", str(pct))
 
 
-def _restyle_deck(out_path: str) -> None:
+def _restyle_deck(out_path: str) -> None:  # NOSONAR one-shot post-pass for one manuscript, branchy by design like the ruff C901 scripts exemption
     """Post-export pass for this deck's candidate-specific requests + fit fixes.
 
     1. Surface the English thesis title on the cover. The exporter renders one

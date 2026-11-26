@@ -143,7 +143,12 @@ def add_to_library(
     """
     if library is None or not args.library_add or not collection.papers:
         return
-    kind = "search" if args.query else "paper" if args.paper else "pdf"
+    if args.query:
+        kind = "search"
+    elif args.paper:
+        kind = "paper"
+    else:
+        kind = "pdf"
     report = library.add_collection(collection, kind=kind)
     if args.quiet:
         return

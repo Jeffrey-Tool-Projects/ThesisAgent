@@ -6,8 +6,6 @@ DEFAULT_PAGE_SIZE: int = 25
 MAX_RESULTS_PER_SOURCE: int = 200
 MAX_KEYWORD_LENGTH: int = 256
 HTTP_TIMEOUT_SECONDS: float = 30.0
-HTTP_MAX_RETRIES: int = 3
-HTTP_BACKOFF_BASE_SECONDS: float = 1.5
 
 # Pipeline-level retry on RateLimitError. Sources that report 429 get retried
 # this many times with exponential backoff before the source is reported as
@@ -129,6 +127,10 @@ EXPORT_CSV: str = "csv"
 # consume to render a bibliography in any of thousands of CSL styles. It rides
 # the ``.csl.json`` extension so it never collides with the plain ``json`` dump.
 EXPORT_CSL: str = "csl"
+# A literature review draft (thesis sections 2.3 and 2.4) with citations, the
+# comparison table and the reference list. LaTeX writes its .bib beside it.
+EXPORT_DOCX: str = "docx"
+EXPORT_LATEX: str = "tex"
 ALL_EXPORTS: tuple[str, ...] = (
     EXPORT_BIBTEX,
     EXPORT_MARKDOWN,
@@ -139,6 +141,8 @@ ALL_EXPORTS: tuple[str, ...] = (
     EXPORT_RIS,
     EXPORT_CSV,
     EXPORT_CSL,
+    EXPORT_DOCX,
+    EXPORT_LATEX,
 )
 # Formats whose exporter writes ONE artefact for the whole run. The rest
 # (``pptx``, ``pdf``) are emitted per paper. Used by the CLI ``--list-exports``
@@ -151,6 +155,8 @@ AGGREGATE_EXPORTS: frozenset[str] = frozenset({
     EXPORT_RIS,
     EXPORT_CSV,
     EXPORT_CSL,
+    EXPORT_DOCX,
+    EXPORT_LATEX,
 })
 # Canonical one-line description per export format. Single source of truth so
 # the CLI help, the CLI ``--list-exports`` flag and the MCP ``list_exports``
@@ -170,6 +176,10 @@ EXPORT_DESCRIPTIONS: dict[str, str] = {
     EXPORT_RIS: "RIS interchange imported by Zotero / Mendeley / EndNote / RefWorks.",
     EXPORT_CSV: "Flat one-row-per-paper CSV for spreadsheets / quick grep triage.",
     EXPORT_CSL: "CSL-JSON for Pandoc / citeproc — render a bibliography in any CSL style.",
+    EXPORT_DOCX: (
+        "Word draft of the literature review: each paper, comparison table, references in APA."
+    ),
+    EXPORT_LATEX: "The same literature review draft as LaTeX, with its .bib file.",
     EXPORT_PDF: (
         "Per-paper PDF download where a PDF URL is resolvable, not an aggregate file."
     ),

@@ -224,7 +224,7 @@ Search mode
 
    # 10 results, every export format, custom dir
    thesisagents --query "transformer attention" --source arxiv \
-                --max 10 --export pptx,xlsx,md,bib,json,ris,csv,csl \
+                --max 10 --export pptx,xlsx,md,bib,json,ris,csv,csl,docx,tex \
                 --out ./exports/
 
    # Restrict to recent work
@@ -443,7 +443,7 @@ reverse for zh-cn strings. Full rule + the regex catalogue live in
 MCP server
 ----------
 
-ThesisAgents ships an MCP server exposing **eighteen tools** — discovery
+ThesisAgents ships an MCP server exposing **twenty-five tools** — discovery
 (``list_sources``, ``list_exports``), search, citation snowballing (``snowball``), a literature library
 (``library_add``, ``library_search``, ``library_stats``), single-paper fetch,
 single-PDF text extraction (``fetch_pdf_text``), batch PDF download
@@ -517,7 +517,7 @@ Tools at a glance:
      - Batch-download a papers list's PDFs into ``{out_dir}/pdfs/``.
        Returns per-paper results keyed by BibTeX key.
    * - ``export``
-     - Papers list + formats → writes ``.pptx/.xlsx/.md/.bib/.json/.ris/.csv/.csl.json``.
+     - Papers list + formats → writes ``.pptx/.xlsx/.md/.bib/.json/.ris/.csv/.csl.json/.docx/.tex``.
        Accepts a ``summary`` field per paper that can carry the
        full thesis-style schema; accepts ``language`` for i18n,
        ``max_slides_per_paper`` (default 25; pass ``0`` for unlimited),
@@ -622,7 +622,7 @@ Architecture
    │   │                             #   bibtex, markdown, json + pptx_edit + i18n
    │   ├── intelligence/             # PDF fetch + Anthropic summariser ([intelligence] extra)
    │   ├── library/                  # SQLite literature library kept across runs
-   │   ├── mcp/                      # FastMCP server registering 18 tools
+   │   ├── mcp/                      # FastMCP server registering 25 tools
    │   ├── utils/                    # logging, path safety
    │   ├── cli.py                    # argparse CLI
    │   └── __main__.py               # `python -m thesisagents`

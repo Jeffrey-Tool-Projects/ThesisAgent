@@ -47,8 +47,10 @@ Concretely, the assistant:
    Python pipeline (`ANTHROPIC_API_KEY` set — Anthropic API call).
 4. **Generates** `.pptx` (three rendering tiers — lightweight / enriched-flat /
    thesis-style), `.xlsx`, `.bib`, `.md`, `.json` outputs.
-5. **Exposes** every step as an MCP tool (18 in all: `list_sources`, `list_exports`,
-   `search`, `snowball`, `library_add`, `library_search`, `library_stats`, `fetch_paper`,
+5. **Exposes** every step as an MCP tool (25 in all: `list_sources`, `list_exports`,
+   `search`, `snowball`, `library_add`, `library_search`, `library_stats`, `library_update`,
+   `library_delete`, `library_import`, `library_duplicates`, `library_merge`,
+   `library_saved_search`, `library_prisma`, `fetch_paper`,
    `fetch_pdf_text`, `download_pdfs`, `pptx_validate_template`, `export`,
    `pptx_inspect`, `pptx_review`, `pptx_update_slide`, `pptx_delete_slide`,
    `pptx_reorder_slides`, `pptx_add_slide`). `pptx_review` audits an existing deck
@@ -305,7 +307,7 @@ deliverable surfaces:
 | Editing this surface | Read these subagent(s) FIRST |
 |---|---|
 | Any `.pptx` (generated or hand-made) | `deck-design`, `slide-deck-rules` |
-| `thesisagents/exporters/pptx.py` visual code | `deck-design`, `slide-deck-rules` |
+| `thesisagents/exporters/pptx*.py` visual code | `deck-design`, `slide-deck-rules` |
 | `thesisagents/exporters/i18n.py` or any localised string | `slide-deck-rules`, `language-vocabulary-check` |
 | Source plugins under `sources/` or `thesisagents/fetchers/` | `compliance-auditor` |
 | Paper / thesis text in any locale | `paper_rule` |
@@ -327,7 +329,7 @@ RGB values to their dark-palette equivalents — but it can only swap colours
 it can read. **A text run with `run.font.color.rgb = None` inherits the
 slide-master's theme colour, renders as near-black on the dark slide
 background, and is invisible.** Every text-adding helper in
-`thesisagents/exporters/pptx.py` MUST therefore assign
+`thesisagents/exporters/pptx*.py` MUST therefore assign
 `run.font.color.rgb = _BRAND_*` (one of the four
 palette constants) after creating or overwriting a run. Never leave the
 colour at its default; never pass `colour=None` to `_add_textbox`;

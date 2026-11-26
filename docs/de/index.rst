@@ -51,7 +51,7 @@ MCP-Workflow in 6 Schritten
    5. (Sie lesen jedes PDF und erzeugen strukturierten Summary-Dict)
    6. export(papers=[{...paper, "summary": {...}}], language="de", ...)
 
-Insgesamt 18 MCP-Tools: Discovery (``list_sources``, ``list_exports``),
+Insgesamt 25 MCP-Tools: Discovery (``list_sources``, ``list_exports``),
 ``search``, ``snowball``, ``library_add``, ``library_search``, ``library_stats``, ``fetch_paper``, ``fetch_pdf_text``, ``download_pdfs``, ``pptx_validate_template``,
 ``export`` und sechs ``pptx_*``-Deck-Operationen (``pptx_inspect``,
 ``pptx_review``, ``pptx_update_slide``, ``pptx_delete_slide``,
@@ -220,7 +220,7 @@ Weiterführende Quellen
 ----------------------
 
 * CLI-Flags und Umgebungsvariablen: :doc:`/cli`
-* 18 MCP-Server-Tools: :doc:`/mcp`
+* 25 MCP-Server-Tools: :doc:`/mcp`
 * PPTX-Edit-Toolkit: :doc:`/pptx_editing`
 * Die Datei ``readmes/README.de.md`` im Repo-Root enthält die vollständige
   Feature-Liste.

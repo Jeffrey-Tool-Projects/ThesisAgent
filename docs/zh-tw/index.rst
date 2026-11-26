@@ -45,7 +45,7 @@ MCP 6 步流程
    5. (你逐篇讀 PDF,自己產 structured summary dict)
    6. export(papers=[{..., "summary": {...}}], language="zh-tw", ...)
 
-共 18 個 MCP 工具,完整參考見 :doc:`/mcp`。
+共 25 個 MCP 工具,完整參考見 :doc:`/mcp`。
 
 **要找出離題的結果,先參考工具自己的建議。** CLI 的 ``--diagnostics`` 或 MCP ``search`` 工具的 ``diagnostics=true`` 會解釋排名: 每篇論文的分數拆成相關性、新近度與引用數三部分,列出命中的查詢詞,並給出 ``keep`` / ``review`` / ``prune`` 建議與觸發它的門檻。CLI 還會把完整明細寫到輸出目錄的 ``diagnostics.json``。這些只是建議,工具不會替你移除任何論文,所以刪除前請先讀過 ``review`` 與 ``prune`` 論文的摘要。
 
@@ -168,7 +168,7 @@ CLI
 
    # 10 筆結果,全部匯出格式,自訂目錄
    thesisagents --query "transformer attention" --source arxiv \
-                --max 10 --export pptx,xlsx,md,bib,json,ris,csv,csl \
+                --max 10 --export pptx,xlsx,md,bib,json,ris,csv,csl,docx,tex \
                 --out ./exports/
 
    # 限制在近年論文
@@ -322,7 +322,7 @@ PPTX 配置
 MCP server
 ----------
 
-ThesisAgents 附帶一個暴露 **18 個工具** 的 MCP server:探索
+ThesisAgents 附帶一個暴露 **25 個工具** 的 MCP server:探索
 (``list_sources``、``list_exports``)、搜尋、引用滾雪球搜尋(``snowball``)、文獻庫(``library_add``、
 ``library_search``、``library_stats``)、單篇抓取、單一 PDF
 本文擷取(``fetch_pdf_text``)、批次 PDF 下載(``download_pdfs``)、
@@ -392,7 +392,7 @@ Claude Desktop、Cursor …)都能驅動整套流程。
      - 把一組論文的 PDF 批次下載到 ``{out_dir}/pdfs/``\ 。回傳以
        BibTeX key 為索引的逐篇結果。
    * - ``export``
-     - 論文列表 + 格式 → 寫出 ``.pptx/.xlsx/.md/.bib/.json/.ris/.csv/.csl.json``\ 。每篇
+     - 論文列表 + 格式 → 寫出 ``.pptx/.xlsx/.md/.bib/.json/.ris/.csv/.csl.json/.docx/.tex``\ 。每篇
        論文可附 ``summary``\ 欄位走 thesis-style;支援 ``language``\
        走 i18n,``max_slides_per_paper``\ (預設 25;傳 ``0``\
        代表不限),以及 ``dark_mode``\ (預設 ``false``\ ,即亮色
@@ -476,7 +476,7 @@ Python 模組)讓你在不重跑搜尋的情況下繼續對它做迭代:
    │   ├── intelligence/             # PDF 抓取 + Anthropic 摘要器([intelligence] extra)
    │   ├── library/                  # SQLite literature library kept across runs
    │   ├── evaluation/               # 離線搜尋品質評測(docs/search-quality.md)
-   │   ├── mcp/                      # 註冊 18 個工具的 FastMCP server
+   │   ├── mcp/                      # 註冊 25 個工具的 FastMCP server
    │   ├── sources/<name>/           # 各來源 plugin(arxiv、semantic_scholar、
    │   │                             #   openalex、pubmed、acm、ieee、scholar、
    │   │                             #   dblp、crossref、openaire、springer、

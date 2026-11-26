@@ -42,14 +42,14 @@ async def test_search_returns_papers(monkeypatch):
 
 async def test_search_uses_author_string_fallback(monkeypatch):
     """The second record has no structured authorList — fall back to the
-    flat authorString and drop its trailing period."""
+    flat authorString, drop its trailing period and put the surname last."""
     transport = MockTransport(200, _FIXTURE_BYTES)
     _install(monkeypatch, transport)
     papers = await EuropePmcFetcher().search(
         Query(keywords="LLM Security", sources=("europepmc",), max_results=10)
     )
     second = papers[1]
-    assert second.authors == ("Chen C",)
+    assert second.authors == ("C Chen",)
     assert second.pdf_url is None
 
 

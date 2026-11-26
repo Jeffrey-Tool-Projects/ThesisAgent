@@ -9,27 +9,26 @@ isolation: a Crossref-direct schema tweak must not break ``--source acm``).
 
 from __future__ import annotations
 
-import re
 from typing import Any
 
 from thesisagents.core.models import Paper
+from thesisagents.utils.markup import plain_text
 
 _SOURCE = "crossref"
-_HTML_TAG_RE = re.compile(r"<[^>]+>")
 
 
 def parse_record(record: dict[str, Any]) -> Paper:
     """Map one Crossref message item to a ``Paper``."""
-    title = _first_string(record.get("title")) or ""
+    title = plain_text(_first_string(record.get("title")))
     authors = tuple(
         _author_name(a) for a in record.get("author") or [] if _author_name(a)
     )
     year = _extract_year(record)
-    abstract = _strip_html(record.get("abstract") or "")
+    abstract = plain_text(record.get("abstract"))
     doi = record.get("DOI") or None
     url = record.get("URL") or (f"https://doi.org/{doi}" if doi else "")
     venue = (
-        _first_string(record.get("container-title"))
+        plain_text(_first_string(record.get("container-title")))
         or record.get("publisher")
         or None
     )
@@ -96,7 +95,3 @@ def _extract_year(record: dict[str, Any]) -> int | None:
                 return year
     return None
 
-
-def _strip_html(value: str) -> str:
-    stripped = _HTML_TAG_RE.sub("", value).strip()
-    return " ".join(stripped.split())

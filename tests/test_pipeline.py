@@ -360,7 +360,7 @@ async def test_enrich_collection_caps_concurrency(monkeypatch):
     # analysers that don't trace the monkeypatched async call path.
     counters = {"active": 0, "peak": 0}
 
-    async def fake_enrich_one(paper, *, language, model):
+    async def fake_enrich_one(paper, *, language, model, **_choice):
         counters["active"] += 1
         counters["peak"] = max(counters["peak"], counters["active"])
         await asyncio.sleep(0.01)
@@ -457,7 +457,7 @@ async def test_diagnostics_survive_oa_resolution_and_enrichment(monkeypatch):
     pool = {"arxiv": _make_fetcher("arxiv", [paper])}
     monkeypatch.setattr(pipeline_module, "load_fetcher", lambda name: pool[name])
 
-    async def fake_enrich_one(paper, *, language, model):
+    async def fake_enrich_one(paper, *, language, model, **_choice):
         return dataclasses.replace(paper, pdf_url="https://example.com/p.pdf")
 
     monkeypatch.setattr(pipeline_module, "_enrich_one", fake_enrich_one)
@@ -803,3 +803,32 @@ def test_source_stat_serialises_to_json():
         "source": "ieee", "requested": 25, "returned": 0, "after_dedup": 0,
         "status": "failed", "detail": "[ieee] blocked",
     }
+
+
+async def test_the_wait_a_source_asks_for_is_kept_within_bounds(monkeypatch):
+    waits: list[float] = []
+
+    async def _record(seconds):
+        waits.append(seconds)
+
+    monkeypatch.setattr(pipeline_module.asyncio, "sleep", _record)
+    calls = {"n": 0}
+    rate = RateLimit(requests_per_second=100, burst=10, jitter_seconds=0)
+
+    class _AsksToWait(Fetcher):
+        def __init__(self) -> None:
+            self.config = FetcherConfig(name="arxiv", rate_limit=rate)
+            super().__init__()
+
+        async def search(self, query):  # noqa: ARG002
+            calls["n"] += 1
+            if calls["n"] == 1:
+                raise RateLimitError("arxiv", "slow down", retry_after=12)
+            if calls["n"] == 2:
+                raise RateLimitError("arxiv", "slow down", retry_after=3600)
+            return [_paper("arxiv", "1", "late")]
+
+    monkeypatch.setattr(pipeline_module, "load_fetcher", lambda name: _AsksToWait())
+    collection = await pipeline_module.run_search(Query("x", ("arxiv",), max_results=5))
+    assert len(collection.papers) == 1
+    assert waits[:2] == [12, pipeline_module._MAX_RETRY_AFTER_SECONDS]

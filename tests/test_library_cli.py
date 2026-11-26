@@ -38,7 +38,7 @@ def _stub_pipeline(monkeypatch, sample_papers):
     return downloaded
 
 
-@pytest.fixture()
+@pytest.fixture
 def library_path(tmp_path) -> Path:
     return tmp_path / "lib" / "thesis.db"
 
@@ -186,7 +186,7 @@ def test_a_library_path_that_cannot_be_used_stops_the_run_before_the_search(
 # ------------------------------------------------------- --library-search
 
 
-@pytest.fixture()
+@pytest.fixture
 def filled(tmp_path, library_path, capsys):
     _search(tmp_path, "--library", str(library_path), "--library-add")
     capsys.readouterr()
@@ -302,7 +302,8 @@ def test_library_export_downloads_pdfs_only_when_asked(filled, tmp_path, _stub_p
          "--out", str(tmp_path / "with-pdf")]
     )
     assert code == 0
-    assert len(_stub_pipeline) == 1 and len(_stub_pipeline[0]) == 2
+    assert len(_stub_pipeline) == 1
+    assert len(_stub_pipeline[0]) == 2
 
 
 def test_library_export_does_not_enrich_because_a_key_is_set(

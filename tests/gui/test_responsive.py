@@ -4,7 +4,17 @@ from __future__ import annotations
 
 import pytest
 from PySide6.QtCore import Qt
-from PySide6.QtWidgets import QBoxLayout, QCheckBox, QFormLayout, QWidget
+from PySide6.QtWidgets import (
+    QBoxLayout,
+    QCheckBox,
+    QFormLayout,
+    QFrame,
+    QLabel,
+    QLineEdit,
+    QScrollArea,
+    QVBoxLayout,
+    QWidget,
+)
 
 from thesisagents.gui.i18n import SUPPORTED_LANGUAGES
 from thesisagents.gui.main_window import MainWindow
@@ -115,10 +125,12 @@ def test_growing_the_window_restores_the_full_sidebar(qtbot):
 def test_compact_window_hides_the_authors_and_doi_columns(qtbot):
     window = _window(qtbot, 680, 600)
     table = window.search_page().table()
-    assert table.isColumnHidden(1) and table.isColumnHidden(4)
+    assert table.isColumnHidden(1)
+    assert table.isColumnHidden(4)
     window.resize(1300, 800)
     qtbot.wait(20)
-    assert not table.isColumnHidden(1) and not table.isColumnHidden(4)
+    assert not table.isColumnHidden(1)
+    assert not table.isColumnHidden(4)
 
 
 def test_settings_columns_stack_only_on_a_compact_window(qtbot):
@@ -202,3 +214,50 @@ def test_form_rows_wrap_below_the_threshold(qtbot):
     container.resize(600, 100)
     qtbot.wait(20)
     assert form.rowWrapPolicy() == QFormLayout.RowWrapPolicy.DontWrapRows
+
+
+def _form_in_a_scroll_area(qtbot):
+    """A form 1400 px wide with its labels beside the fields, 900 px with them above."""
+    scroll = QScrollArea()
+    qtbot.addWidget(scroll)
+    scroll.setWidgetResizable(True)
+    content = QWidget()
+    layout = QVBoxLayout(content)
+    note = QLabel("a note that wraps its words " * 6)
+    note.setWordWrap(True)
+    layout.addWidget(note)
+    card = QFrame()
+    form = QFormLayout(card)
+    label, field = QLabel("label"), QLineEdit()
+    label.setMinimumWidth(500)
+    field.setMinimumWidth(900)
+    form.addRow(label, field)
+    adapt_form_rows(card, form, threshold=1000)
+    layout.addWidget(card)
+    scroll.setWidget(content)
+    scroll.resize(400, 300)
+    scroll.show()
+    qtbot.waitExposed(scroll)
+    return scroll, card, form
+
+
+def test_a_form_wraps_again_when_the_pane_around_it_narrows(qtbot):
+    # The card keeps its width then, so only the scroll area tells.
+    scroll, _card, form = _form_in_a_scroll_area(qtbot)
+    assert form.rowWrapPolicy() == QFormLayout.RowWrapPolicy.WrapAllRows
+    scroll.resize(1300, 300)
+    qtbot.wait(50)
+    assert form.rowWrapPolicy() == QFormLayout.RowWrapPolicy.DontWrapRows
+    scroll.resize(400, 300)
+    qtbot.wait(50)
+    assert form.rowWrapPolicy() == QFormLayout.RowWrapPolicy.WrapAllRows
+
+
+def test_a_form_stretched_by_its_own_minimum_does_not_change_its_mind(qtbot):
+    # Judging by the stretched width made the page change back and forth until
+    # the stack overflowed (progress #59): wide, so labels beside the fields,
+    # so a larger minimum, so wide.
+    _scroll, card, form = _form_in_a_scroll_area(qtbot)
+    for width in (1424, 918, 1424, 999, 5000):
+        card.resize(width, card.height())
+        assert form.rowWrapPolicy() == QFormLayout.RowWrapPolicy.WrapAllRows

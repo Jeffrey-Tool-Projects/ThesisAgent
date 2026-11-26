@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import tomllib
 from pathlib import Path
 
 import pytest
@@ -37,7 +38,13 @@ def test_load_app_icon_handles_missing_file(monkeypatch, tmp_path):
 
 @pytest.mark.parametrize("attr", ["_ICON_PATH"])
 def test_icon_path_resolves_under_repo(attr):
-    """The computed path must live somewhere under the project root."""
-    repo_root = Path(__file__).resolve().parents[2]
+    """The icon is package data: outside the package, a pip install and the
+    release zip had none (v0.1.26)."""
+    root = Path(__file__).resolve().parents[2]
     icon_path = getattr(gui_app, attr)
-    assert repo_root in icon_path.parents
+    assert icon_path.parent == root / "thesisagents" / "gui"
+    project = tomllib.loads((root / "pyproject.toml").read_text(encoding="utf-8"))
+    assert icon_path.name in project["tool"]["setuptools"]["package-data"]["thesisagents.gui"]
+    release = (root / ".github" / "workflows" / "release.yml").read_text(encoding="utf-8")
+    assert "--include-package-data=thesisagents " in release
+    assert f"--windows-icon-from-ico=thesisagents/gui/{icon_path.name}" in release

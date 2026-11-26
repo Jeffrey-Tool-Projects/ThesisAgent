@@ -44,6 +44,9 @@ OUT_DIR = (
 )
 FILENAME_STEM = "code-review-thesis-defense-zh-tw"
 LANGUAGE = "zh-tw"
+#: The label for this thesis's own method, shared by the comparison table
+#: row and the two result-table column headers so they always read the same.
+OURS_LABEL = "本研究 Ours"
 
 
 def _build_summary() -> PaperSummary:
@@ -93,9 +96,11 @@ def _build_summary() -> PaperSummary:
         contributions_detailed=(
             (
                 "1. 多階段思維鏈審查流程",
-                "將審查拆解為摘要、初步審查、靜態分析(linter)、程式碼異味偵測與"
-                "總彙整五個循序步驟,以 build_global_rule_template 統一注入全域規則,"
-                "降低單一提示詞的 context 負載並形成可追蹤的審查鏈。",
+                (
+                    "將審查拆解為摘要、初步審查、靜態分析(linter)、程式碼異味偵測與"
+                    "總彙整五個循序步驟,以 build_global_rule_template 統一注入全域規則,"
+                    "降低單一提示詞的 context 負載並形成可追蹤的審查鏈。"
+                ),
             ),
             (
                 "2. 知識蒸餾 + QLoRA 輕量化",
@@ -105,9 +110,11 @@ def _build_summary() -> PaperSummary:
             ),
             (
                 "3. FAISS RAG 規則檢索層",
-                "以 Qwen3-Embedding-4B 將領域規則向量化寫入 FAISS,推論時以餘弦相似度 "
-                "≥ 0.7 動態注入相關規則,抑制幻覺,並避免規則總量隨 context window 擴張"
-                "而線性增加。",
+                (
+                    "以 Qwen3-Embedding-4B 將領域規則向量化寫入 FAISS,推論時以餘弦相似度 "
+                    "≥ 0.7 動態注入相關規則,抑制幻覺,並避免規則總量隨 context window 擴張"
+                    "而線性增加。"
+                ),
             ),
             (
                 "4. LLM-as-a-Judge-Our 五維百分制評估",
@@ -131,7 +138,7 @@ def _build_summary() -> PaperSummary:
             ("CRScore++ (Kapadnis 2025)", "✗", "✗", "✗", "3 維 1–5 分 + RL"),
             ("LLaMA-Reviewer (Lu 2023)", "✗", "✓ LoRA", "✗", "BLEU / ROUGE"),
             ("AutoReview (Chen 2025)", "✓ 多代理", "✗", "✗", "質性分析"),
-            ("本研究 Ours", "✓ 5 階段", "✓ QLoRA", "✓ 規則注入", "5 維百分制 + 人工"),
+            (OURS_LABEL, "✓ 5 階段", "✓ QLoRA", "✓ 規則注入", "5 維百分制 + 人工"),
         ),
         # ---- 關鍵技術 → 角色 ----------------------------------------------
         technique_table=(
@@ -249,7 +256,7 @@ def _build_summary() -> PaperSummary:
                 rq_id="RQ1",
                 question="多階段 CoT + 微調相較單一提示詞,能否顯著提升審查品質?",
                 table=(
-                    ("CRSCORE++ 維度", "本研究 Ours", "基準"),
+                    ("CRSCORE++ 維度", OURS_LABEL, "基準"),
                     ("完整性 comprehensiveness", "0.86", "0.67"),
                     ("相關性 relevance", "0.83", "0.63"),
                     ("簡潔性 conciseness", "0.64", "0.57"),
@@ -293,7 +300,7 @@ def _build_summary() -> PaperSummary:
                 rq_id="RQ4",
                 question="自動評分能否由人工評分交叉驗證並保持一致?",
                 table=(
-                    ("人工評分", "本研究 Ours", "基礎模型"),
+                    ("人工評分", OURS_LABEL, "基礎模型"),
                     ("正確性 Correctness", "87.75", "80.75"),
                     ("可維護性 Maintainability", "86.25", "79.88"),
                     ("多評論覆蓋 Multi-Review Coverage", "86.25", "74.13"),

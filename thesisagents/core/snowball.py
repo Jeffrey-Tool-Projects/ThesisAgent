@@ -475,7 +475,7 @@ def expand_collection(
         pruning=base.pruning + recommend_pruning(ranked),
         relations=base.relations + result.relations,
     )
-    return dataclasses.replace(
+    return dataclasses.replace(  # NOSONAR dataclasses.replace returns the same dataclass type
         collection,
         papers=collection.papers + result.papers,
         diagnostics=diagnostics,

@@ -245,6 +245,10 @@ def _diagnose(
     )
 
 
+#: The longest wait a source's ``Retry-After`` gets before the next attempt.
+_MAX_RETRY_AFTER_SECONDS = 30.0
+
+
 async def _safe_search(fetcher, query: Query, source: str) -> _SourceOutcome:
     """Run one source's search with retry-on-RateLimitError + backoff.
 
@@ -299,6 +303,10 @@ async def _safe_search(fetcher, query: Query, source: str) -> _SourceOutcome:
                     ),
                 )
             wait = RATE_LIMIT_RETRY_BASE_SECONDS * (2 ** (attempt - 1))
+            if err.retry_after is not None:
+                # What the source asked for, within reason: a whole search must
+                # not hang on one source.
+                wait = min(max(wait, err.retry_after), _MAX_RETRY_AFTER_SECONDS)
             _LOG.info(
                 "Source %s rate-limited; sleeping %.1fs before retry %d/%d",
                 source, wait, attempt + 1, RATE_LIMIT_RETRY_ATTEMPTS,
@@ -307,7 +315,7 @@ async def _safe_search(fetcher, query: Query, source: str) -> _SourceOutcome:
         except FetchError as err:
             _LOG.warning("Source %s failed: %s", source, err)
             return _SourceOutcome(source, status=SourceStatus.FAILED, detail=str(err))
-        except Exception as err:  # noqa: BLE001 — containment boundary, see docstring
+        except Exception as err:  # noqa: BLE001  # containment boundary, see docstring
             _LOG.warning(
                 "Source %s raised an unexpected error (%s: %s); "
                 "skipping it and keeping the other sources' results",
@@ -361,6 +369,9 @@ async def enrich_collection(
     *,
     language: str = "en",
     model: str | None = None,
+    provider: str | None = None,
+    base_url: str | None = None,
+    command: str | None = None,
     concurrency: int = _ENRICH_CONCURRENCY,
 ) -> PaperCollection:
     """Download each paper's PDF, summarise it with an LLM, attach the result.
@@ -380,18 +391,29 @@ async def enrich_collection(
 
     async def _bounded(paper: Paper) -> Paper:
         async with sem:
-            return await _enrich_one(paper, language=language, model=model)
+            return await _enrich_one(
+                paper, language=language, model=model, provider=provider, base_url=base_url,
+                command=command,
+            )
 
     enriched_papers = await asyncio.gather(
         *(_bounded(paper) for paper in collection.papers)
     )
     # ``replace`` keeps ``diagnostics``: a summary changes neither a paper's
     # identity key nor the score that ranked it.
-    return dataclasses.replace(collection, papers=tuple(enriched_papers))
+    return dataclasses.replace(  # NOSONAR dataclasses.replace returns the same dataclass type
+        collection, papers=tuple(enriched_papers)
+    )
 
 
 async def _enrich_one(
-    paper: Paper, *, language: str, model: str | None
+    paper: Paper,
+    *,
+    language: str,
+    model: str | None,
+    provider: str | None = None,
+    base_url: str | None = None,
+    command: str | None = None,
 ) -> Paper:
     if not paper.pdf_url:
         _LOG.info(
@@ -408,16 +430,19 @@ async def _enrich_one(
         ) from err
     try:
         pdf = await fetch_and_extract(paper.pdf_url, source=paper.source)
-    except (FetchError, ThesisAgentsError) as err:
+    except ThesisAgentsError as err:  # FetchError is a ThesisAgentsError subclass
         _LOG.warning("PDF fetch failed for %s: %s", paper.bibtex_key(), err)
         return paper
     try:
         summary = await asyncio.to_thread(
-            summarise_paper, paper, pdf, language=language, model=model
+            summarise_paper, paper, pdf, language=language, model=model,
+            provider=provider, base_url=base_url, command=command,
         )
     except Exception as err:  # noqa: BLE001  # anthropic client raises various, incl. ThesisAgentsError
         _LOG.warning("summarisation failed for %s: %s", paper.bibtex_key(), err)
         return paper
     if summary.is_empty():
         return paper
-    return dataclasses.replace(paper, summary=summary)
+    return dataclasses.replace(  # NOSONAR dataclasses.replace returns the same dataclass type
+        paper, summary=summary
+    )

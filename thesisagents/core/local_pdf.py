@@ -125,7 +125,7 @@ def _build_one(pdf_path: Path, overrides: LocalPdfOverrides, pdf_dir: Path) -> P
     authors = _resolve_authors(overrides.authors, metadata.authors)
     abstract = metadata.abstract or " ".join(extracted.split())[:1500]
     digest = hashlib.sha256(body, usedforsecurity=False).hexdigest()[:16]
-    target = pdf_dir / f"{safe_filename(title) or digest}.pdf"
+    target = _copy_target(pdf_dir, title, digest)
     if pdf_path.resolve() != target.resolve():
         shutil.copyfile(pdf_path, target)
     _LOG.info(
@@ -146,6 +146,22 @@ def _build_one(pdf_path: Path, overrides: LocalPdfOverrides, pdf_dir: Path) -> P
         pdf_url=None,
         raw={"extracted_text": extracted, "page_count": page_count},
     )
+
+
+def _copy_target(pdf_dir: Path, title: str, digest: str) -> Path:
+    """Where the copy goes: named by the title, and by the content as well
+    when another file has that name already.
+
+    The failure this prevents: two PDFs whose front matter gives one title
+    (a thesis and its draft) were copied over each other.
+    """
+    target = pdf_dir / f"{safe_filename(title)}.pdf"
+    if not target.exists():
+        return target
+    present = hashlib.sha256(target.read_bytes(), usedforsecurity=False).hexdigest()
+    if present.startswith(digest):
+        return target
+    return pdf_dir / f"{safe_filename(title)}-{digest[:8]}.pdf"
 
 
 def read_pdf_safely(pdf_path: Path) -> bytes:

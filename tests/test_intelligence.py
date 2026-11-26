@@ -138,14 +138,21 @@ def _fake_anthropic_module(response_text: str):
         class _Client:
             def __init__(self):
                 self.messages = _Messages()
+                self.beta = MagicMock()
+                self.beta.messages = _Messages()
 
         class _Messages:
             def create(self, **kwargs):  # noqa: ARG002  # mock signature mirrors the SDK
                 captured["kwargs"] = kwargs
+                thinking = MagicMock()
+                thinking.type = "thinking"
                 block = MagicMock()
+                block.type = "text"
                 block.text = response_text
                 response = MagicMock()
-                response.content = [block]
+                response.content = [thinking, block]
+                response.stop_reason = captured.get("stop_reason", "end_turn")
+                response.stop_details = MagicMock(category="cyber")
                 return response
 
         captured["api_key"] = api_key
@@ -220,6 +227,47 @@ def test_summariser_tolerates_markdown_fenced_json(monkeypatch):
     assert summary.takeaways == ("t1",)
 
 
+def test_the_current_model_gets_room_to_think_and_a_fallback(monkeypatch):
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "test-key")
+    monkeypatch.delenv("THESISAGENTS_LLM_MODEL", raising=False)
+    fake_anthropic, captured = _fake_anthropic_module('{"takeaways": ["t1"]}')
+    monkeypatch.setitem(__import__("sys").modules, "anthropic", fake_anthropic)
+    pdf = pdf_module.ExtractedPdf(url="x", page_count=1, chars=10, text="t")
+    summary = summarise_module.summarise_paper(_paper(), pdf, language="en")
+    sent = captured["kwargs"]
+    assert summary.takeaways == ("t1",)
+    assert sent["model"] == "claude-opus-5-5"
+    assert sent["max_tokens"] >= 16_000
+    assert sent["output_config"] == {"effort": "medium"}
+    assert sent["fallbacks"] == "default"
+    assert "temperature" not in sent and "thinking" not in sent
+
+
+def test_an_older_model_gets_the_plain_request(monkeypatch):
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "test-key")
+    monkeypatch.setenv("THESISAGENTS_LLM_MODEL", "claude-haiku-4-5")
+    fake_anthropic, captured = _fake_anthropic_module('{"takeaways": ["t1"]}')
+    monkeypatch.setitem(__import__("sys").modules, "anthropic", fake_anthropic)
+    pdf = pdf_module.ExtractedPdf(url="x", page_count=1, chars=10, text="t")
+    summarise_module.summarise_paper(_paper(), pdf, language="en")
+    assert "output_config" not in captured["kwargs"]
+    assert "fallbacks" not in captured["kwargs"]
+
+
+@pytest.mark.parametrize(("stop", "message"), [
+    ("refusal", r"declined this paper \(cyber\)"), ("max_tokens", "cut off"),
+])
+def test_a_refusal_or_a_cut_answer_is_named(monkeypatch, stop, message):
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "test-key")
+    monkeypatch.delenv("THESISAGENTS_LLM_MODEL", raising=False)
+    fake_anthropic, captured = _fake_anthropic_module('{"takeaways": ["t1"]}')
+    captured["stop_reason"] = stop
+    monkeypatch.setitem(__import__("sys").modules, "anthropic", fake_anthropic)
+    pdf = pdf_module.ExtractedPdf(url="x", page_count=1, chars=10, text="t")
+    with pytest.raises(ParseError, match=message):
+        summarise_module.summarise_paper(_paper(), pdf, language="en")
+
+
 def test_summariser_rejects_non_json(monkeypatch):
     monkeypatch.setenv("ANTHROPIC_API_KEY", "test-key")
     fake_anthropic, _ = _fake_anthropic_module("I refuse to comply.")
@@ -227,8 +275,9 @@ def test_summariser_rejects_non_json(monkeypatch):
         __import__("sys").modules, "anthropic", fake_anthropic
     )
     pdf = pdf_module.ExtractedPdf(url="x", page_count=1, chars=10, text="t")
+    paper = _paper()
     with pytest.raises(ParseError):
-        summarise_module.summarise_paper(_paper(), pdf, language="en")
+        summarise_module.summarise_paper(paper, pdf, language="en")
 
 
 # ---------------------------------------------------------------------------

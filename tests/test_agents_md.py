@@ -214,7 +214,10 @@ def test_pruning_irrelevant_downloads_rule_documented():
             f"{label} lost the 'irrelevant downloads' anti-pattern"
         )
         # The concrete paths to delete.
-        assert "pdfs/" in text and ".pptx" in text, (
+        assert "pdfs/" in text, (
+            f"{label} lost the concrete pdfs/<key>.pdf + <key>.pptx paths"
+        )
+        assert ".pptx" in text, (
             f"{label} lost the concrete pdfs/<key>.pdf + <key>.pptx paths"
         )
     # The Claude-side canonical reference must also carry the
@@ -249,10 +252,16 @@ def test_url_doi_verification_rule_documented():
         )
         # Concrete failure mode the rule was written to prevent — the
         # examples make the rule memorable instead of abstract.
-        assert "AAAI" in text and "arnumber" in text, (
+        assert "AAAI" in text, (
+            f"{label} lost the concrete examples of why URLs can't be guessed"
+        )
+        assert "arnumber" in text, (
             f"{label} lost the concrete examples of why URLs can't be guessed"
         )
         # Audit-script signature so an agent can grep for it and run it.
-        assert "ALL_PAPERS" in text and "load_workbook" in text, (
+        assert "ALL_PAPERS" in text, (
+            f"{label} lost the post-regen URL-audit snippet"
+        )
+        assert "load_workbook" in text, (
             f"{label} lost the post-regen URL-audit snippet"
         )

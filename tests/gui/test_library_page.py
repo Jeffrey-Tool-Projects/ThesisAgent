@@ -33,7 +33,7 @@ OTHER = Paper(
 )
 
 
-@pytest.fixture()
+@pytest.fixture
 def library_file(tmp_path: Path) -> Path:
     """A library with two searches, one citation link and one DOI verdict."""
     path = tmp_path / "thesis.db"

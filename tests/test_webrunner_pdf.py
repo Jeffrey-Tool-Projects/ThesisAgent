@@ -32,10 +32,23 @@ def test_should_use_webrunner_matches_paywalled_publishers(url):
         "https://www.ncbi.nlm.nih.gov/pmc/articles/PMC1234/pdf/x.pdf",
         "https://www.example.com/paper.pdf",
         "https://oa-repo.university.edu/files/x.pdf",
+        # Look-alikes of listed domains, which are other people's hosts.
+        "https://evilieee.org/paper.pdf",
+        "https://notacm.org/x.pdf",
+        "https://fakescience.org/x.pdf",
+        "https://ieee.org.evil.example/x.pdf",
+        "https://nature.com@evil.example/x.pdf",
     ],
 )
 def test_should_use_webrunner_skips_open_access_hosts(url):
     assert webrunner_pdf.should_use_webrunner(url) is False
+
+
+@pytest.mark.parametrize("url", [
+    "https://ieee.org/x.pdf", "https://IEEEXPLORE.IEEE.ORG/x", "https://www.nature.com./x.pdf",
+])
+def test_should_use_webrunner_matches_the_domain_itself_in_any_spelling(url):
+    assert webrunner_pdf.should_use_webrunner(url) is True
 
 
 def test_should_use_webrunner_handles_garbage_url():

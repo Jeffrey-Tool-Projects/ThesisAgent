@@ -104,7 +104,7 @@ class RoutingTransport(httpx.AsyncBaseTransport):
         return None
 
 
-@pytest.fixture()
+@pytest.fixture
 def route(monkeypatch):
     """Install a :class:`RoutingTransport` as the preflight's client."""
 
@@ -677,8 +677,10 @@ def test_unknown_format_is_rejected_before_the_preflight(route, tmp_path):
     transport = route({})
     options = ExportOptions(formats=("bib", "nope"), out_dir=str(tmp_path))
 
+    collection = _collection(_paper(doi="10.1234/good"))
+
     with pytest.raises(ExportError, match="no exporter registered"):
-        export_collection(_collection(_paper(doi="10.1234/good")), options)
+        export_collection(collection, options)
 
     assert transport.calls == []
     assert list(tmp_path.iterdir()) == []
@@ -690,8 +692,10 @@ def test_verification_error_is_an_export_error(route, tmp_path):
     route({})
     options = ExportOptions(formats=("bib",), out_dir=str(tmp_path))
 
+    collection = _collection(_paper(doi="not-a-doi"))
+
     with pytest.raises(ExportError) as raised:
-        export_collection(_collection(_paper(doi="not-a-doi")), options)
+        export_collection(collection, options)
 
     assert isinstance(raised.value, IdentifierVerificationError)
     assert isinstance(raised.value, ThesisAgentsError)  # the CLI turns it into exit 2
