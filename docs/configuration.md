@@ -84,6 +84,11 @@ names who runs it:
 | `llamacpp` | none | `http://localhost:8080/v1` |
 | `vllm` | none | `http://localhost:8000/v1` |
 | `custom` | `THESISAGENTS_LLM_API_KEY` (optional) | `THESISAGENTS_LLM_BASE_URL` |
+| `claude-cli` | none, signed in to Claude Code | `claude -p --output-format text --tools "" --no-session-persistence --permission-prompts none` |
+| `gemini-cli` | none, signed in to the Gemini CLI | `gemini` |
+| `codex-cli` | none, signed in to Codex | `codex exec --skip-git-repo-check --sandbox read-only --ephemeral --color never -` |
+| `ollama-cli` | none, Ollama on this computer | `ollama run` (the model is required) |
+| `cli` | whatever the program needs | `THESISAGENTS_LLM_COMMAND` |
 
 - `THESISAGENTS_LLM_MODEL` is the model. Anthropic has a default, the others
   need one: model names change too often to build in. The GUI's **Settings →
@@ -91,6 +96,16 @@ names who runs it:
 - `THESISAGENTS_LLM_BASE_URL` replaces the address, for a gateway or a
   server elsewhere. Plain HTTP is accepted only for this computer and
   private addresses.
+- The `*-cli` providers and `cli` run an AI program on the command line, the
+  last column being their command. The instructions and the paper go in on
+  standard input and the answer is read from standard output. The command
+  is run without a shell, in a new empty folder that is removed afterwards,
+  so an agent program sees no project and writes nowhere that matters, and
+  on Windows without a console window. `THESISAGENTS_LLM_COMMAND` (or
+  `--llm-command`) replaces the command, `THESISAGENTS_LLM_MODEL` is added
+  with the program's model flag, and `THESISAGENTS_LLM_CLI_TIMEOUT` is how
+  many seconds one paper may take (600). Install the program and sign in to
+  it first: the paper goes to whatever service it uses.
 - An API key in the environment never selects its service by itself. A
   paper's text goes only to the provider you named, and nowhere with a
   local one.
@@ -159,6 +174,7 @@ unattended deployments don't need to pass long argument lists.
 | `--llm-model MODEL` | `THESISAGENTS_LLM_MODEL` | CLI wins if both are set. |
 | `--llm-provider NAME` | `THESISAGENTS_LLM_PROVIDER` | CLI wins if both are set. |
 | `--llm-base-url URL` | `THESISAGENTS_LLM_BASE_URL` | CLI wins if both are set. |
+| `--llm-command COMMAND` | `THESISAGENTS_LLM_COMMAND` | CLI wins if both are set. |
 
 Those are the only ones today; everything else is per-source plugin
 config above. The CLI explicitly does NOT read API keys via

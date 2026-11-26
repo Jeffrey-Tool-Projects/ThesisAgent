@@ -301,6 +301,7 @@ py -m thesisagents --paper "https://arxiv.org/abs/1706.03762" `
 | `--enrich` | 自动增强的失败即报变体。需要 `ANTHROPIC_API_KEY` 与 `[intelligence]` extra。(设了密钥时自动增强是默认。) |
 | `--lightweight` | 跳过增强 + 强制只有摘要的幻灯片。只用于快速 / 无人值守的运行;**当有 LLM agent 在驱动时,优先用下面的 LLM-as-agent 流程**。 |
 | `--llm-model` | 覆盖增强用的默认 `claude-opus-5-5`。 |
+| `--llm-command COMMAND` | 命令行模型来源（`claude-cli`、`cli`…）的命令，论文从标准输入送入。 |
 | `--no-pdf` | 跳过自动 PDF 下载。也会禁用每篇论文的 PPT 闸(没 PDF → 没完整内容)。 |
 | `--no-oa-resolve` | 跳过去重后的 OA PDF 解析器(Unpaywall + S2 + arXiv + CORE.ac.uk)。 |
 | `--top-tier-only` | 把结果限制到 arXiv + 一份精选的计算机旗舰白名单(S&P、CCS、NDSS、USENIX Security、NeurIPS、ICML、ICSE …)。默认关闭。 |
@@ -325,7 +326,9 @@ py -m thesisagents --paper "https://arxiv.org/abs/1706.03762" `
 | 变量 | 使用者 | 用途 |
 |---|---|---|
 | `ANTHROPIC_API_KEY` | `--enrich` | LLM 认证。走 MCP 的 LLM-as-agent 路径不需要。 |
-| `THESISAGENTS_LLM_PROVIDER` | `--enrich` | 由谁运行模型：`anthropic`, `openai`, `gemini`, `mistral`, `deepseek`, `xai`, `groq`, `openrouter`, `together`, `fireworks`, `dashscope`, `moonshot`，这台电脑上的 `ollama`, `lmstudio`, `llamacpp`, `vllm`，或搭配 `THESISAGENTS_LLM_BASE_URL` 的 `custom`。 |
+| `THESISAGENTS_LLM_PROVIDER` | `--enrich` | 由谁运行模型：`anthropic`, `openai`, `gemini`, `mistral`, `deepseek`, `xai`, `groq`, `openrouter`, `together`, `fireworks`, `dashscope`, `moonshot`，这台电脑上的 `ollama`, `lmstudio`, `llamacpp`, `vllm`，或搭配 `THESISAGENTS_LLM_BASE_URL` 的 `custom`。或命令行上的 AI 程序：`claude-cli`、`gemini-cli`、`codex-cli`、`ollama-cli`，或搭配 `THESISAGENTS_LLM_COMMAND` 的 `cli`。 |
+| `THESISAGENTS_LLM_COMMAND` | `--enrich` | 命令行模型来源的命令，论文内容从标准输入送入（例如 `claude -p --model opus`），取代该来源的默认命令。 |
+| `THESISAGENTS_LLM_CLI_TIMEOUT` | `--enrich` | 命令行模型来源处理一篇论文的时限，单位秒（默认 600）。 |
 | `THESISAGENTS_LLM_MODEL` | `--enrich` | 覆盖默认的 `claude-opus-5-5`。 |
 | `THESISAGENTS_S2_API_KEY` | Semantic Scholar + OA 解析器 | 更高的速率限制;也被 OA 解析器的 S2 `openAccessPdf` 步骤使用。免费密钥在 <https://www.semanticscholar.org/product/api>。 |
 | `THESISAGENTS_NCBI_API_KEY` | PubMed | 把 NCBI 的匿名限制(3/s)提高到 10/s。可选。 |
@@ -477,7 +480,7 @@ Tiếng Việt、हिन्दी、Bahasa Indonesia)—— 首次运行会从
 结果旁边,中等宽度时放在结果上方,宽度低于 760 px 时侧边栏收起为图标,
 表单标签移到字段上方。窗口可以缩小到 640×480,并默认开启 HiDPI 缩放。
 **Settings → Theme** 可选浅色、深色或跟随系统,立即生效,且与幻灯片本身的
-深色模式无关。结果可以排序、筛选并勾选，只把勾选的论文交给 Enrich、Deck 与导出，滚雪球的范围可以调整，执行中的搜索或丰富化可以取消，表单内容在下次启动时会保留。Deck 页面可在导出前检查模板，也能审查任何完成的幻灯片。没有 API 密钥时，Enrich 页面会把论文以 JSON 文件交给 LLM 代理，再导入它写的摘要。Deck 页面也能下载 PDF，在 Settings 声明机构 / VPN 访问权限之前会跳过 IEEE，新的界面语言会立即生效并保留当前工作。同一个开关也会让搜索跳过 `ieee`。Search 页面也能像 CLI 的 `--pdf` 一样，把本地 PDF 读入结果。状态栏会显示经由 Chrome 下载的 PDF 数量，出版商 PDF 无法使用 Chrome 时也会发出警告。**Settings → Style** 可在经典海军蓝外观与 Material 3 之间切换。**Settings → Font size** 可立即把整个应用的文字大小调整为 8 到 24 pt，也可以用 `Ctrl++`、`Ctrl+-` 和 `Ctrl+0`(恢复默认)，布局会随之调整。状态栏的 **Log**(`Ctrl+L`)显示程序正在做什么，并有日志文件可附在错误报告中，Chrome 等你完成验证时上方会出现提示。API 密钥存放在系统的凭据管理器(Windows 凭据管理器、macOS 钥匙串、Secret Service)，不会写进设置文件。Windows 提供不需管理员权限的安装程序，有新版本时程序会提示(每天检查一次，可关闭)。**Settings → AI model** 可选择由谁撰写摘要：Anthropic、其他十一种服务，或你电脑上的模型(Ollama、LM Studio、llama.cpp、vLLM)，用后者时论文内容不会外传。增强页与文献库页的 **Edit summary** 可手动编辑摘要，并指出论文七个章节中还没有内容的部分。**Word draft** 与 **LaTeX draft** 导出含 APA 引用、比较表与参考文献的文献综述草稿，也能写进学校的 Word 模板。幻灯片页的 **Edit slides…** 可修改已完成演示文稿的文字、顺序与页数，附预览与撤销。`Ctrl+1` … `Ctrl+5` 切换页面。
+深色模式无关。结果可以排序、筛选并勾选，只把勾选的论文交给 Enrich、Deck 与导出，滚雪球的范围可以调整，执行中的搜索或丰富化可以取消，表单内容在下次启动时会保留。Deck 页面可在导出前检查模板，也能审查任何完成的幻灯片。没有 API 密钥时，Enrich 页面会把论文以 JSON 文件交给 LLM 代理，再导入它写的摘要。Deck 页面也能下载 PDF，在 Settings 声明机构 / VPN 访问权限之前会跳过 IEEE，新的界面语言会立即生效并保留当前工作。同一个开关也会让搜索跳过 `ieee`。Search 页面也能像 CLI 的 `--pdf` 一样，把本地 PDF 读入结果。状态栏会显示经由 Chrome 下载的 PDF 数量，出版商 PDF 无法使用 Chrome 时也会发出警告。**Settings → Style** 可在经典海军蓝外观与 Material 3 之间切换。**Settings → Font size** 可立即把整个应用的文字大小调整为 8 到 24 pt，也可以用 `Ctrl++`、`Ctrl+-` 和 `Ctrl+0`(恢复默认)，布局会随之调整。状态栏的 **Log**(`Ctrl+L`)显示程序正在做什么，并有日志文件可附在错误报告中，Chrome 等你完成验证时上方会出现提示。API 密钥存放在系统的凭据管理器(Windows 凭据管理器、macOS 钥匙串、Secret Service)，不会写进设置文件。Windows 提供不需管理员权限的安装程序，有新版本时程序会提示(每天检查一次，可关闭)。**Settings → AI model** 可选择由谁撰写摘要：Anthropic、其他十一种服务，或你电脑上的模型(Ollama、LM Studio、llama.cpp、vLLM)，用后者时论文内容不会外传。增强页与文献库页的 **Edit summary** 可手动编辑摘要，并指出论文七个章节中还没有内容的部分。**Word draft** 与 **LaTeX draft** 导出含 APA 引用、比较表与参考文献的文献综述草稿，也能写进学校的 Word 模板。幻灯片页的 **Edit slides…** 可修改已完成演示文稿的文字、顺序与页数，附预览与撤销。**Settings → AI model** 也能选择命令行上的 AI 程序（Claude Code、Gemini CLI、Codex、Ollama 或任何命令），以你已登录的账号写摘要，不需要 API 密钥。`Ctrl+1` … `Ctrl+5` 切换页面。
 
 完整参考:[`docs/gui.md`](../docs/gui.md)。
 

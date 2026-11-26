@@ -11,6 +11,7 @@ import argparse
 import asyncio
 import contextlib
 import dataclasses
+import os
 import sys
 from pathlib import Path
 
@@ -318,8 +319,10 @@ def build_parser() -> argparse.ArgumentParser:
             "Who runs the model: anthropic (default), a hosted service "
             "(openai, gemini, mistral, deepseek, xai, groq, openrouter, "
             "together, fireworks, dashscope, moonshot), a program on this "
-            "computer (ollama, lmstudio, llamacpp, vllm), or custom with "
-            "--llm-base-url. Default: THESISAGENTS_LLM_PROVIDER."
+            "computer (ollama, lmstudio, llamacpp, vllm), custom with "
+            "--llm-base-url, or an AI program on the command line "
+            "(claude-cli, gemini-cli, codex-cli, ollama-cli, or cli with "
+            "--llm-command). Default: THESISAGENTS_LLM_PROVIDER."
         ),
     )
     parser.add_argument(
@@ -329,6 +332,16 @@ def build_parser() -> argparse.ArgumentParser:
         help=(
             "Address of an OpenAI-compatible server, up to /v1. Overrides the "
             "provider's own. Default: THESISAGENTS_LLM_BASE_URL."
+        ),
+    )
+    parser.add_argument(
+        "--llm-command",
+        default=None,
+        metavar="COMMAND",
+        help=(
+            "Command line of a command-line provider, which gets the paper "
+            "on standard input, for example \"claude -p\". Replaces the "
+            "provider's own. Default: THESISAGENTS_LLM_COMMAND."
         ),
     )
     parser.add_argument(
@@ -1151,6 +1164,9 @@ def main(argv: list[str] | None = None) -> int:
         return 0
     parser = build_parser()
     args = parser.parse_args(raw_argv)
+    if args.llm_command:
+        # Read by intelligence.providers for whichever command-line provider runs.
+        os.environ["THESISAGENTS_LLM_COMMAND"] = args.llm_command
     try:
         return asyncio.run(_run(args))
     except ThesisAgentsError as err:

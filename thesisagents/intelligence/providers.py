@@ -1,9 +1,12 @@
 """Which language model writes the summaries, and how it is asked.
 
-Anthropic is called through its SDK. Everything else speaks the same HTTP
+Anthropic is called through its SDK. Most others speak the same HTTP
 dialect, OpenAI's ``/chat/completions``, so one small client covers the
 hosted services, programs on this computer (Ollama, LM Studio, llama.cpp,
-vLLM) and any other server with a compatible endpoint (``custom``).
+vLLM) and any other server with a compatible endpoint (``custom``). The
+``*-cli`` providers and ``cli`` run an AI program on the command line
+instead (``claude -p``, ``gemini``, ``codex exec``, ``ollama run``, or any
+command), see ``cli_models.py``.
 
 The choice comes from ``THESISAGENTS_LLM_PROVIDER`` (``anthropic`` when
 unset), ``THESISAGENTS_LLM_MODEL`` and ``THESISAGENTS_LLM_BASE_URL``, or from
@@ -37,12 +40,15 @@ from thesisagents.core.exceptions import (
     SourceUnavailableError,
 )
 from thesisagents.fetchers.http import is_local_host, llm_client
+from thesisagents.intelligence import cli_models
 from thesisagents.utils.logging import get_logger
 
 _LOG = get_logger(__name__)
 
 ANTHROPIC: Final[str] = "anthropic"
 CUSTOM: Final[str] = "custom"
+#: Runs the command line the user gives, the paper on standard input.
+CLI: Final[str] = "cli"
 DEFAULT_ANTHROPIC_MODEL: Final[str] = "claude-opus-5-5"
 #: Models that always think, take ``effort`` and accept the server-side
 #: fallback on a refusal. Another model named with ``--llm-model`` is sent the
@@ -65,6 +71,8 @@ MODEL_ENV: Final[str] = "THESISAGENTS_LLM_MODEL"
 BASE_URL_ENV: Final[str] = "THESISAGENTS_LLM_BASE_URL"
 CUSTOM_KEY_ENV: Final[str] = "THESISAGENTS_LLM_API_KEY"
 MAX_CHARS_ENV: Final[str] = "THESISAGENTS_LLM_MAX_CHARS"
+#: The command line of a command-line provider, in place of its own.
+COMMAND_ENV: Final[str] = "THESISAGENTS_LLM_COMMAND"
 
 #: How much of a paper is sent. A program on this computer usually runs with
 #: a small context window and silently drops what does not fit, the end of
@@ -77,17 +85,31 @@ _LOCAL_SOURCE: Final[str] = "llm"
 
 @dataclass(frozen=True, slots=True)
 class Provider:
-    """One service. ``key_env`` is empty for those that need no key."""
+    """One service. ``key_env`` is empty for those that need no key.
+
+    A command-line provider has a ``command`` instead of an address, and
+    ``model_flag`` says how a model is named on it (empty: as the last
+    argument). ``local`` marks one whose model runs on this computer.
+    """
 
     name: str
     label: str
     base_url: str = ""
     key_env: str = ""
+    command: str = ""
+    model_flag: str = ""
+    local: bool = False
+    needs_model: bool = False
+
+    @property
+    def is_cli(self) -> bool:
+        """Whether it is a program run on the command line."""
+        return bool(self.command) or self.name == CLI
 
     @property
     def is_local(self) -> bool:
         """Whether it runs on this computer, so no text leaves it."""
-        return self.base_url.startswith("http://localhost")
+        return self.local or self.base_url.startswith("http://localhost")
 
 
 #: In the order the settings list them: hosted services, then local programs.
@@ -120,6 +142,26 @@ PROVIDERS: Final[dict[str, Provider]] = {
         Provider("llamacpp", "llama.cpp", "http://localhost:8080/v1"),
         Provider("vllm", "vLLM", "http://localhost:8000/v1"),
         Provider(CUSTOM, "Custom", key_env=CUSTOM_KEY_ENV),
+        # Programs on the command line, each with the account it is signed in to.
+        # No tools and nothing remembered: the program only reads and answers.
+        Provider(
+            "claude-cli", "Claude Code",
+            command='claude -p --output-format text --tools "" --no-session-persistence '
+            "--permission-prompts none",
+            model_flag="--model",
+        ),
+        Provider("gemini-cli", "Gemini CLI", command="gemini", model_flag="--model"),
+        Provider(
+            "codex-cli", "Codex CLI",
+            command="codex exec --skip-git-repo-check --sandbox read-only --ephemeral "
+            "--color never -",
+            model_flag="--model",
+        ),
+        Provider(
+            "ollama-cli", "Ollama", command="ollama run", local=True,
+            needs_model=True,
+        ),
+        Provider(CLI, "Command line", needs_model=False),
     )
 }
 
@@ -132,12 +174,20 @@ class LlmSettings:
     model: str
     base_url: str
     api_key: str = ""
+    #: The command line of a command-line provider, before the model is added.
+    command: str = ""
 
     def __repr__(self) -> str:
         return (
             f"LlmSettings({self.provider.name!r}, model={self.model!r}, "
-            f"base_url={self.base_url!r}, api_key={'***' if self.api_key else ''!r})"
+            f"base_url={self.base_url!r}, command={self.command!r}, "
+            f"api_key={'***' if self.api_key else ''!r})"
         )
+
+    def arguments(self) -> list[str]:
+        """The program and its arguments, the model included."""
+        parts = cli_models.split_command(self.command)
+        return cli_models.with_model(parts, self.provider.model_flag, self.model)
 
     @property
     def describes(self) -> str:
@@ -156,12 +206,14 @@ def resolve(
     model: str | None = None,
     base_url: str | None = None,
     api_key: str | None = None,
+    command: str | None = None,
 ) -> LlmSettings:
     """Fill what was not given from the environment and the provider's defaults.
 
     ``THESISAGENTS_LLM_MODEL`` and ``…_BASE_URL`` belong to the provider the
     environment selects. When another one is asked for, they are not used: a
-    model of one service means nothing to the next.
+    model of one service means nothing to the next. ``…_COMMAND`` is a whole
+    command line and applies to whichever command-line provider is chosen.
     """
     name = (provider or "").strip().lower() or selected_provider()
     if name not in PROVIDERS:
@@ -178,11 +230,14 @@ def resolve(
         model = DEFAULT_ANTHROPIC_MODEL
     if api_key is None:
         api_key = os.environ.get(chosen.key_env, "") if chosen.key_env else ""
+    if chosen.is_cli and not command:
+        command = os.environ.get(COMMAND_ENV, "")
     return LlmSettings(
         provider=chosen,
         model=(model or "").strip(),
         base_url=(base_url or "").strip().rstrip("/") or chosen.base_url,
         api_key=api_key.strip(),
+        command=(command or "").strip() or chosen.command if chosen.is_cli else "",
     )
 
 
@@ -192,6 +247,8 @@ def problem(settings: LlmSettings) -> str | None:
     Whether a key is valid or a program runs shows only when it is used.
     """
     provider = settings.provider
+    if provider.is_cli:
+        return _cli_problem(settings)
     if provider.name == CUSTOM and not settings.base_url:
         return f"{BASE_URL_ENV} is not set, which the custom provider needs"
     if provider.key_env and provider.name != CUSTOM and not settings.api_key:
@@ -204,11 +261,31 @@ def problem(settings: LlmSettings) -> str | None:
     return None
 
 
+def _cli_problem(settings: LlmSettings) -> str | None:
+    if not settings.command:
+        return f"no command is set. Set {COMMAND_ENV} or pass --llm-command"
+    try:
+        program = cli_models.find_program(settings.command)
+    except ConfigError as err:
+        return str(err)
+    if program is None:
+        name = cli_models.split_command(settings.command)[0]
+        return f"{name} is not installed or not on PATH"
+    if settings.provider.needs_model and not settings.model:
+        return (
+            f"no model is chosen for {settings.provider.label}. Set {MODEL_ENV}, "
+            "pass --llm-model, or choose one in the settings"
+        )
+    return None
+
+
 def max_paper_chars(settings: LlmSettings) -> int:
     """How many characters of a paper to send."""
     stated = os.environ.get(MAX_CHARS_ENV, "").strip()
     if stated.isdigit() and int(stated) > 0:
         return int(stated)
+    if settings.provider.is_cli:
+        return _LOCAL_MAX_CHARS if settings.provider.is_local else _HOSTED_MAX_CHARS
     try:
         host = httpx.URL(settings.base_url).host if settings.base_url else ""
     except httpx.InvalidURL:
@@ -228,6 +305,11 @@ def complete(settings: LlmSettings, system: str, user: str) -> str:
         raise ConfigError(reason)
     if settings.provider.name == ANTHROPIC:
         return _complete_anthropic(settings, system, user)
+    if settings.provider.is_cli:
+        # One text: not every program takes a system prompt, and none the same way.
+        return cli_models.run_command(
+            settings.arguments(), f"{system}\n\n{user}", label=settings.provider.label
+        )
     return _complete_compatible(settings, system, user)
 
 
@@ -239,6 +321,13 @@ def list_models(settings: LlmSettings) -> list[str]:
     if settings.provider.name == ANTHROPIC:
         client = _anthropic_client(settings)
         return [entry.id for entry in client.models.list(limit=100).data]
+    if settings.provider.name == "ollama-cli":
+        return cli_models.list_ollama_models(settings.command)
+    if settings.provider.is_cli:
+        raise ConfigError(
+            f"{settings.provider.label} does not list its models here. Type the name "
+            "the program knows, or leave it empty for its own default"
+        )
     payload = _request(settings, "GET", "/models", None)
     entries = payload.get("data") if isinstance(payload, dict) else payload
     names = [

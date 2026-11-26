@@ -6373,6 +6373,124 @@ _LABELS: Final[dict[str, dict[str, str]]] = {
         "hi": "• पहला बिंदु",
         "id": "• Poin pertama",
     },
+    # Command-line models -----------------------------------------------
+    "model.cli": {
+        "en": "{name} (command line)",
+        "zh-tw": "{name}（命令列）",
+        "zh-cn": "{name}（命令行）",
+        "ja": "{name} (コマンドライン)",
+        "es": "{name} (línea de comandos)",
+        "fr": "{name} (ligne de commande)",
+        "de": "{name} (Kommandozeile)",
+        "ko": "{name} (명령줄)",
+        "pt": "{name} (linha de comando)",
+        "ru": "{name} (командная строка)",
+        "it": "{name} (riga di comando)",
+        "vi": "{name} (dòng lệnh)",
+        "hi": "{name} (कमांड लाइन)",
+        "id": "{name} (baris perintah)",
+    },
+    "model.cli_custom": {
+        "en": "Another program (command line)",
+        "zh-tw": "其他程式（命令列）",
+        "zh-cn": "其他程序（命令行）",
+        "ja": "その他のプログラム (コマンドライン)",
+        "es": "Otro programa (línea de comandos)",
+        "fr": "Autre programme (ligne de commande)",
+        "de": "Anderes Programm (Kommandozeile)",
+        "ko": "다른 프로그램 (명령줄)",
+        "pt": "Outro programa (linha de comando)",
+        "ru": "Другая программа (командная строка)",
+        "it": "Altro programma (riga di comando)",
+        "vi": "Chương trình khác (dòng lệnh)",
+        "hi": "अन्य प्रोग्राम (कमांड लाइन)",
+        "id": "Program lain (baris perintah)",
+    },
+    "model.command": {
+        "en": "Command",
+        "zh-tw": "指令",
+        "zh-cn": "命令",
+        "ja": "コマンド",
+        "es": "Comando",
+        "fr": "Commande",
+        "de": "Befehl",
+        "ko": "명령",
+        "pt": "Comando",
+        "ru": "Команда",
+        "it": "Comando",
+        "vi": "Lệnh",
+        "hi": "कमांड",
+        "id": "Perintah",
+    },
+    "model.note_cli": {
+        "en": (
+            "The program runs once per paper, with the text on its input, under the account it "
+            "is signed in to, and sends the text to its own service. Install it and sign in "
+            "first."
+        ),
+        "zh-tw": (
+            "每篇論文執行一次該程式，內容從標準輸入送入，以它已登入的帳號處理，並傳送到它自己的"
+            "服務。請先安裝並登入。"
+        ),
+        "zh-cn": (
+            "每篇论文运行一次该程序，内容从标准输入送入，以它已登录的账号处理，并发送到它自己的"
+            "服务。请先安装并登录。"
+        ),
+        "ja": (
+            "論文ごとにプログラムを 1 回実行し、本文を標準入力で渡します。ログイン中のアカウン"
+            "トで処理され、本文はそのサービスに送られます。先にインストールしてログインしてくだ"
+            "さい。"
+        ),
+        "es": (
+            "El programa se ejecuta una vez por artículo, con el texto en su entrada, con la "
+            "cuenta en la que ha iniciado sesión, y envía el texto a su propio servicio. "
+            "Instálelo e inicie sesión antes."
+        ),
+        "fr": (
+            "Le programme est lancé une fois par article, le texte sur son entrée, avec le "
+            "compte connecté, et envoie le texte à son propre service. Installez-le et "
+            "connectez-vous d'abord."
+        ),
+        "de": (
+            "Das Programm läuft einmal pro Artikel, mit dem Text auf seiner Eingabe, unter dem "
+            "angemeldeten Konto, und sendet den Text an seinen eigenen Dienst. Zuerst "
+            "installieren und anmelden."
+        ),
+        "ko": (
+            "논문마다 프로그램을 한 번 실행하며, 본문은 표준 입력으로 전달되고 로그인된 계정으"
+            "로 처리되어 해당 서비스로 전송됩니다. 먼저 설치하고 로그인하세요."
+        ),
+        "pt": (
+            "O programa é executado uma vez por artigo, com o texto na entrada, na conta em "
+            "que está conectado, e envia o texto ao próprio serviço. Instale-o e entre na "
+            "conta antes."
+        ),
+        "ru": (
+            "Программа запускается для каждой статьи, текст подаётся на её вход, работа идёт "
+            "под учётной записью, в которую выполнен вход, и текст уходит в её сервис. Сначала "
+            "установите её и войдите."
+        ),
+        "it": (
+            "Il programma viene eseguito una volta per articolo, con il testo in ingresso, con "
+            "l'account a cui è collegato, e invia il testo al proprio servizio. Installalo e "
+            "accedi prima."
+        ),
+        "vi": (
+            "Chương trình chạy một lần cho mỗi bài báo, nhận văn bản qua đầu vào, dùng tài "
+            "khoản đã đăng nhập và gửi văn bản đến dịch vụ của nó. Hãy cài đặt và đăng nhập "
+            "trước."
+        ),
+        "hi": (
+            "प्रोग्राम हर शोध-पत्र के लिए एक बार चलता है, पाठ उसके इनपुट पर जाता है, जिस खाते में "
+            "साइन इन है उसी से, और पाठ उसकी अपनी सेवा को भेजा जाता है। पहले इसे इंस्टॉल करें और "
+            "साइन इन करें।"
+        ),
+        "id": (
+            "Program dijalankan sekali per makalah, teks diberikan lewat masukannya, dengan "
+            "akun yang sedang masuk, dan teks dikirim ke layanannya sendiri. Pasang dan masuk "
+            "lebih dulu."
+        ),
+    },
     "settings.vpn_access": {
         "en": "I have institutional / VPN access (download IEEE PDFs)",
         "zh-tw": "我有學校或機構的 VPN 存取權(可下載 IEEE PDF)",

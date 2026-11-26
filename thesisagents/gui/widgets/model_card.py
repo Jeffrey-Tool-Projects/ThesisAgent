@@ -62,7 +62,11 @@ def apply_saved_model(store: QSettings) -> None:
     provider = providers.PROVIDERS[name]
     os.environ[providers.PROVIDER_ENV] = name
     _mirror(providers.MODEL_ENV, store.value(f"llm/model/{name}", "", type=str))
-    _mirror(providers.BASE_URL_ENV, store.value(f"llm/base_url/{name}", "", type=str))
+    # The second field holds the address of a server, or the command line of a
+    # program: they go to different variables.
+    second = store.value(f"llm/base_url/{name}", "", type=str)
+    _mirror(providers.COMMAND_ENV, second if provider.is_cli else "")
+    _mirror(providers.BASE_URL_ENV, "" if provider.is_cli else second)
     if provider.key_env and name != providers.ANTHROPIC:
         _mirror(provider.key_env, credentials.read(store, _secret_key(name)))
 
@@ -85,7 +89,11 @@ class ModelCard(QWidget):
         self._provider = QComboBox(card)
         for name, provider in providers.PROVIDERS.items():
             label = provider.label
-            if provider.is_local:
+            if name == providers.CLI:
+                label = t("model.cli_custom", language)
+            elif provider.is_cli:
+                label = t("model.cli", language, name=label)
+            elif provider.is_local:
                 label = t("model.local", language, name=label)
             elif name == providers.CUSTOM:
                 label = t("model.custom", language)
@@ -163,11 +171,13 @@ class ModelCard(QWidget):
         """The choice as the fields show it now, saved or not."""
         provider = providers.PROVIDERS[self.provider()]
         own_key = provider.key_env and provider.name != providers.ANTHROPIC
+        second = self._base_url.text().strip()
         return providers.resolve(
             provider.name,
             model=self._model.currentText().strip(),
-            base_url=self._base_url.text().strip(),
+            base_url=None if provider.is_cli else second,
             api_key=self._key.text().strip() if own_key else None,
+            command=second if provider.is_cli else None,
         )
 
     def _keep_draft(self) -> None:
@@ -189,7 +199,15 @@ class ModelCard(QWidget):
         default = providers.DEFAULT_ANTHROPIC_MODEL if name == providers.ANTHROPIC else ""
         self._model.lineEdit().setPlaceholderText(default)
         self._base_url.setText(base_url)
-        self._base_url.setPlaceholderText(provider.base_url or "https://…/v1")
+        self._base_url.setPlaceholderText(
+            provider.command or ("my-ai-program --flag" if provider.is_cli else "")
+            or provider.base_url or "https://…/v1"
+        )
+        label = self._form.labelForField(self._base_url)
+        if label is not None:
+            label.setText(
+                t("model.command" if provider.is_cli else "model.base_url", self._language)
+            )
         self._key.setText(key)
         self._form.setRowVisible(self._base_url, name != providers.ANTHROPIC)
         self._form.setRowVisible(
@@ -197,6 +215,7 @@ class ModelCard(QWidget):
         )
         key_of_note = (
             "model.note_local" if provider.is_local
+            else "model.note_cli" if provider.is_cli
             else "model.note_anthropic" if name == providers.ANTHROPIC
             else "model.note_hosted"
         )

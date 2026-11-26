@@ -95,7 +95,9 @@ def test_every_provider_is_https_or_on_this_computer():
         if provider.base_url:
             assert provider.is_local or provider.base_url.startswith("https://")
             assert not provider.base_url.endswith("/")
-    assert set(providers.provider_names(local=True)) == {"ollama", "lmstudio", "llamacpp", "vllm"}
+    assert set(providers.provider_names(local=True)) == {
+        "ollama", "lmstudio", "llamacpp", "vllm", "ollama-cli",
+    }
 
 
 @pytest.mark.parametrize(("provider", "base_url", "stated", "expected"), [

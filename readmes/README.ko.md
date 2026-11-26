@@ -364,6 +364,7 @@ py -m thesisagents --paper "https://arxiv.org/abs/1706.03762" `
 | `--enrich` | 자동 보강의 실패-표출 변형. `ANTHROPIC_API_KEY` 와 `[intelligence]` extra 가 필요. (키가 설정되면 자동 보강이 기본.) |
 | `--lightweight` | 보강을 건너뛰고 초록 전용 덱을 강제. 빠른 / 무인 실행에만 사용. **LLM 에이전트가 구동 중이라면 아래의 LLM-as-agent 흐름을 선호하세요.** |
 | `--llm-model` | 보강 시 기본 `claude-opus-5-5` 을 덮어씀. |
+| `--llm-command COMMAND` | 명령줄 제공자(`claude-cli`, `cli` 등)의 명령. 논문은 표준 입력으로 전달됩니다. |
 | `--no-pdf` | 자동 PDF 다운로드를 건너뜀. 논문별 PPT 게이트도 비활성화(PDF 없음 → 전체 내용 없음). |
 | `--no-oa-resolve` | 중복 제거 후 OA PDF 리졸버(Unpaywall + S2 + arXiv + CORE.ac.uk)를 건너뜀. |
 | `--top-tier-only` | 결과를 arXiv + 엄선된 CS 대표 화이트리스트(S&P, CCS, NDSS, USENIX Security, NeurIPS, ICML, ICSE, …)로 제한. 기본 꺼짐. |
@@ -388,7 +389,9 @@ py -m thesisagents --paper "https://arxiv.org/abs/1706.03762" `
 | 변수 | 사용 주체 | 용도 |
 |---|---|---|
 | `ANTHROPIC_API_KEY` | `--enrich` | LLM 인증. MCP 상의 LLM-as-agent 경로에는 불필요. |
-| `THESISAGENTS_LLM_PROVIDER` | `--enrich` | 모델 실행 주체: `anthropic`, `openai`, `gemini`, `mistral`, `deepseek`, `xai`, `groq`, `openrouter`, `together`, `fireworks`, `dashscope`, `moonshot`, 이 컴퓨터의 `ollama`, `lmstudio`, `llamacpp`, `vllm`, 또는 `THESISAGENTS_LLM_BASE_URL` 과 함께 `custom`. |
+| `THESISAGENTS_LLM_PROVIDER` | `--enrich` | 모델 실행 주체: `anthropic`, `openai`, `gemini`, `mistral`, `deepseek`, `xai`, `groq`, `openrouter`, `together`, `fireworks`, `dashscope`, `moonshot`, 이 컴퓨터의 `ollama`, `lmstudio`, `llamacpp`, `vllm`, 또는 `THESISAGENTS_LLM_BASE_URL` 과 함께 `custom`. 또는 명령줄 AI 프로그램: `claude-cli`, `gemini-cli`, `codex-cli`, `ollama-cli`, 또는 `THESISAGENTS_LLM_COMMAND` 와 함께 쓰는 `cli`. |
+| `THESISAGENTS_LLM_COMMAND` | `--enrich` | 명령줄 제공자의 명령으로, 논문은 표준 입력으로 전달됩니다(예: `claude -p --model opus`). 제공자의 기본 명령을 대체합니다. |
+| `THESISAGENTS_LLM_CLI_TIMEOUT` | `--enrich` | 명령줄 제공자에서 논문 한 편에 허용하는 초(기본 600). |
 | `THESISAGENTS_LLM_MODEL` | `--enrich` | 기본 `claude-opus-5-5` 을 덮어씀. |
 | `THESISAGENTS_S2_API_KEY` | Semantic Scholar + OA 리졸버 | 더 높은 속도 제한; OA 리졸버의 S2 `openAccessPdf` 단계에서도 사용. 무료 키는 <https://www.semanticscholar.org/product/api> 에서. |
 | `THESISAGENTS_NCBI_API_KEY` | PubMed | NCBI 의 익명 제한(3/s)을 10/s 로 올림. 선택 사항. |
@@ -544,7 +547,7 @@ Italiano, Tiếng Việt, हिन्दी, Bahasa Indonesia) — 첫 실행�
 사이드바가 아이콘으로 접히고 폼 레이블이 입력란 위로 옮겨집니다. 창은
 640×480 까지 줄어들며, HiDPI 스케일링이 기본으로 켜져 있습니다.
 **Settings → Theme** 에서 라이트, 다크, 시스템 따르기 중 하나를 고르면
-바로 적용되며, 덱 자체의 다크 모드와는 별개입니다. 결과를 정렬·필터링하고 체크해 일부 논문만 Enrich, Deck, Export 로 보낼 수 있고, 스노볼 범위를 조정할 수 있으며, 실행 중인 검색이나 보강은 취소할 수 있고, 폼 내용은 다음 실행 때도 유지됩니다. Deck 페이지에서는 내보내기 전에 템플릿을 검사하고 완성된 슬라이드를 검토할 수 있으며, API 키가 없으면 Enrich 페이지가 논문을 JSON 파일로 LLM 에이전트에게 넘기고 그 요약을 가져옵니다. Deck 페이지는 PDF도 다운로드할 수 있고, Settings 에서 기관 / VPN 접근을 선언하기 전까지 IEEE 는 제외하며, 새 인터페이스 언어는 작업을 유지한 채 바로 적용됩니다. 같은 스위치로 `ieee` 는 검색에서도 제외됩니다. Search 페이지는 CLI 의 `--pdf` 처럼 로컬 PDF를 결과로 읽어 올 수도 있습니다. 상태 줄은 Chrome 을 거쳐 받은 PDF 수를 알려 주고, 출판사 PDF가 Chrome 을 쓰지 못했을 때 경고합니다. **Settings → Style** 에서 클래식 네이비 스타일과 Material 3 를 전환합니다. **Settings → Font size** 에서 앱 전체의 글자 크기를 8~24 pt 범위로 바꾸면 바로 적용되고, `Ctrl++`, `Ctrl+-`, `Ctrl+0`(기본값 복원)으로도 바꿀 수 있으며, 레이아웃도 그에 맞춰집니다. 상태 표시줄의 **Log**(`Ctrl+L`)에서 앱이 하는 일을 볼 수 있고, 오류 보고에 첨부할 로그 파일도 남으며, Chrome 이 캡차 해결을 기다리면 배너로 알려 줍니다. API 키는 설정 파일이 아니라 시스템 자격 증명 저장소(Windows 자격 증명 관리자, macOS 키체인, Secret Service)에 보관됩니다. Windows 용으로 관리자 권한이 필요 없는 설치 프로그램이 있고, 새 버전이 나오면 앱이 알려 줍니다(하루 한 번, 끌 수 있음). **Settings → AI model** 에서 요약을 쓸 모델을 고를 수 있습니다. Anthropic, 다른 11개 서비스, 또는 내 컴퓨터의 모델(Ollama, LM Studio, llama.cpp, vLLM) 중에서 고르며, 내 컴퓨터의 모델을 쓰면 본문을 밖으로 보내지 않아도 됩니다. Enrich 와 Library 페이지의 **Edit summary** 에서 논문 요약을 직접 편집하고 논문 일곱 절 중 비어 있는 절을 확인할 수 있습니다. **Word draft** 와 **LaTeX draft** 는 APA 인용, 비교표, 참고문헌이 있는 문헌 검토 초안을 내보내며 학교의 Word 템플릿에도 쓸 수 있습니다. Deck 페이지의 **Edit slides…** 에서 완성된 덱의 글, 순서, 장수를 미리보기와 실행 취소와 함께 바꿀 수 있습니다. `Ctrl+1` …
+바로 적용되며, 덱 자체의 다크 모드와는 별개입니다. 결과를 정렬·필터링하고 체크해 일부 논문만 Enrich, Deck, Export 로 보낼 수 있고, 스노볼 범위를 조정할 수 있으며, 실행 중인 검색이나 보강은 취소할 수 있고, 폼 내용은 다음 실행 때도 유지됩니다. Deck 페이지에서는 내보내기 전에 템플릿을 검사하고 완성된 슬라이드를 검토할 수 있으며, API 키가 없으면 Enrich 페이지가 논문을 JSON 파일로 LLM 에이전트에게 넘기고 그 요약을 가져옵니다. Deck 페이지는 PDF도 다운로드할 수 있고, Settings 에서 기관 / VPN 접근을 선언하기 전까지 IEEE 는 제외하며, 새 인터페이스 언어는 작업을 유지한 채 바로 적용됩니다. 같은 스위치로 `ieee` 는 검색에서도 제외됩니다. Search 페이지는 CLI 의 `--pdf` 처럼 로컬 PDF를 결과로 읽어 올 수도 있습니다. 상태 줄은 Chrome 을 거쳐 받은 PDF 수를 알려 주고, 출판사 PDF가 Chrome 을 쓰지 못했을 때 경고합니다. **Settings → Style** 에서 클래식 네이비 스타일과 Material 3 를 전환합니다. **Settings → Font size** 에서 앱 전체의 글자 크기를 8~24 pt 범위로 바꾸면 바로 적용되고, `Ctrl++`, `Ctrl+-`, `Ctrl+0`(기본값 복원)으로도 바꿀 수 있으며, 레이아웃도 그에 맞춰집니다. 상태 표시줄의 **Log**(`Ctrl+L`)에서 앱이 하는 일을 볼 수 있고, 오류 보고에 첨부할 로그 파일도 남으며, Chrome 이 캡차 해결을 기다리면 배너로 알려 줍니다. API 키는 설정 파일이 아니라 시스템 자격 증명 저장소(Windows 자격 증명 관리자, macOS 키체인, Secret Service)에 보관됩니다. Windows 용으로 관리자 권한이 필요 없는 설치 프로그램이 있고, 새 버전이 나오면 앱이 알려 줍니다(하루 한 번, 끌 수 있음). **Settings → AI model** 에서 요약을 쓸 모델을 고를 수 있습니다. Anthropic, 다른 11개 서비스, 또는 내 컴퓨터의 모델(Ollama, LM Studio, llama.cpp, vLLM) 중에서 고르며, 내 컴퓨터의 모델을 쓰면 본문을 밖으로 보내지 않아도 됩니다. Enrich 와 Library 페이지의 **Edit summary** 에서 논문 요약을 직접 편집하고 논문 일곱 절 중 비어 있는 절을 확인할 수 있습니다. **Word draft** 와 **LaTeX draft** 는 APA 인용, 비교표, 참고문헌이 있는 문헌 검토 초안을 내보내며 학교의 Word 템플릿에도 쓸 수 있습니다. Deck 페이지의 **Edit slides…** 에서 완성된 덱의 글, 순서, 장수를 미리보기와 실행 취소와 함께 바꿀 수 있습니다. **Settings → AI model** 에서는 명령줄 AI 프로그램(Claude Code, Gemini CLI, Codex, Ollama 또는 임의의 명령)도 고를 수 있으며, 로그인된 계정으로 요약하므로 API 키가 필요 없습니다. `Ctrl+1` …
 `Ctrl+5` 로 페이지를 전환합니다.
 
 전체 레퍼런스: [`docs/gui.md`](../docs/gui.md).

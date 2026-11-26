@@ -17,7 +17,10 @@ from thesisagents.intelligence import providers
 @pytest.fixture(autouse=True)
 def _clean_env(monkeypatch):
     names = {p.key_env for p in providers.PROVIDERS.values() if p.key_env}
-    for name in (*names, providers.PROVIDER_ENV, providers.MODEL_ENV, providers.BASE_URL_ENV):
+    for name in (
+        *names, providers.PROVIDER_ENV, providers.MODEL_ENV, providers.BASE_URL_ENV,
+        providers.COMMAND_ENV,
+    ):
         monkeypatch.setenv(name, "x")
         monkeypatch.delenv(name)
 
@@ -80,6 +83,8 @@ def test_every_provider_keeps_its_own_fields(qtbot):
     ("openai", True, True, "sent to this service"),
     ("ollama", True, False, "no text leaves it"),
     ("custom", True, True, "sent to this service"),
+    ("claude-cli", True, False, "signed in"),
+    ("ollama-cli", True, False, "no text leaves it"),
 ])
 def test_only_the_fields_a_provider_needs_are_shown(qtbot, name, url_shown, key_shown, note):
     card = ModelCard("en")
@@ -149,3 +154,24 @@ def test_the_enrich_page_names_the_chosen_model(qtbot):
     window.settings_page().trigger_save()
     shown = window.enrich_page()._model_input.placeholderText()  # noqa: SLF001
     assert shown == "Ollama (qwen3)"
+
+
+
+def test_a_command_line_program_is_chosen_with_its_command(qtbot):
+    page = _page(qtbot)
+    card = page.model_card()
+    _choose(card, "claude-cli")
+    assert "(command line)" in card.provider_combo().currentText()
+    label = card._form.labelForField(card.base_url_input())  # noqa: SLF001
+    assert label.text() == "Command"
+    assert card.base_url_input().placeholderText().startswith("claude -p")
+    card.base_url_input().setText("claude -p --model opus")
+    page.trigger_save()
+    assert os.environ[providers.PROVIDER_ENV] == "claude-cli"
+    assert os.environ[providers.COMMAND_ENV] == "claude -p --model opus"
+    assert providers.BASE_URL_ENV not in os.environ
+    assert providers.resolve().command == "claude -p --model opus"
+    _choose(card, "ollama")
+    assert card._form.labelForField(card.base_url_input()).text() == "Server address"  # noqa: SLF001
+    page.trigger_save()
+    assert providers.COMMAND_ENV not in os.environ
