@@ -230,7 +230,10 @@ def resolve(
         model = DEFAULT_ANTHROPIC_MODEL
     if api_key is None:
         api_key = os.environ.get(chosen.key_env, "") if chosen.key_env else ""
-    if chosen.is_cli and not command:
+    # Like the model: the command in the environment belongs to the provider it
+    # selects (one of Claude Code means nothing to Codex), and to ``cli``,
+    # which has no command of its own.
+    if chosen.is_cli and not command and (own_environment or name == CLI):
         command = os.environ.get(COMMAND_ENV, "")
     return LlmSettings(
         provider=chosen,
@@ -308,9 +311,19 @@ def complete(settings: LlmSettings, system: str, user: str) -> str:
     if settings.provider.is_cli:
         # One text: not every program takes a system prompt, and none the same way.
         return cli_models.run_command(
-            settings.arguments(), f"{system}\n\n{user}", label=settings.provider.label
+            settings.arguments(), f"{system}\n\n{user}", label=settings.provider.label,
+            hidden=() if settings.provider.name == CLI else _app_keys(),
         )
     return _complete_compatible(settings, system, user)
+
+
+def _app_keys() -> set[str]:
+    """The API key variables of every provider, which the app may have set.
+
+    A program signed in to an account must use that account. Your own
+    command (``cli``) keeps them: it may be a tool that needs one.
+    """
+    return {p.key_env for p in PROVIDERS.values() if p.key_env} | {CUSTOM_KEY_ENV}
 
 
 def list_models(settings: LlmSettings) -> list[str]:

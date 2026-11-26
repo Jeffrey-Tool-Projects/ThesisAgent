@@ -327,9 +327,13 @@ A newer release shows as a button in the status bar that opens the download
 page. The app downloads and installs nothing itself.
 
 **AI model** chooses who writes the summaries on the Enrich page: Anthropic,
-another service, or a program on this computer. Every provider keeps its
-own model, address and key, so switching back and forth loses nothing.
-**List models** asks the provider what it offers. The note under the fields
+another service, a program on this computer, or an AI program on the
+command line (Claude Code, Gemini CLI, Codex, Ollama, or any command),
+which shows a **Command** field in place of the address. Every provider
+keeps its own model, address or command, and key, so switching back and
+forth loses nothing. **List models** asks the provider what it offers.
+Of the command-line programs only Ollama can say: for the others, type
+the model name the program knows or leave it empty for its own default. The note under the fields
 says whether a paper's text leaves the computer. See
 [`configuration.md`](configuration.md) "Language models".
 

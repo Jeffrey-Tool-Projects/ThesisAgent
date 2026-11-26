@@ -175,3 +175,14 @@ def test_a_command_line_program_is_chosen_with_its_command(qtbot):
     assert card._form.labelForField(card.base_url_input()).text() == "Server address"  # noqa: SLF001
     page.trigger_save()
     assert providers.COMMAND_ENV not in os.environ
+
+
+def test_another_programs_command_is_not_borrowed(qtbot):
+    # The saved command of Claude Code must not run when Ollama is chosen.
+    page = _page(qtbot)
+    card = page.model_card()
+    _choose(card, "claude-cli")
+    card.base_url_input().setText("my-ai -p")
+    page.trigger_save()
+    _choose(card, "ollama-cli")
+    assert card.settings().command == "ollama run"

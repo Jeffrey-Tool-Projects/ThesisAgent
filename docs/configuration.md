@@ -100,12 +100,19 @@ names who runs it:
   last column being their command. The instructions and the paper go in on
   standard input and the answer is read from standard output. The command
   is run without a shell, in a new empty folder that is removed afterwards,
-  so an agent program sees no project and writes nowhere that matters, and
-  on Windows without a console window. `THESISAGENTS_LLM_COMMAND` (or
-  `--llm-command`) replaces the command, `THESISAGENTS_LLM_MODEL` is added
-  with the program's model flag, and `THESISAGENTS_LLM_CLI_TIMEOUT` is how
-  many seconds one paper may take (600). Install the program and sign in to
-  it first: the paper goes to whatever service it uses.
+  and on Windows without a console window. Claude Code runs without tools
+  and Codex may only read, but a program allowed to read can still open a
+  file by its full path. The API keys the app holds are left out of the
+  program's environment, so it uses the account it is signed in to (Claude
+  Code would bill a set `ANTHROPIC_API_KEY` instead), except for `cli`,
+  whose command may need one. `THESISAGENTS_LLM_COMMAND` (or
+  `--llm-command`) replaces the command of the provider the environment
+  selects, and of `cli`. The model (`THESISAGENTS_LLM_MODEL`, under the same
+  rule, or `--llm-model`) is added with the program's model flag unless the
+  command names one. `THESISAGENTS_LLM_CLI_TIMEOUT` is how many seconds one
+  paper may take (600), after which the program and everything it started
+  are ended. Install the program and sign in to it first: the paper goes to
+  whatever service it uses.
 - An API key in the environment never selects its service by itself. A
   paper's text goes only to the provider you named, and nowhere with a
   local one.

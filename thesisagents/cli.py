@@ -11,7 +11,6 @@ import argparse
 import asyncio
 import contextlib
 import dataclasses
-import os
 import sys
 from pathlib import Path
 
@@ -921,6 +920,7 @@ def _resolve_enrich_mode(args: argparse.Namespace) -> str:
             getattr(args, "llm_provider", None),
             model=getattr(args, "llm_model", None),
             base_url=getattr(args, "llm_base_url", None),
+            command=getattr(args, "llm_command", None),
         )
     except ConfigError as err:
         if getattr(args, "llm_provider", None):
@@ -942,7 +942,8 @@ def _missing_model(args: argparse.Namespace) -> str:
 
     try:
         settings = providers.resolve(
-            args.llm_provider, model=args.llm_model, base_url=args.llm_base_url
+            args.llm_provider, model=args.llm_model, base_url=args.llm_base_url,
+            command=getattr(args, "llm_command", None),
         )
     except ConfigError as err:
         return str(err)
@@ -981,7 +982,8 @@ async def _maybe_enrich(
     from thesisagents.intelligence import providers
 
     settings = providers.resolve(
-        args.llm_provider, model=args.llm_model, base_url=args.llm_base_url
+        args.llm_provider, model=args.llm_model, base_url=args.llm_base_url,
+        command=getattr(args, "llm_command", None),
     )
     reason = providers.problem(settings)
     if reason:
@@ -1019,6 +1021,7 @@ async def _enrich_for_mode(
     return await enrich_collection(
         collection, language=args.lang, model=args.llm_model,
         provider=args.llm_provider, base_url=args.llm_base_url,
+        command=getattr(args, "llm_command", None),
     )
 
 
@@ -1050,6 +1053,7 @@ async def _enrich_local_pdf_collection(
                 summarise_paper, paper, extracted,
                 language=args.lang, model=args.llm_model,
                 provider=args.llm_provider, base_url=args.llm_base_url,
+                command=getattr(args, "llm_command", None),
             )
         except Exception as err:  # noqa: BLE001  # anthropic client raises various, incl. ThesisAgentsError
             _LOG.warning(
@@ -1164,9 +1168,7 @@ def main(argv: list[str] | None = None) -> int:
         return 0
     parser = build_parser()
     args = parser.parse_args(raw_argv)
-    if args.llm_command:
-        # Read by intelligence.providers for whichever command-line provider runs.
-        os.environ["THESISAGENTS_LLM_COMMAND"] = args.llm_command
+    _warn_unused_command(args)
     try:
         return asyncio.run(_run(args))
     except ThesisAgentsError as err:
@@ -1175,6 +1177,26 @@ def main(argv: list[str] | None = None) -> int:
     except ValueError as err:
         print(f"error: {err}", file=sys.stderr)
         return 2
+
+
+def _warn_unused_command(args: argparse.Namespace) -> None:
+    """Say so when ``--llm-command`` has no command-line provider to go to.
+
+    Without this the flag was dropped in silence, and the summaries came from
+    the default model.
+    """
+    if not args.llm_command:
+        return
+    from thesisagents.intelligence import providers
+
+    name = (args.llm_provider or providers.selected_provider()).strip().lower()
+    chosen = providers.PROVIDERS.get(name)
+    if chosen is not None and not chosen.is_cli:
+        print(
+            f"warning: --llm-command is ignored with --llm-provider {name}. "
+            "Choose claude-cli, gemini-cli, codex-cli, ollama-cli or cli.",
+            file=sys.stderr,
+        )
 
 
 if __name__ == "__main__":

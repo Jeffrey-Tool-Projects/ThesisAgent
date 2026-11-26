@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import os
 import sys
+import time
 from pathlib import Path
 
 import pytest
@@ -125,8 +126,9 @@ def test_what_is_missing_is_said_before_anything_runs(monkeypatch):
     monkeypatch.setenv(providers.COMMAND_ENV, _program("pass"))
     assert providers.problem(providers.resolve("cli")) is None
     # Ollama names its model on the command line, it has no default.
-    monkeypatch.setenv(providers.COMMAND_ENV, _program("pass"))
-    assert "no model" in providers.problem(providers.resolve("ollama-cli"))
+    assert "no model" in providers.problem(
+        providers.resolve("ollama-cli", command=_program("pass"))
+    )
 
 
 def test_a_paper_is_summarised_by_the_program(monkeypatch):
@@ -146,13 +148,97 @@ def test_a_paper_is_summarised_by_the_program(monkeypatch):
     assert summary.takeaways == ("True",)
 
 
-def test_the_cli_takes_the_command_on_the_command_line(monkeypatch):
-    seen = {}
+def test_the_cli_passes_its_command_without_changing_the_environment():
+    # Set in os.environ, it outlived the run and reached every later one.
+    args = cli.build_parser().parse_args(
+        ["-q", "x", "--llm-provider", "cli", "--llm-command", _program("pass")]
+    )
+    assert cli._resolve_enrich_mode(args) == "auto"  # noqa: SLF001
+    assert providers.COMMAND_ENV not in os.environ
 
-    async def fake_run(args):
-        seen["command"] = os.environ.get(providers.COMMAND_ENV)
-        return 0
 
-    monkeypatch.setattr(cli, "_run", fake_run)
-    assert cli.main(["-q", "x", "--llm-provider", "cli", "--llm-command", "my-ai -p"]) == 0
-    assert seen["command"] == "my-ai -p"
+def test_a_command_in_the_environment_belongs_to_the_provider_it_selects(monkeypatch):
+    monkeypatch.setenv(providers.PROVIDER_ENV, "cli")
+    monkeypatch.setenv(providers.COMMAND_ENV, "my-ai -p")
+    assert providers.resolve().command == "my-ai -p"
+    # Claude Code chosen by a flag runs Claude Code, not the other program.
+    assert providers.resolve("claude-cli").command.startswith("claude -p")
+    monkeypatch.setenv(providers.PROVIDER_ENV, "openai")
+    assert providers.resolve("cli").command == "my-ai -p"
+
+
+def test_a_program_signed_in_to_an_account_gets_no_api_key(monkeypatch):
+    monkeypatch.setenv("OPENAI_API_KEY", "sk-test-1")
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "sk-test-2")
+    shows = _program(
+        "import os; print(os.environ.get('OPENAI_API_KEY'), os.environ.get('ANTHROPIC_API_KEY'))"
+    )
+    preset = providers.resolve("gemini-cli", command=shows)
+    assert providers.complete(preset, "s", "u").split() == ["None", "None"]
+    own = providers.resolve("cli", command=shows)
+    assert providers.complete(own, "s", "u").split() == ["sk-test-1", "sk-test-2"]
+
+
+def test_a_timeout_ends_the_programs_the_program_started():
+    # An npm shim starts the real program, which kept the pipes open, so the
+    # timeout waited for it to finish.
+    started = time.monotonic()
+    with pytest.raises(SourceUnavailableError, match="did not finish"):
+        cli_models.run_command(
+            _program(
+                "import subprocess, sys, time; "
+                "subprocess.Popen([sys.executable, '-c', 'import time; time.sleep(30)']); "
+                "time.sleep(30)"
+            ),
+            "x", timeout=1,
+        )
+    assert time.monotonic() - started < 15
+
+
+def test_a_command_that_names_its_model_keeps_it():
+    assert cli_models.with_model(["claude", "-p", "--model", "a"], "--model", "b") == [
+        "claude", "-p", "--model", "a",
+    ]
+
+
+def test_quotes_group_an_argument_on_every_system():
+    assert cli_models.split_command('my-ai --flag="a b"') == ["my-ai", "--flag=a b"]
+    assert cli_models.split_command("ollama run 'qwen3:8b'") == ["ollama", "run", "qwen3:8b"]
+
+
+def test_a_relative_program_is_found_from_the_folder_it_was_named_in(tmp_path, monkeypatch):
+    # The program runs in an empty folder of its own, where ./ai names nothing.
+    script = tmp_path / ("ai.cmd" if os.name == "nt" else "ai")
+    if os.name == "nt":
+        script.write_text(f'@"{sys.executable}" -c "print(42)"\r\n', encoding="utf-8")
+    else:
+        script.write_text(f'#!/bin/sh\nexec "{sys.executable}" -c "print(42)"\n', encoding="utf-8")
+        script.chmod(0o755)
+    monkeypatch.chdir(tmp_path)
+    relative = f".{os.sep}{script.name}"
+    assert Path(cli_models.find_program(relative)).is_absolute()
+    assert cli_models.run_command(relative, "").strip() == "42"
+
+
+def test_ollama_lists_its_models(monkeypatch):
+    class Done:
+        stdout = (
+            b"NAME             ID      SIZE\n"
+            b"qwen3:8b         a1   5 GB\n"
+            b"llama3.2:latest  b2   2 GB\n"
+        )
+
+    monkeypatch.setattr(cli_models.shutil, "which", lambda name: sys.executable)
+    monkeypatch.setattr(cli_models.subprocess, "run", lambda *a, **k: Done())
+    assert cli_models.list_ollama_models("ollama run") == ["qwen3:8b", "llama3.2:latest"]
+
+
+def test_an_unused_command_is_reported(capsys):
+    args = cli.build_parser().parse_args(["-q", "x", "--llm-command", "my-ai -p"])
+    cli._warn_unused_command(args)  # noqa: SLF001
+    assert "ignored with --llm-provider anthropic" in capsys.readouterr().err
+    args = cli.build_parser().parse_args(
+        ["-q", "x", "--llm-provider", "claude-cli", "--llm-command", "claude -p"]
+    )
+    cli._warn_unused_command(args)  # noqa: SLF001
+    assert capsys.readouterr().err == ""

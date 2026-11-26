@@ -112,9 +112,12 @@ def summarise_paper(
     api_key: str | None = None,
     provider: str | None = None,
     base_url: str | None = None,
+    command: str | None = None,
 ) -> PaperSummary:
     """Summarise one paper with the chosen provider, the environment's by default."""
-    settings = providers.resolve(provider, model=model, base_url=base_url, api_key=api_key)
+    settings = providers.resolve(
+        provider, model=model, base_url=base_url, api_key=api_key, command=command
+    )
     return summarise_with(settings, paper, pdf.text, language, pdf.chars)
 
 
