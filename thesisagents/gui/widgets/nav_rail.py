@@ -23,6 +23,7 @@ from __future__ import annotations
 from typing import Final
 
 from PySide6.QtCore import QSize, Qt, Signal
+from PySide6.QtGui import QFont, QFontMetrics
 from PySide6.QtWidgets import (
     QButtonGroup,
     QFrame,
@@ -41,8 +42,15 @@ from thesisagents.gui.theme import Palette, current_palette
 #: Width with labels. Larger text widens the rail (``refresh_width``).
 EXPANDED_WIDTH: Final[int] = 208
 COMPACT_WIDTH: Final[int] = 64
-#: The checked entry is bold, so it needs more than its size hint says.
+#: The checked entry is bold, so it needs more than its size hint says. This
+#: is the room at the default size, scaled with the text, and the rail also
+#: measures each caption in bold (``_bold_growth``). In Russian,
+#: "Обогащение  ·  1000" in the Windows UI font is 11 px wider bold at 9 pt,
+#: 18 px at 14 pt and 30 px at 24 pt, so a fixed 12 px cut the checked
+#: entry's badge.
 _LABEL_SLACK: Final[int] = 12
+#: The weight of ``#NavButton:checked`` in the stylesheet (``font-weight: 600``).
+_CHECKED_WEIGHT: Final[QFont.Weight] = QFont.Weight.DemiBold
 
 
 class NavRail(QFrame):
@@ -194,13 +202,38 @@ class NavRail(QFrame):
         self.setFixedWidth(COMPACT_WIDTH if self._compact else self._expanded_width())
 
     def _expanded_width(self) -> int:
-        """:data:`EXPANDED_WIDTH`, or what the widest label needs at this font size."""
-        if layout_scale() <= 1.0:
+        """:data:`EXPANDED_WIDTH`, or what the widest label needs at this font size.
+
+        Each entry gets room to turn bold (see :data:`_LABEL_SLACK`), so the
+        entry the user is on keeps its whole caption at a large font size.
+        """
+        scale = layout_scale()
+        if scale <= 1.0:
             return EXPANDED_WIDTH
         for button in self._buttons:
             button.ensurePolished()
         self._brand.ensurePolished()
         margins = self.layout().contentsMargins()
-        brand_row = self._toggle.sizeHint().width() + self._brand.sizeHint().width()
-        widest = max([brand_row, *(button.sizeHint().width() for button in self._buttons)])
-        return max(EXPANDED_WIDTH, widest + margins.left() + margins.right() + _LABEL_SLACK)
+        slack = round(_LABEL_SLACK * scale)
+        brand_row = self._toggle.sizeHint().width() + self._brand.sizeHint().width() + slack
+        widest = max([
+            brand_row,
+            *(
+                button.sizeHint().width() + max(slack, _bold_growth(button))
+                for button in self._buttons
+            ),
+        ])
+        return max(EXPANDED_WIDTH, widest + margins.left() + margins.right())
+
+
+def _bold_growth(button: QPushButton) -> int:
+    """How much wider ``button``'s caption is in the checked entry's weight.
+
+    The size hint measures the regular weight only, because the stylesheet
+    applies ``:checked`` while painting. Example: 30 px for the Russian
+    Enrich caption with its badge at 24 pt.
+    """
+    bold = QFont(button.font())
+    bold.setWeight(_CHECKED_WEIGHT)
+    text = button.text()
+    return QFontMetrics(bold).horizontalAdvance(text) - button.fontMetrics().horizontalAdvance(text)

@@ -373,15 +373,23 @@ def write_theme_assets(tokens: Palette) -> dict[str, str]:
     Returns ``{"check": path, "down": path, "up": path}`` with forward-slash
     paths, the form a stylesheet ``url(...)`` accepts on every platform.
     Each palette's files are drawn once per process.
+
+    The directory is created again when it has gone: a temp-folder cleaner
+    (Windows Storage Sense, ``tmpwatch``) may delete it while the app runs
+    for days, and the next theme switch then raised ``OSError`` from
+    :func:`write_glyph` instead of repainting.
     """
     specs = {
         "check": ("check", tokens.on_accent),
         "down": ("chevron_down", tokens.muted),
         "up": ("chevron_up", tokens.muted),
     }
+    directory = _asset_dir()
+    # 0o700 keeps the private access mkdtemp gave the first one.
+    directory.mkdir(mode=0o700, parents=True, exist_ok=True)
     assets: dict[str, str] = {}
     for key, (glyph, colour) in specs.items():
-        path = _asset_dir() / f"{tokens.name}-{key}.png"
+        path = directory / f"{tokens.name}-{key}.png"
         if not path.is_file():
             write_glyph(glyph, colour, str(path))
         assets[key] = path.as_posix()
@@ -489,9 +497,18 @@ def build_stylesheet(
     # A stylesheet min-height replaces the minimum Qt works out from the font,
     # so a fixed one lets a short window squash large text.
     control_px = max(20, round(18 * text_scale))
+    # The ``QWidget:disabled`` rule is needed because a stylesheet ``color``
+    # with no pseudo-state also fills the palette's Disabled group, which
+    # beats the muted colour build_palette puts there. Without it a combo
+    # box, line edit or check box label that is switched off (the Library's
+    # filters while it works, a locked source) still showed body-text colour
+    # and looked as if it could be used.
     return glyphs + f"""
 QWidget {{
     color: {p.text};
+}}
+QWidget:disabled {{
+    color: {p.muted};
 }}
 QMainWindow, QStackedWidget, #PageBody, QScrollArea, QScrollArea > QWidget > QWidget {{
     background: {p.window};

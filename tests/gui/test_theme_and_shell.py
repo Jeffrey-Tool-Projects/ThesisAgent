@@ -7,7 +7,7 @@ from pathlib import Path
 import pytest
 from PySide6.QtCore import QUrl
 from PySide6.QtGui import QColor, QFont, QPalette
-from PySide6.QtWidgets import QApplication
+from PySide6.QtWidgets import QApplication, QCheckBox, QComboBox, QLabel, QLineEdit
 
 from thesisagents.core.models import Paper, PaperCollection, Query
 from thesisagents.gui import theme
@@ -158,6 +158,39 @@ def test_apply_theme_sets_palette_style_and_glyphs(qtbot):
         assert assets["check"] in app.styleSheet()
     finally:
         theme.apply_theme(app, "light")
+
+
+@pytest.mark.parametrize("style", theme.STYLE_CHOICES)
+@pytest.mark.parametrize("choice", ["light", "dark"])
+def test_disabled_controls_are_drawn_muted(qtbot, choice, style):
+    # The stylesheet's plain ``QWidget { color }`` also filled the palette's
+    # Disabled group, so a switched-off combo box, line edit or check box
+    # kept body-text colour and looked usable.
+    app = QApplication.instance()
+    tokens = theme.apply_theme(app, choice, style)
+    try:
+        for widget in (QCheckBox("x"), QLineEdit("x"), QComboBox(), QLabel("x")):
+            qtbot.addWidget(widget)
+            widget.setEnabled(False)
+            widget.ensurePolished()
+            palette = widget.palette()
+            for role in (QPalette.ColorRole.WindowText, QPalette.ColorRole.Text):
+                assert palette.color(QPalette.ColorGroup.Disabled, role) == QColor(
+                    tokens.muted
+                ), (type(widget).__name__, role)
+            enabled = palette.color(QPalette.ColorGroup.Active, QPalette.ColorRole.Text)
+            assert enabled == QColor(tokens.text), type(widget).__name__
+    finally:
+        theme.apply_theme(app, "light")
+
+
+def test_theme_assets_come_back_when_their_folder_is_deleted(qtbot, tmp_path, monkeypatch):
+    # A temp-folder cleaner can remove the glyph folder while the app runs,
+    # and the next theme switch raised OSError from write_glyph.
+    gone = tmp_path / "cleaned-up"
+    monkeypatch.setattr(theme, "_asset_dir", lambda: gone)
+    assets = theme.write_theme_assets(theme.MATERIAL_DARK)
+    assert all(Path(path).is_file() for path in assets.values())
 
 
 def test_glyphs_and_icons_draw(tmp_path):

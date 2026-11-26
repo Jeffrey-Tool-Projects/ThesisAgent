@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pytest
 from PySide6.QtCore import QPoint, QPointF, QRect, Qt
-from PySide6.QtGui import QFont, QShortcut, QWheelEvent
+from PySide6.QtGui import QFont, QFontMetrics, QShortcut, QWheelEvent
 from PySide6.QtWidgets import (
     QApplication,
     QBoxLayout,
@@ -390,6 +390,37 @@ def test_sidebar_widens_for_large_labels(qtbot):
     _apply(_DEFAULT)
     rail.refresh_width()
     assert rail.width() == EXPANDED_WIDTH
+
+
+def _bold_room(rail: NavRail) -> tuple[int, int]:
+    """What the rail leaves beside its one entry, and what turning it bold takes."""
+    margins = rail.layout().contentsMargins()
+    button = next(b for b in rail.findChildren(QPushButton) if b.isCheckable())
+    room = rail.width() - margins.left() - margins.right() - button.sizeHint().width()
+    bold = QFont(button.font())
+    bold.setWeight(QFont.Weight.DemiBold)
+    text = button.text()
+    regular = button.fontMetrics().horizontalAdvance(text)
+    return room, QFontMetrics(bold).horizontalAdvance(text) - regular
+
+
+def test_sidebar_leaves_the_checked_entry_room_to_turn_bold(qtbot):
+    # The checked entry is drawn bold, which its size hint does not count. A
+    # fixed 12 px of slack covered that at 9 pt only: at 24 pt the bold
+    # Russian caption below is 30 px wider and its badge was cut off.
+    rail = NavRail(brand="ThesisAgents", toggle_tip="Collapse")
+    qtbot.addWidget(rail)
+    rail.add_item("enrich", "Обогащение")
+    rail.set_badge(0, "1000")
+    _apply(14)
+    rail.refresh_width()
+    medium_room, medium_grown = _bold_room(rail)
+    _apply(24)
+    rail.refresh_width()
+    large_room, large_grown = _bold_room(rail)
+    assert large_room > medium_room
+    assert medium_room >= medium_grown
+    assert large_room >= large_grown
 
 
 def test_reflow_grid_moves_its_items_when_the_text_grows(qtbot):
