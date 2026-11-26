@@ -260,7 +260,7 @@ mengikuti bentuk yang sama, dengan satu entri
     PDF via `fetch_pdf_text`, menulis ringkasan terstruktur dalam konteks,
     dan meneruskannya ke `export`.
   - **Pipeline Python (`--enrich`)** — CLI memanggil API Anthropic
-    sendiri; model default `claude-opus-4-7`.
+    sendiri; model default `claude-opus-5-5`.
 - **Alur publisher via-Chrome yang terlihat**: SERP Scholar, IEEE
   `/rest/search`, dan setiap unduhan PDF-berbayar (ieeexplore / dl.acm /
   link.springer / sciencedirect / wiley / oup / nature / science / …)
@@ -409,7 +409,7 @@ py -m thesisagents --paper "https://arxiv.org/abs/1706.03762" `
 | `--lang` / `-l` | Bahasa deck: salah satu dari 14 — `en`, `zh-tw`, `zh-cn`, `ja`, `es`, `fr`, `de`, `ko`, `pt`, `ru`, `it`, `vi`, `hi`, `id`. Default `en`. |
 | `--enrich` | Varian fail-loud dari auto-enrich. Butuh `ANTHROPIC_API_KEY` dan extra `[intelligence]`. (Auto-enrich adalah default saat key di-set.) |
 | `--lightweight` | Lewati pengayaan + paksa deck hanya-abstrak. Gunakan hanya untuk run cepat / tanpa-pengawasan; **saat agen LLM yang menjalankan, utamakan alur LLM-as-agent** di bawah. |
-| `--llm-model` | Override default `claude-opus-4-7` untuk pengayaan. |
+| `--llm-model` | Override default `claude-opus-5-5` untuk pengayaan. |
 | `--no-pdf` | Lewati unduhan PDF otomatis. Juga menonaktifkan gate PPT per-makalah (tanpa PDF → tanpa konten penuh). |
 | `--no-oa-resolve` | Lewati resolver PDF OA pasca-dedup (Unpaywall + S2 + arXiv + CORE.ac.uk). |
 | `--top-tier-only` | Batasi hasil ke arXiv + whitelist CS-unggulan terkurasi (S&P, CCS, NDSS, USENIX Security, NeurIPS, ICML, ICSE, …). Nonaktif secara default. |
@@ -435,7 +435,7 @@ py -m thesisagents --paper "https://arxiv.org/abs/1706.03762" `
 |---|---|---|
 | `ANTHROPIC_API_KEY` | `--enrich` | Auth LLM. Tidak perlu untuk jalur LLM-as-agent via MCP. |
 | `THESISAGENTS_LLM_PROVIDER` | `--enrich` | Siapa yang menjalankan model: `anthropic`, `openai`, `gemini`, `mistral`, `deepseek`, `xai`, `groq`, `openrouter`, `together`, `fireworks`, `dashscope`, `moonshot`, di komputer ini `ollama`, `lmstudio`, `llamacpp`, `vllm`, atau `custom` dengan `THESISAGENTS_LLM_BASE_URL`. |
-| `THESISAGENTS_LLM_MODEL` | `--enrich` | Override default `claude-opus-4-7`. |
+| `THESISAGENTS_LLM_MODEL` | `--enrich` | Override default `claude-opus-5-5`. |
 | `THESISAGENTS_S2_API_KEY` | Semantic Scholar + resolver OA | Rate limit lebih tinggi; juga dipakai langkah S2 `openAccessPdf` pada resolver OA. Key gratis di <https://www.semanticscholar.org/product/api>. |
 | `THESISAGENTS_NCBI_API_KEY` | PubMed | Menaikkan limit anonim NCBI (3/s) ke 10/s. Opsional. |
 | `THESISAGENTS_CONTACT_EMAIL` | PubMed, ACM, Crossref, OpenAlex, **Unpaywall** | Tag polite-pool + mengaktifkan langkah Unpaywall pada resolver OA (kemenangan cakupan-PDF terbesar untuk makalah berbayar IEEE / ACM / Springer / Elsevier; peningkatan tipikal 40-70 pp). |

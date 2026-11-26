@@ -128,7 +128,7 @@ output directory में `diagnostics.json` में भी लिखता �
 - **MCP सर्वर**: 25 उपकरण — `list_sources` + `list_exports` (खोज/सूची), `search`, `snowball`, `library_add`, `library_search`, `library_stats`, `fetch_paper`, `fetch_pdf_text`, `download_pdfs`, `pptx_validate_template`, `export`, और छह `pptx_*` डेक उपकरण (`inspect`, `review`, `update_slide`, `delete_slide`, `reorder_slides`, `add_slide`)। किसी भी MCP-अनुकूल LLM (Claude Code, Claude Desktop, Cursor, …) को पूरा कार्यप्रवाह संचालित करने देता है।
 - **दो समृद्धि पथ** सार से आगे एक वास्तविक थीसिस-शैली डेक तक जाने के लिए:
   - **LLM-as-agent (कोई API key नहीं)** — कॉलिंग LLM `fetch_pdf_text` के माध्यम से PDF मुख्य पाठ पढ़ता है, संदर्भ में एक संरचित सारांश लिखता है, और उसे `export` को पास करता है।
-  - **Python pipeline (`--enrich`)** — CLI स्वयं Anthropic का API कॉल करती है; डिफ़ॉल्ट मॉडल `claude-opus-4-7`।
+  - **Python pipeline (`--enrich`)** — CLI स्वयं Anthropic का API कॉल करती है; डिफ़ॉल्ट मॉडल `claude-opus-5-5`।
 - **दृश्यमान-Chrome प्रकाशक प्रवाह**: Scholar SERP, IEEE `/rest/search`, और हर paywalled-PDF डाउनलोड (ieeexplore / dl.acm / link.springer / sciencedirect / wiley / oup / nature / science / …) `selenium` के माध्यम से एक वास्तविक दृश्यमान Chrome सत्र के भीतर चलते हैं। उपयोगकर्ता लाइव विंडो में एक बार captcha हल करता है / SSO पूरा करता है; `THESISAGENTS_CHROME_PROFILE_DIR` कुकीज़ को रनों के बीच बनाए रखता है।
 - **LLM-as-agent प्रवाह**: MCP उपकरण खोज, PDF डाउनलोड और पाठ निष्कर्षण प्रदान करते हैं। `scripts/regen_*.py` में प्रति शोध-पत्र एक समृद्ध `PaperSummary` हाथ से लिखने के पुनरुत्पाद्य उदाहरण हैं।
 - **OA PDF resolver**: dedup के बाद, `pdf_url` रहित हर शोध-पत्र Unpaywall → S2 `openAccessPdf` → arXiv शीर्षक खोज → CORE.ac.uk (जब keys सेट हों) से गुज़रता है। IEEE / ACM / Springer / Elsevier-भारी क्वेरियों पर विशिष्ट वृद्धि: 40-70 प्रतिशत-अंक।
@@ -249,7 +249,7 @@ py -m thesisagents --paper "https://arxiv.org/abs/1706.03762" `
 | `--lang` / `-l` | डेक भाषा: 14 में से एक — `en`, `zh-tw`, `zh-cn`, `ja`, `es`, `fr`, `de`, `ko`, `pt`, `ru`, `it`, `vi`, `hi`, `id`। डिफ़ॉल्ट `en`। |
 | `--enrich` | auto-enrich का fail-loud संस्करण। `ANTHROPIC_API_KEY` और `[intelligence]` extra आवश्यक। (key सेट होने पर auto-enrich डिफ़ॉल्ट है।) |
 | `--lightweight` | समृद्धि छोड़ें + केवल-सार डेक के लिए बाध्य करें। केवल त्वरित / अनदेखी रनों के लिए उपयोग करें; **जब कोई LLM एजेंट चला रहा हो, नीचे दिए LLM-as-agent पथ को प्राथमिकता दें**। |
-| `--llm-model` | समृद्धि के लिए डिफ़ॉल्ट `claude-opus-4-7` ओवरराइड करें। |
+| `--llm-model` | समृद्धि के लिए डिफ़ॉल्ट `claude-opus-5-5` ओवरराइड करें। |
 | `--no-pdf` | स्वचालित PDF डाउनलोड छोड़ें। प्रति-शोध-पत्र PPT गेट भी अक्षम करता है (कोई PDF नहीं → कोई पूर्ण सामग्री नहीं)। |
 | `--no-oa-resolve` | dedup-के-बाद OA PDF resolver (Unpaywall + S2 + arXiv + CORE.ac.uk) छोड़ें। |
 | `--top-tier-only` | परिणामों को arXiv + एक क्यूरेटेड CS-flagship श्वेतसूची (S&P, CCS, NDSS, USENIX Security, NeurIPS, ICML, ICSE, …) तक सीमित करें। डिफ़ॉल्ट बंद। |
@@ -275,7 +275,7 @@ py -m thesisagents --paper "https://arxiv.org/abs/1706.03762" `
 |---|---|---|
 | `ANTHROPIC_API_KEY` | `--enrich` | LLM प्रमाणीकरण। MCP पर LLM-as-agent पथ के लिए आवश्यक नहीं। |
 | `THESISAGENTS_LLM_PROVIDER` | `--enrich` | मॉडल कौन चलाता है: `anthropic`, `openai`, `gemini`, `mistral`, `deepseek`, `xai`, `groq`, `openrouter`, `together`, `fireworks`, `dashscope`, `moonshot`, इस कंप्यूटर पर `ollama`, `lmstudio`, `llamacpp`, `vllm`, या `THESISAGENTS_LLM_BASE_URL` के साथ `custom`। |
-| `THESISAGENTS_LLM_MODEL` | `--enrich` | डिफ़ॉल्ट `claude-opus-4-7` ओवरराइड करें। |
+| `THESISAGENTS_LLM_MODEL` | `--enrich` | डिफ़ॉल्ट `claude-opus-5-5` ओवरराइड करें। |
 | `THESISAGENTS_S2_API_KEY` | Semantic Scholar + OA resolver | उच्च दर सीमा; OA resolver के S2 `openAccessPdf` चरण द्वारा भी उपयोग किया जाता है। मुफ़्त key <https://www.semanticscholar.org/product/api> पर। |
 | `THESISAGENTS_NCBI_API_KEY` | PubMed | NCBI की अनाम सीमा (3/s) को 10/s तक बढ़ाता है। वैकल्पिक। |
 | `THESISAGENTS_CONTACT_EMAIL` | PubMed, ACM, Crossref, OpenAlex, **Unpaywall** | Polite-pool टैग + OA resolver का Unpaywall चरण सक्षम करता है (IEEE / ACM / Springer / Elsevier-paywalled पेपरों के लिए सबसे बड़ा PDF-कवरेज लाभ; विशिष्ट वृद्धि 40-70 pp)। |

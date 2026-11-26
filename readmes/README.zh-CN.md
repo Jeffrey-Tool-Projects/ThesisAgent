@@ -210,7 +210,7 @@ for key in irrelevant_keys:
     `fetch_pdf_text` 读 PDF 正文,就地写出一份结构化摘要,再传给
     `export`。
   - **Python pipeline(`--enrich`)** —— CLI 自己调用 Anthropic 的 API;
-    默认模型 `claude-opus-4-7`。
+    默认模型 `claude-opus-5-5`。
 - **可见 Chrome 的出版商流程**:Scholar SERP、IEEE `/rest/search`,以及
   每一次付费墙 PDF 下载(ieeexplore / dl.acm / link.springer /
   sciencedirect / wiley / oup / nature / science / …)都在一个真实可见的
@@ -300,7 +300,7 @@ py -m thesisagents --paper "https://arxiv.org/abs/1706.03762" `
 | `--lang` / `-l` | 幻灯片语言:14 种之一 —— `en`、`zh-tw`、`zh-cn`、`ja`、`es`、`fr`、`de`、`ko`、`pt`、`ru`、`it`、`vi`、`hi`、`id`。默认 `en`。 |
 | `--enrich` | 自动增强的失败即报变体。需要 `ANTHROPIC_API_KEY` 与 `[intelligence]` extra。(设了密钥时自动增强是默认。) |
 | `--lightweight` | 跳过增强 + 强制只有摘要的幻灯片。只用于快速 / 无人值守的运行;**当有 LLM agent 在驱动时,优先用下面的 LLM-as-agent 流程**。 |
-| `--llm-model` | 覆盖增强用的默认 `claude-opus-4-7`。 |
+| `--llm-model` | 覆盖增强用的默认 `claude-opus-5-5`。 |
 | `--no-pdf` | 跳过自动 PDF 下载。也会禁用每篇论文的 PPT 闸(没 PDF → 没完整内容)。 |
 | `--no-oa-resolve` | 跳过去重后的 OA PDF 解析器(Unpaywall + S2 + arXiv + CORE.ac.uk)。 |
 | `--top-tier-only` | 把结果限制到 arXiv + 一份精选的计算机旗舰白名单(S&P、CCS、NDSS、USENIX Security、NeurIPS、ICML、ICSE …)。默认关闭。 |
@@ -326,7 +326,7 @@ py -m thesisagents --paper "https://arxiv.org/abs/1706.03762" `
 |---|---|---|
 | `ANTHROPIC_API_KEY` | `--enrich` | LLM 认证。走 MCP 的 LLM-as-agent 路径不需要。 |
 | `THESISAGENTS_LLM_PROVIDER` | `--enrich` | 由谁运行模型：`anthropic`, `openai`, `gemini`, `mistral`, `deepseek`, `xai`, `groq`, `openrouter`, `together`, `fireworks`, `dashscope`, `moonshot`，这台电脑上的 `ollama`, `lmstudio`, `llamacpp`, `vllm`，或搭配 `THESISAGENTS_LLM_BASE_URL` 的 `custom`。 |
-| `THESISAGENTS_LLM_MODEL` | `--enrich` | 覆盖默认的 `claude-opus-4-7`。 |
+| `THESISAGENTS_LLM_MODEL` | `--enrich` | 覆盖默认的 `claude-opus-5-5`。 |
 | `THESISAGENTS_S2_API_KEY` | Semantic Scholar + OA 解析器 | 更高的速率限制;也被 OA 解析器的 S2 `openAccessPdf` 步骤使用。免费密钥在 <https://www.semanticscholar.org/product/api>。 |
 | `THESISAGENTS_NCBI_API_KEY` | PubMed | 把 NCBI 的匿名限制(3/s)提高到 10/s。可选。 |
 | `THESISAGENTS_CONTACT_EMAIL` | PubMed、ACM、Crossref、OpenAlex、**Unpaywall** | 礼貌池标记 + 启用 OA 解析器的 Unpaywall 步骤(对 IEEE / ACM / Springer / Elsevier 付费墙论文的 PDF 覆盖率提升最大;典型提升 40-70 pp)。 |

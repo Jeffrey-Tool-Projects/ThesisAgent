@@ -260,7 +260,7 @@ for key in irrelevant_keys:
     PDF через `fetch_pdf_text`, пишет структурированную сводку в контексте
     и передаёт её в `export`.
   - **Python pipeline (`--enrich`)** — CLI сам вызывает API Anthropic;
-    модель по умолчанию `claude-opus-4-7`.
+    модель по умолчанию `claude-opus-5-5`.
 - **Потоки издателей через видимый Chrome**: SERP Scholar, IEEE `/rest/search`
   и каждая загрузка PDF из-за пейвола (ieeexplore / dl.acm / link.springer
   / sciencedirect / wiley / oup / nature / science / …) выполняются внутри
@@ -406,7 +406,7 @@ py -m thesisagents --paper "https://arxiv.org/abs/1706.03762" `
 | `--lang` / `-l` | Язык дека: один из 14 — `en`, `zh-tw`, `zh-cn`, `ja`, `es`, `fr`, `de`, `ko`, `pt`, `ru`, `it`, `vi`, `hi`, `id`. По умолчанию `en`. |
 | `--enrich` | Явно-падающий вариант авто-обогащения. Нужны `ANTHROPIC_API_KEY` и extra `[intelligence]`. (Авто-обогащение по умолчанию, когда ключ задан.) |
 | `--lightweight` | Пропустить обогащение + принудительно дек только с аннотацией. Используйте только для быстрых / без присмотра запусков; **когда управляет LLM-агент, предпочитайте поток LLM-as-agent** ниже. |
-| `--llm-model` | Переопределить модель по умолчанию `claude-opus-4-7` для обогащения. |
+| `--llm-model` | Переопределить модель по умолчанию `claude-opus-5-5` для обогащения. |
 | `--no-pdf` | Пропустить автоматическую загрузку PDF. Также отключает гейт PPT на каждую статью (нет PDF → нет полного содержимого). |
 | `--no-oa-resolve` | Пропустить пост-дедупликационный резолвер OA PDF (Unpaywall + S2 + arXiv + CORE.ac.uk). |
 | `--top-tier-only` | Ограничить результаты arXiv + курируемым белым списком CS-флагманов (S&P, CCS, NDSS, USENIX Security, NeurIPS, ICML, ICSE, …). Выключено по умолчанию. |
@@ -432,7 +432,7 @@ py -m thesisagents --paper "https://arxiv.org/abs/1706.03762" `
 |---|---|---|
 | `ANTHROPIC_API_KEY` | `--enrich` | Аутентификация LLM. Не нужна для пути LLM-as-agent через MCP. |
 | `THESISAGENTS_LLM_PROVIDER` | `--enrich` | Где работает модель: `anthropic`, `openai`, `gemini`, `mistral`, `deepseek`, `xai`, `groq`, `openrouter`, `together`, `fireworks`, `dashscope`, `moonshot`, на этом компьютере `ollama`, `lmstudio`, `llamacpp`, `vllm`, или `custom` с `THESISAGENTS_LLM_BASE_URL`. |
-| `THESISAGENTS_LLM_MODEL` | `--enrich` | Переопределить модель по умолчанию `claude-opus-4-7`. |
+| `THESISAGENTS_LLM_MODEL` | `--enrich` | Переопределить модель по умолчанию `claude-opus-5-5`. |
 | `THESISAGENTS_S2_API_KEY` | Semantic Scholar + резолвер OA | Более высокий лимит скорости; также используется шагом `openAccessPdf` S2 резолвера OA. Бесплатный ключ на <https://www.semanticscholar.org/product/api>. |
 | `THESISAGENTS_NCBI_API_KEY` | PubMed | Поднимает анонимный лимит NCBI (3/с) до 10/с. Опционально. |
 | `THESISAGENTS_CONTACT_EMAIL` | PubMed, ACM, Crossref, OpenAlex, **Unpaywall** | Тег polite-pool + включает шаг Unpaywall резолвера OA (наибольший выигрыш по покрытию PDF для статей из-за пейвола IEEE / ACM / Springer / Elsevier; типичный прирост 40-70 пп). |

@@ -18,7 +18,7 @@ each value into `os.environ` before any fetcher initialises.
 | Variable | Default | Effect |
 |---|---|---|
 | `ANTHROPIC_API_KEY` | unset | Required for the Python `--enrich` pipeline. Triggers auto-enrichment when set (override with `--lightweight`). Never needed for the LLM-as-agent flow over MCP. |
-| `THESISAGENTS_LLM_MODEL` | `claude-opus-4-7` | Override the model used when `--enrich` is on. `--llm-model` on the CLI takes precedence. |
+| `THESISAGENTS_LLM_MODEL` | `claude-opus-5-5` | Override the model used when `--enrich` is on. `--llm-model` on the CLI takes precedence. |
 
 ### Source plugin keys
 

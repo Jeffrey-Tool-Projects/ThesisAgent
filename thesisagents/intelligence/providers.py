@@ -43,7 +43,22 @@ _LOG = get_logger(__name__)
 
 ANTHROPIC: Final[str] = "anthropic"
 CUSTOM: Final[str] = "custom"
-DEFAULT_ANTHROPIC_MODEL: Final[str] = "claude-opus-4-7"
+DEFAULT_ANTHROPIC_MODEL: Final[str] = "claude-opus-5-5"
+#: Models that always think, take ``effort`` and accept the server-side
+#: fallback on a refusal. Another model named with ``--llm-model`` is sent the
+#: plain request, which every Claude model accepts.
+_CURRENT_ANTHROPIC_MODELS: Final[frozenset[str]] = frozenset({
+    "claude-opus-5-5", "claude-opus-5", "claude-sonnet-5-5", "claude-fable-5-1",
+    "claude-fable-5-2",
+})
+#: Room for the thinking as well as the answer: thinking counts against
+#: ``max_tokens``, and 4000 cut summaries off. Below the size that needs
+#: streaming.
+_ANTHROPIC_MAX_TOKENS: Final[int] = 16_000
+#: A summary is extraction more than reasoning, and ``medium`` is the default
+#: of Claude Opus 5.5. Named, so that a newer default does not change the cost.
+_ANTHROPIC_EFFORT: Final[str] = "medium"
+_FALLBACK_BETA: Final[str] = "server-side-fallback-2026-07-01"
 
 PROVIDER_ENV: Final[str] = "THESISAGENTS_LLM_PROVIDER"
 MODEL_ENV: Final[str] = "THESISAGENTS_LLM_MODEL"
@@ -251,20 +266,48 @@ def _anthropic_client(settings: LlmSettings) -> Any:
 
 
 def _complete_anthropic(settings: LlmSettings, system: str, user: str) -> str:
-    # The system prompt is marked for the prompt cache, so twenty papers in
-    # one session pay for it once.
-    response = _anthropic_client(settings).messages.create(
-        model=settings.model,
-        max_tokens=_MAX_OUTPUT_TOKENS,
-        system=[
+    """One summary from Claude, the text of its answer.
+
+    The boundary this guards: what comes back besides the answer. The
+    current models think first, in blocks without text, and may decline a
+    paper (``stop_reason`` ``refusal``) or run out of room (``max_tokens``).
+    Each of those is reported as such instead of a JSON error further on.
+    On a current model a refusal is first retried by the API on a fallback
+    model it picks by the refusal's category (``fallbacks="default"``).
+    """
+    client = _anthropic_client(settings)
+    request: dict[str, Any] = {
+        "model": settings.model,
+        # Marked for the prompt cache, so twenty papers in one session pay for
+        # the instructions once.
+        "system": [
             {"type": "text", "text": system, "cache_control": {"type": "ephemeral"}}
         ],
-        messages=[{"role": "user", "content": user}],
-    )
-    for block in response.content:
-        text = getattr(block, "text", None)
-        if isinstance(text, str) and text:
-            return text
+        "messages": [{"role": "user", "content": user}],
+    }
+    if settings.model in _CURRENT_ANTHROPIC_MODELS:
+        response = client.beta.messages.create(
+            **request,
+            max_tokens=_ANTHROPIC_MAX_TOKENS,
+            output_config={"effort": _ANTHROPIC_EFFORT},
+            betas=[_FALLBACK_BETA],
+            fallbacks="default",
+        )
+    else:
+        response = client.messages.create(**request, max_tokens=_MAX_OUTPUT_TOKENS)
+    stop = getattr(response, "stop_reason", None)
+    if stop == "refusal":
+        details = getattr(response, "stop_details", None)
+        category = getattr(details, "category", None) or "unspecified"
+        raise ParseError("intelligence", f"the model declined this paper ({category})")
+    texts = [
+        block.text for block in response.content
+        if getattr(block, "type", None) == "text" and block.text
+    ]
+    if stop == "max_tokens":
+        raise ParseError("intelligence", "the answer was cut off at the output limit")
+    if texts:
+        return "".join(texts)
     raise ParseError("intelligence", "Anthropic response had no text block")
 
 

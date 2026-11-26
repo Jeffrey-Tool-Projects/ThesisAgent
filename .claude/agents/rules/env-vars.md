@@ -29,7 +29,7 @@ You are the env-vars + environment reference for ThesisAgents. When invoked, sur
 | `THESISAGENTS_LLM_BASE_URL` | `--enrich` | Address of an OpenAI-compatible server. |
 | `THESISAGENTS_LLM_API_KEY` | `--enrich` with `custom` | Key of the custom server. |
 | `THESISAGENTS_LLM_MAX_CHARS` | `--enrich` | How much of a paper is sent (80,000, local 24,000). |
-| `THESISAGENTS_LLM_MODEL` | `--enrich` | Override the default `claude-opus-4-7`. |
+| `THESISAGENTS_LLM_MODEL` | `--enrich` | Override the default `claude-opus-5-5`. |
 | `THESISAGENTS_S2_API_KEY` | Semantic Scholar plugin | Higher rate limit on `api.semanticscholar.org`. Optional. |
 | `THESISAGENTS_NCBI_API_KEY` | PubMed plugin | Raises NCBI's anonymous limit (3/s) to 10/s. Optional. |
 | `THESISAGENTS_CONTACT_EMAIL` | PubMed (`tool` / `email`), ACM/Crossref (`mailto`) | Puts Crossref in the polite pool. |

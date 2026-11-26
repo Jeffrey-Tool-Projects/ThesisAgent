@@ -210,7 +210,7 @@ for key in irrelevant_keys:
     `fetch_pdf_text` 讀 PDF 本文,就地寫出一份結構化摘要,再傳給
     `export`。
   - **Python pipeline(`--enrich`)** —— CLI 自己呼叫 Anthropic 的 API;
-    預設模型 `claude-opus-4-7`。
+    預設模型 `claude-opus-5-5`。
 - **可見 Chrome 的出版商流程**:Scholar SERP、IEEE `/rest/search`,以及
   每一次付費牆 PDF 下載(ieeexplore / dl.acm / link.springer /
   sciencedirect / wiley / oup / nature / science / …)都在一個真實可見的
@@ -300,7 +300,7 @@ py -m thesisagents --paper "https://arxiv.org/abs/1706.03762" `
 | `--lang` / `-l` | 投影片語言:14 種之一 —— `en`、`zh-tw`、`zh-cn`、`ja`、`es`、`fr`、`de`、`ko`、`pt`、`ru`、`it`、`vi`、`hi`、`id`。預設 `en`。 |
 | `--enrich` | 自動加值的失敗即報變體。需要 `ANTHROPIC_API_KEY` 與 `[intelligence]` extra。(設了金鑰時自動加值是預設。) |
 | `--lightweight` | 跳過加值 + 強制只有摘要的投影片。只用於快速 / 無人值守的執行;**當有 LLM agent 在驅動時,偏好下面的 LLM-as-agent 流程**。 |
-| `--llm-model` | 覆寫加值用的預設 `claude-opus-4-7`。 |
+| `--llm-model` | 覆寫加值用的預設 `claude-opus-5-5`。 |
 | `--no-pdf` | 跳過自動 PDF 下載。也會停用每篇論文的 PPT 閘(沒 PDF → 沒完整內容)。 |
 | `--no-oa-resolve` | 跳過去重後的 OA PDF 解析器(Unpaywall + S2 + arXiv + CORE.ac.uk)。 |
 | `--top-tier-only` | 把結果限制到 arXiv + 一份精選的資工旗艦白名單(S&P、CCS、NDSS、USENIX Security、NeurIPS、ICML、ICSE …)。預設關閉。 |
@@ -326,7 +326,7 @@ py -m thesisagents --paper "https://arxiv.org/abs/1706.03762" `
 |---|---|---|
 | `ANTHROPIC_API_KEY` | `--enrich` | LLM 認證。走 MCP 的 LLM-as-agent 路徑不需要。 |
 | `THESISAGENTS_LLM_PROVIDER` | `--enrich` | 由誰執行模型：`anthropic`, `openai`, `gemini`, `mistral`, `deepseek`, `xai`, `groq`, `openrouter`, `together`, `fireworks`, `dashscope`, `moonshot`，這台電腦上的 `ollama`, `lmstudio`, `llamacpp`, `vllm`，或搭配 `THESISAGENTS_LLM_BASE_URL` 的 `custom`。 |
-| `THESISAGENTS_LLM_MODEL` | `--enrich` | 覆寫預設的 `claude-opus-4-7`。 |
+| `THESISAGENTS_LLM_MODEL` | `--enrich` | 覆寫預設的 `claude-opus-5-5`。 |
 | `THESISAGENTS_S2_API_KEY` | Semantic Scholar + OA 解析器 | 更高的速率限制;也被 OA 解析器的 S2 `openAccessPdf` 步驟使用。免費金鑰在 <https://www.semanticscholar.org/product/api>。 |
 | `THESISAGENTS_NCBI_API_KEY` | PubMed | 把 NCBI 的匿名限制(3/s)提高到 10/s。選用。 |
 | `THESISAGENTS_CONTACT_EMAIL` | PubMed、ACM、Crossref、OpenAlex、**Unpaywall** | 禮貌池標記 + 啟用 OA 解析器的 Unpaywall 步驟(對 IEEE / ACM / Springer / Elsevier 付費牆論文的 PDF 覆蓋率提升最大;典型提升 40-70 pp)。 |

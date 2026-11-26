@@ -114,7 +114,7 @@ for key in irrelevant_keys:
 - **MCP サーバー**: 25 ツール — `list_sources` + `list_exports`(発見)、`search`、`snowball`、`library_add`、`library_search`、`library_stats`、`fetch_paper`、`fetch_pdf_text`、`download_pdfs`、`pptx_validate_template`、`export`、および 6 個の `pptx_*` デッキツール(`inspect`、`review`、`update_slide`、`delete_slide`、`reorder_slides`、`add_slide`)。MCP 対応の任意の LLM(Claude Code、Claude Desktop、Cursor、…)がワークフロー全体を駆動できます。
 - **2 つのエンリッチパス**(要約を超えて真の論文発表級デッキに至るため):
   - **LLM-as-agent(API キー不要)** — 呼び出し側 LLM が `fetch_pdf_text` で PDF 本文を読み、構造化サマリをコンテキスト内で書き、`export` に渡します。
-  - **Python パイプライン(`--enrich`)** — CLI が Anthropic の API を自身で呼びます。デフォルトモデルは `claude-opus-4-7`。
+  - **Python パイプライン(`--enrich`)** — CLI が Anthropic の API を自身で呼びます。デフォルトモデルは `claude-opus-5-5`。
 - **可視 Chrome の出版社フロー**: Scholar の SERP、IEEE の `/rest/search`、およびすべての paywalled-PDF ダウンロード(ieeexplore / dl.acm / link.springer / sciencedirect / wiley / oup / nature / science / …)は、`selenium` 経由で本物の可視 Chrome セッション内で実行されます。ユーザーはライブウィンドウで captcha を解いたり SSO を完了したりを一度だけ行い、`THESISAGENTS_CHROME_PROFILE_DIR` が実行間で cookie を永続化します。
 - **LLM-as-agent フロー**: MCP ツールが検索、PDF ダウンロード、テキスト抽出を提供します。`scripts/regen_*.py` には、論文ごとにリッチな `PaperSummary` を手書きする再現可能な例が含まれています。
 - **OA PDF リゾルバ**: 重複排除後、`pdf_url` の無い各論文は Unpaywall → S2 `openAccessPdf` → arXiv タイトル検索 → CORE.ac.uk(キー設定時)を通過します。IEEE / ACM / Springer / Elsevier 中心のクエリでの典型的な向上: 40〜70 パーセントポイント。
@@ -186,7 +186,7 @@ py -m thesisagents --paper "https://arxiv.org/abs/1706.03762" `
 | `--lang` / `-l` | デッキ言語: 14 種のいずれか — `en`、`zh-tw`、`zh-cn`、`ja`、`es`、`fr`、`de`、`ko`、`pt`、`ru`、`it`、`vi`、`hi`、`id`。デフォルト `en`。 |
 | `--enrich` | 自動エンリッチの fail-loud 版。`ANTHROPIC_API_KEY` と `[intelligence]` extra が必要。(キー設定時は自動エンリッチがデフォルト。) |
 | `--lightweight` | エンリッチをスキップし、要約のみのデッキを強制。手早い / 無人運転にのみ使用。**LLM エージェントが駆動する場合は下記の LLM-as-agent フローを優先。** |
-| `--llm-model` | エンリッチのデフォルト `claude-opus-4-7` を上書き。 |
+| `--llm-model` | エンリッチのデフォルト `claude-opus-5-5` を上書き。 |
 | `--no-pdf` | 自動 PDF ダウンロードをスキップ。論文ごとの PPT ゲートも無効化(PDF 無し → 完全な内容無し)。 |
 | `--no-oa-resolve` | 重複排除後の OA PDF リゾルバ(Unpaywall + S2 + arXiv + CORE.ac.uk)をスキップ。 |
 | `--top-tier-only` | 結果を arXiv + 精選された CS 旗艦ホワイトリスト(S&P、CCS、NDSS、USENIX Security、NeurIPS、ICML、ICSE、…)に限定。デフォルトは無効。 |
@@ -212,7 +212,7 @@ py -m thesisagents --paper "https://arxiv.org/abs/1706.03762" `
 |---|---|---|
 | `ANTHROPIC_API_KEY` | `--enrich` | LLM 認証。MCP 経由の LLM-as-agent パスでは不要。 |
 | `THESISAGENTS_LLM_PROVIDER` | `--enrich` | モデルの提供元: `anthropic`, `openai`, `gemini`, `mistral`, `deepseek`, `xai`, `groq`, `openrouter`, `together`, `fireworks`, `dashscope`, `moonshot`、このコンピューター上の `ollama`, `lmstudio`, `llamacpp`, `vllm`、または `THESISAGENTS_LLM_BASE_URL` を指定した `custom`。 |
-| `THESISAGENTS_LLM_MODEL` | `--enrich` | デフォルト `claude-opus-4-7` を上書き。 |
+| `THESISAGENTS_LLM_MODEL` | `--enrich` | デフォルト `claude-opus-5-5` を上書き。 |
 | `THESISAGENTS_S2_API_KEY` | Semantic Scholar + OA リゾルバ | より高いレート上限。OA リゾルバの S2 `openAccessPdf` ステップでも使用。無料キーは <https://www.semanticscholar.org/product/api>。 |
 | `THESISAGENTS_NCBI_API_KEY` | PubMed | NCBI の匿名上限(3/s)を 10/s に引き上げ。任意。 |
 | `THESISAGENTS_CONTACT_EMAIL` | PubMed、ACM、Crossref、OpenAlex、**Unpaywall** | polite-pool タグ + OA リゾルバの Unpaywall ステップを有効化(IEEE / ACM / Springer / Elsevier の paywalled 論文で最大の PDF カバレッジ向上、典型的な向上は 40〜70 pp)。 |

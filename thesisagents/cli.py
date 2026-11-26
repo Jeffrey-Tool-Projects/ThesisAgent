@@ -306,7 +306,7 @@ def build_parser() -> argparse.ArgumentParser:
         default=None,
         help=(
             "The model that writes the summaries. Default: "
-            "THESISAGENTS_LLM_MODEL, or claude-opus-4-7 with Anthropic. The "
+            "THESISAGENTS_LLM_MODEL, or claude-opus-5-5 with Anthropic. The "
             "other providers need one."
         ),
     )

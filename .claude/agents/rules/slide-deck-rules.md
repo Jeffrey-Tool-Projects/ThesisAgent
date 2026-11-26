@@ -231,7 +231,7 @@ The Python process calls Anthropic itself via `thesisagents/intelligence/summari
 
 - `--lightweight` skips it (no API calls).
 - `--enrich` flag fails loud if the env var is missing, rather than falling back.
-- Default model `claude-opus-4-7`; override via `--llm-model` or `THESISAGENTS_LLM_MODEL`.
+- Default model `claude-opus-5-5`; override via `--llm-model` or `THESISAGENTS_LLM_MODEL`.
 - Requires the `[intelligence]` extra (`pypdf` + `anthropic`).
 
 ### Rule

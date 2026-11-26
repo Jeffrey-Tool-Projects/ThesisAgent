@@ -257,7 +257,7 @@ cho mỗi bài trong tuple `PaperCollection`.
     PDF qua `fetch_pdf_text`, viết một bản tóm tắt có cấu trúc trong ngữ
     cảnh, và truyền nó cho `export`.
   - **Pipeline Python (`--enrich`)** — CLI tự gọi API của Anthropic;
-    mô hình mặc định `claude-opus-4-7`.
+    mô hình mặc định `claude-opus-5-5`.
 - **Các luồng nhà xuất bản qua Chrome hiển thị**: Scholar SERP, IEEE
   `/rest/search`, và mọi tải xuống PDF-có-paywall (ieeexplore / dl.acm /
   link.springer / sciencedirect / wiley / oup / nature / science / …) chạy
@@ -400,7 +400,7 @@ py -m thesisagents --paper "https://arxiv.org/abs/1706.03762" `
 | `--lang` / `-l` | Ngôn ngữ deck: một trong 14 — `en`, `zh-tw`, `zh-cn`, `ja`, `es`, `fr`, `de`, `ko`, `pt`, `ru`, `it`, `vi`, `hi`, `id`. Mặc định `en`. |
 | `--enrich` | Biến thể fail-loud của auto-enrich. Cần `ANTHROPIC_API_KEY` và extra `[intelligence]`. (Auto-enrich là mặc định khi key được đặt.) |
 | `--lightweight` | Bỏ làm giàu + buộc deck chỉ-tóm-tắt. Chỉ dùng cho các lần chạy nhanh / không người trông coi; **khi một LLM agent đang điều khiển, hãy ưu tiên luồng LLM-as-agent** bên dưới. |
-| `--llm-model` | Ghi đè mặc định `claude-opus-4-7` cho việc làm giàu. |
+| `--llm-model` | Ghi đè mặc định `claude-opus-5-5` cho việc làm giàu. |
 | `--no-pdf` | Bỏ tải PDF tự động. Cũng vô hiệu hóa gate PPT từng bài (không PDF → không nội dung đầy đủ). |
 | `--no-oa-resolve` | Bỏ bộ giải OA PDF sau khử trùng lặp (Unpaywall + S2 + arXiv + CORE.ac.uk). |
 | `--top-tier-only` | Giới hạn kết quả vào arXiv + một whitelist CS-chủ-lực được tuyển chọn (S&P, CCS, NDSS, USENIX Security, NeurIPS, ICML, ICSE, …). Tắt theo mặc định. |
@@ -426,7 +426,7 @@ py -m thesisagents --paper "https://arxiv.org/abs/1706.03762" `
 |---|---|---|
 | `ANTHROPIC_API_KEY` | `--enrich` | Xác thực LLM. Không cần cho đường LLM-as-agent qua MCP. |
 | `THESISAGENTS_LLM_PROVIDER` | `--enrich` | Ai chạy mô hình: `anthropic`, `openai`, `gemini`, `mistral`, `deepseek`, `xai`, `groq`, `openrouter`, `together`, `fireworks`, `dashscope`, `moonshot`, trên máy này `ollama`, `lmstudio`, `llamacpp`, `vllm`, hoặc `custom` kèm `THESISAGENTS_LLM_BASE_URL`. |
-| `THESISAGENTS_LLM_MODEL` | `--enrich` | Ghi đè mặc định `claude-opus-4-7`. |
+| `THESISAGENTS_LLM_MODEL` | `--enrich` | Ghi đè mặc định `claude-opus-5-5`. |
 | `THESISAGENTS_S2_API_KEY` | Semantic Scholar + bộ giải OA | Rate limit cao hơn; cũng được bước S2 `openAccessPdf` của bộ giải OA dùng. Key miễn phí tại <https://www.semanticscholar.org/product/api>. |
 | `THESISAGENTS_NCBI_API_KEY` | PubMed | Nâng giới hạn ẩn danh của NCBI (3/s) lên 10/s. Tùy chọn. |
 | `THESISAGENTS_CONTACT_EMAIL` | PubMed, ACM, Crossref, OpenAlex, **Unpaywall** | Tag polite-pool + bật bước Unpaywall của bộ giải OA (mức thắng lớn nhất về độ phủ PDF cho các bài IEEE / ACM / Springer / Elsevier có paywall; mức nâng điển hình 40-70 pp). |

@@ -57,7 +57,7 @@ thesisagents (--query KEYWORDS | --paper IDENTIFIER | --pdf PATH |
 | `--enrich` | auto-on when `ANTHROPIC_API_KEY` is set | Fetch each paper's PDF and have the Anthropic API write a structured summary; the deck switches to thesis-style layout. Requires `ANTHROPIC_API_KEY` and the `[intelligence]` extra. **Not needed when running over MCP** — an LLM agent can call `fetch_pdf_text` + `export` directly with a hand-crafted summary. |
 | `--lightweight` | off | Force the abstract-only deck even when `ANTHROPIC_API_KEY` is set. Useful for unattended runs where you do not want to spend tokens. **When an LLM agent is in the editor session**, prefer the LLM-as-agent flow under `scripts/llm_*.py` (the LLM authors a rich `PaperSummary` per paper) over `--lightweight`. |
 | `--llm-provider NAME` | `anthropic` | Who runs the model that writes the summaries, see `docs/configuration.md` "Language models". Also reads `THESISAGENTS_LLM_PROVIDER`. |
-| `--llm-model` | `claude-opus-4-7` with Anthropic, none otherwise | The model. Also reads `THESISAGENTS_LLM_MODEL`. |
+| `--llm-model` | `claude-opus-5-5` with Anthropic, none otherwise | The model. Also reads `THESISAGENTS_LLM_MODEL`. |
 | `--llm-base-url URL` | the provider's own | Address of an OpenAI-compatible server, up to `/v1`. Also reads `THESISAGENTS_LLM_BASE_URL`. |
 | `--top-tier-only` | off | Restrict results to the curated top-tier CS venue whitelist (S&P / CCS / NDSS / USENIX Security / NeurIPS / ICML / ICSE / SIGMOD / SIGCOMM / CHI / etc.) + arXiv pass-through. **Off by default** so IEEE / ACM workshop papers (which dominate "LLM × security" / "LLM × X" topics) survive. |
 | `--no-oa-resolve` | off | Skip the open-access PDF resolver step that runs after dedup. By default the pipeline looks up every paper without `pdf_url` in Unpaywall (needs `THESISAGENTS_CONTACT_EMAIL`) and falls back to an arXiv title search — typical lift of 40-70% for IEEE / ACM / Springer / Elsevier paywalled papers. Use this flag if you want raw source output without OA enrichment, or to skip the extra HTTP round-trips on a tight latency budget. |
@@ -148,7 +148,7 @@ thesisagents --paper "https://arxiv.org/abs/1706.03762" \
 ```
 
 When `--enrich` is on, ThesisAgents downloads the PDF, sends the body
-text + paper metadata to Claude (`claude-opus-4-7` by default), parses
+text + paper metadata to Claude (`claude-opus-5-5` by default), parses
 back a structured `PaperSummary` (motivation, contributions, method,
 results, limitations, takeaways — plus the rich tier: pain points,
 research question, KPI metrics, technique table, literature

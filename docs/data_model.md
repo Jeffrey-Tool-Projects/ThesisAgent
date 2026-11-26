@@ -123,7 +123,7 @@ class PaperSummary:
     future_work: tuple[str, ...] = ()
 
     # Provenance
-    model: str = ""               # "claude-opus-4-7 (LLM-as-agent, read 12-page PDF)"
+    model: str = ""               # "claude-opus-5-5 (LLM-as-agent, read 12-page PDF)"
     raw_text_chars: int = 0       # length of source text that was summarised
     language: str = "en"
 ```

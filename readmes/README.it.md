@@ -258,7 +258,7 @@ articolo nella tupla `PaperCollection`.
     corpo del PDF via `fetch_pdf_text`, scrive un riassunto strutturato in
     contesto e lo passa a `export`.
   - **Pipeline Python (`--enrich`)** — la CLI chiama direttamente l'API di
-    Anthropic; modello di default `claude-opus-4-7`.
+    Anthropic; modello di default `claude-opus-5-5`.
 - **Flussi di editore con Chrome visibile**: la SERP di Scholar, il
   `/rest/search` di IEEE e ogni download di PDF a pagamento (ieeexplore /
   dl.acm / link.springer / sciencedirect / wiley / oup / nature / science / …)
@@ -410,7 +410,7 @@ py -m thesisagents --paper "https://arxiv.org/abs/1706.03762" `
 | `--lang` / `-l` | Lingua del deck: una su 14 — `en`, `zh-tw`, `zh-cn`, `ja`, `es`, `fr`, `de`, `ko`, `pt`, `ru`, `it`, `vi`, `hi`, `id`. Default `en`. |
 | `--enrich` | Variante fail-loud dell'auto-arricchimento. Richiede `ANTHROPIC_API_KEY` e l'extra `[intelligence]`. (L'auto-arricchimento è il default quando la chiave è impostata.) |
 | `--lightweight` | Salta l'arricchimento + forza il deck solo-abstract. Da usare solo per esecuzioni rapide / non presidiate; **quando un agente LLM sta pilotando, preferisci il flusso LLM-as-agent** qui sotto. |
-| `--llm-model` | Sovrascrive il modello di default `claude-opus-4-7` per l'arricchimento. |
+| `--llm-model` | Sovrascrive il modello di default `claude-opus-5-5` per l'arricchimento. |
 | `--no-pdf` | Salta il download automatico del PDF. Disattiva anche il gate PPT per articolo (niente PDF → niente contenuto completo). |
 | `--no-oa-resolve` | Salta il risolutore di PDF OA post-deduplicazione (Unpaywall + S2 + arXiv + CORE.ac.uk). |
 | `--top-tier-only` | Limita i risultati ad arXiv + una whitelist curata di riferimenti dell'informatica (S&P, CCS, NDSS, USENIX Security, NeurIPS, ICML, ICSE, …). Disattivato di default. |
@@ -436,7 +436,7 @@ py -m thesisagents --paper "https://arxiv.org/abs/1706.03762" `
 |---|---|---|
 | `ANTHROPIC_API_KEY` | `--enrich` | Auth LLM. Non serve per il percorso LLM-as-agent via MCP. |
 | `THESISAGENTS_LLM_PROVIDER` | `--enrich` | Chi esegue il modello: `anthropic`, `openai`, `gemini`, `mistral`, `deepseek`, `xai`, `groq`, `openrouter`, `together`, `fireworks`, `dashscope`, `moonshot`, su questo computer `ollama`, `lmstudio`, `llamacpp`, `vllm`, o `custom` con `THESISAGENTS_LLM_BASE_URL`. |
-| `THESISAGENTS_LLM_MODEL` | `--enrich` | Sovrascrive il default `claude-opus-4-7`. |
+| `THESISAGENTS_LLM_MODEL` | `--enrich` | Sovrascrive il default `claude-opus-5-5`. |
 | `THESISAGENTS_S2_API_KEY` | Semantic Scholar + risolutore OA | Rate limit più alto; usata anche dal passo S2 `openAccessPdf` del risolutore OA. Chiave gratuita su <https://www.semanticscholar.org/product/api>. |
 | `THESISAGENTS_NCBI_API_KEY` | PubMed | Alza il limite anonimo di NCBI (3/s) a 10/s. Opzionale. |
 | `THESISAGENTS_CONTACT_EMAIL` | PubMed, ACM, Crossref, OpenAlex, **Unpaywall** | Etichetta polite-pool + abilita il passo Unpaywall del risolutore OA (il maggior guadagno di copertura PDF per articoli con paywall di IEEE / ACM / Springer / Elsevier; guadagno tipico 40–70 pp). |

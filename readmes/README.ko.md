@@ -242,7 +242,7 @@ for key in irrelevant_keys:
     `fetch_pdf_text` 를 통해 PDF 본문 텍스트를 읽고, 컨텍스트 내에서
     구조화 요약을 작성해 `export` 에 넘깁니다.
   - **Python 파이프라인(`--enrich`)** — CLI 가 스스로 Anthropic 의
-    API 를 호출합니다. 기본 모델 `claude-opus-4-7`.
+    API 를 호출합니다. 기본 모델 `claude-opus-5-5`.
 - **가시 Chrome 퍼블리셔 흐름**: Scholar SERP, IEEE `/rest/search`,
   그리고 모든 페이월 PDF 다운로드(ieeexplore / dl.acm / link.springer
   / sciencedirect / wiley / oup / nature / science / …)는 `selenium`
@@ -363,7 +363,7 @@ py -m thesisagents --paper "https://arxiv.org/abs/1706.03762" `
 | `--lang` / `-l` | 덱 언어: 14개 중 하나 — `en`, `zh-tw`, `zh-cn`, `ja`, `es`, `fr`, `de`, `ko`, `pt`, `ru`, `it`, `vi`, `hi`, `id`. 기본 `en`. |
 | `--enrich` | 자동 보강의 실패-표출 변형. `ANTHROPIC_API_KEY` 와 `[intelligence]` extra 가 필요. (키가 설정되면 자동 보강이 기본.) |
 | `--lightweight` | 보강을 건너뛰고 초록 전용 덱을 강제. 빠른 / 무인 실행에만 사용. **LLM 에이전트가 구동 중이라면 아래의 LLM-as-agent 흐름을 선호하세요.** |
-| `--llm-model` | 보강 시 기본 `claude-opus-4-7` 을 덮어씀. |
+| `--llm-model` | 보강 시 기본 `claude-opus-5-5` 을 덮어씀. |
 | `--no-pdf` | 자동 PDF 다운로드를 건너뜀. 논문별 PPT 게이트도 비활성화(PDF 없음 → 전체 내용 없음). |
 | `--no-oa-resolve` | 중복 제거 후 OA PDF 리졸버(Unpaywall + S2 + arXiv + CORE.ac.uk)를 건너뜀. |
 | `--top-tier-only` | 결과를 arXiv + 엄선된 CS 대표 화이트리스트(S&P, CCS, NDSS, USENIX Security, NeurIPS, ICML, ICSE, …)로 제한. 기본 꺼짐. |
@@ -389,7 +389,7 @@ py -m thesisagents --paper "https://arxiv.org/abs/1706.03762" `
 |---|---|---|
 | `ANTHROPIC_API_KEY` | `--enrich` | LLM 인증. MCP 상의 LLM-as-agent 경로에는 불필요. |
 | `THESISAGENTS_LLM_PROVIDER` | `--enrich` | 모델 실행 주체: `anthropic`, `openai`, `gemini`, `mistral`, `deepseek`, `xai`, `groq`, `openrouter`, `together`, `fireworks`, `dashscope`, `moonshot`, 이 컴퓨터의 `ollama`, `lmstudio`, `llamacpp`, `vllm`, 또는 `THESISAGENTS_LLM_BASE_URL` 과 함께 `custom`. |
-| `THESISAGENTS_LLM_MODEL` | `--enrich` | 기본 `claude-opus-4-7` 을 덮어씀. |
+| `THESISAGENTS_LLM_MODEL` | `--enrich` | 기본 `claude-opus-5-5` 을 덮어씀. |
 | `THESISAGENTS_S2_API_KEY` | Semantic Scholar + OA 리졸버 | 더 높은 속도 제한; OA 리졸버의 S2 `openAccessPdf` 단계에서도 사용. 무료 키는 <https://www.semanticscholar.org/product/api> 에서. |
 | `THESISAGENTS_NCBI_API_KEY` | PubMed | NCBI 의 익명 제한(3/s)을 10/s 로 올림. 선택 사항. |
 | `THESISAGENTS_CONTACT_EMAIL` | PubMed, ACM, Crossref, OpenAlex, **Unpaywall** | 폴라이트-풀 태그 + OA 리졸버의 Unpaywall 단계를 활성화(IEEE / ACM / Springer / Elsevier 페이월 논문의 PDF 커버리지에서 가장 큰 이득; 전형적 향상 40-70 pp). |
