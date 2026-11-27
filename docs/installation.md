@@ -176,7 +176,10 @@ Every release ships a Windows build made with Nuitka, as an installer
 and as a zip. `thesisagents-setup-windows-x86_64.exe` installs for the
 current user, needs no administrator rights, adds a start menu entry, and
 can put `thesisagents-cli` on `PATH`. A newer installer replaces the
-installed version. It is not signed, so SmartScreen warns the first time:
+installed version: it removes the files the previous one installed, as
+written in `thesisagents-files.txt` in the program folder, and leaves
+anything else you saved there. Uninstalling takes the folder off `PATH`
+only when the installer put it there. It is not signed, so SmartScreen warns the first time:
 choose **More info**, then **Run anyway**, after checking the download
 against its `.sha256` file.
 

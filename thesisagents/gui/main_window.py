@@ -225,7 +225,8 @@ class MainWindow(QMainWindow):
         self._update_button = QPushButton("", bar)
         self._update_button.setObjectName("StatusButton")
         self._update_button.setProperty("primary", True)
-        self._update_button.clicked.connect(open_download_page)
+        self._update_button.clicked.connect(self._open_update)
+        self._update_version = ""
         self._update_button.setVisible(False)
         bar.addPermanentWidget(self._update_button)
         self._update_check = UpdateCheck(self)
@@ -431,6 +432,11 @@ class MainWindow(QMainWindow):
         )
         self._update_button.setToolTip(t("updates.open", self._ui_language))
         self._update_button.setVisible(True)
+        self._update_version = version
+
+    def _open_update(self) -> None:
+        if self._update_version:
+            open_download_page(self._update_version)
 
     def update_button(self) -> QPushButton:
         return self._update_button

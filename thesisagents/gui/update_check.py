@@ -17,7 +17,7 @@ from PySide6.QtCore import QObject, QThreadPool, QUrl, Signal
 from PySide6.QtGui import QDesktopServices
 
 from thesisagents import __version__
-from thesisagents.core.updates import RELEASES_URL, is_newer, newer_version
+from thesisagents.core.updates import download_page, is_newer, newer_version
 from thesisagents.gui.pages.settings import saved_update_check, settings_store
 from thesisagents.gui.workers import AsyncWorker
 
@@ -70,5 +70,6 @@ class UpdateCheck(QObject):
             self.found.emit(version)
 
 
-def open_download_page() -> None:
-    QDesktopServices.openUrl(QUrl(RELEASES_URL))
+def open_download_page(version: str) -> None:
+    """Open the page of the announced ``version``, not whatever is latest by then."""
+    QDesktopServices.openUrl(QUrl(download_page(version)))

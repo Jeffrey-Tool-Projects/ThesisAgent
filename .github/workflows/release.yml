@@ -61,10 +61,13 @@ jobs:
       sha: ${{ steps.push.outputs.sha }}
       skipped: ${{ steps.gate.outputs.skip }}
     steps:
-      - name: Checkout main
+      # The commit CI passed, not whatever main points to now. When main moves
+      # on while CI runs (A passes, B is pushed and still testing), checking
+      # out main bumped and released B, which no test run had passed yet.
+      - name: Checkout the commit CI passed
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
         with:
-          ref: main
+          ref: ${{ github.event.workflow_run.head_sha }}
           # Need history to inspect the previous commit message for
           # loop detection.
           fetch-depth: 2
@@ -75,10 +78,18 @@ jobs:
       - name: Decide whether to bump
         id: gate
         shell: bash
+        env:
+          PASSED_SHA: ${{ github.event.workflow_run.head_sha }}
         run: |
           set -euo pipefail
           MSG=$(git log -1 --pretty=%B)
-          if echo "$MSG" | grep -q '\[skip release\]'; then
+          git fetch --quiet origin main
+          if [ "$(git rev-parse origin/main)" != "$PASSED_SHA" ]; then
+            # main has moved past the commit CI passed. The newer commit's
+            # own CI run releases it, so nothing is released twice or untested.
+            echo "main is no longer at $PASSED_SHA; the newer commit's CI run releases it."
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+          elif echo "$MSG" | grep -q '\[skip release\]'; then
             echo "Commit carries [skip release]; not bumping."
             echo "skip=true" >> "$GITHUB_OUTPUT"
           elif echo "$MSG" | grep -q '^chore: bump version to '; then
@@ -131,6 +142,8 @@ jobs:
           set -euo pipefail
           git add pyproject.toml
           git commit -m "chore: bump version to ${{ steps.bump.outputs.version }}"
+          # A plain push: if main moved since the check above, the push is
+          # refused as not a fast-forward and nothing is released.
           git push origin HEAD:main
           # Capture the SHA of the bump commit so downstream jobs build
           # exactly that revision.
@@ -152,7 +165,8 @@ jobs:
       - name: Checkout the bumped commit
         # Not fork code: bump-version runs only for a push to this
         # repository (its if: checks event and head_repository), checks
-        # out main, and this sha is the bump commit it pushed to main.
+        # out the commit CI passed on main, and this sha is the bump
+        # commit it pushed on top of it.
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1  NOSONAR sha is this repo's own bump commit on main, fork runs are gated out in bump-version
         with:
           ref: ${{ needs.bump-version.outputs.sha }}
@@ -203,7 +217,8 @@ jobs:
       - name: Checkout the bumped commit
         # Not fork code: bump-version runs only for a push to this
         # repository (its if: checks event and head_repository), checks
-        # out main, and this sha is the bump commit it pushed to main.
+        # out the commit CI passed on main, and this sha is the bump
+        # commit it pushed on top of it.
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1  NOSONAR sha is this repo's own bump commit on main, fork runs are gated out in bump-version
         with:
           ref: ${{ needs.bump-version.outputs.sha }}
@@ -256,7 +271,8 @@ jobs:
       - name: Checkout the bumped commit
         # Not fork code: bump-version runs only for a push to this
         # repository (its if: checks event and head_repository), checks
-        # out main, and this sha is the bump commit it pushed to main.
+        # out the commit CI passed on main, and this sha is the bump
+        # commit it pushed on top of it.
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1  NOSONAR sha is this repo's own bump commit on main, fork runs are gated out in bump-version
         with:
           ref: ${{ needs.bump-version.outputs.sha }}
