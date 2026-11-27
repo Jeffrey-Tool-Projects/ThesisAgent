@@ -58,6 +58,7 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 
 | ID | Date | Title | Tags | Batch |
 |---|---|---|---|---|
+| U-20261127-07 | 2026-11-27 | Run a terminal program directly from the Enrich page | #done #gui #intelligence | [2026-11](2026-11.md) |
 | U-20261127-06 | 2026-11-27 | Each PDF stays with its paper, summaries read the PDF the run downloaded, the size cap holds while reading | #done #review #pdf #bugfix | [2026-11](2026-11.md) |
 | U-20261127-05 | 2026-11-27 | Undated papers kept by every source, one search at a time, one rate per service | #done #review #sources #gui #bugfix | [2026-11](2026-11.md) |
 | U-20261127-04 | 2026-11-27 | Papers with different DOIs stay apart, ids are never reused, imports with tags are one change | #done #review #library #bugfix | [2026-11](2026-11.md) |

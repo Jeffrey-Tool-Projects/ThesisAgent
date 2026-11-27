@@ -87,11 +87,13 @@ names who runs it:
 | `claude-cli` | none, signed in to Claude Code | `claude -p --output-format text --tools "" --no-session-persistence --permission-prompts none` |
 | `gemini-cli` | none, signed in to the Gemini CLI | `gemini` |
 | `codex-cli` | none, signed in to Codex | `codex exec --skip-git-repo-check --sandbox read-only --ephemeral --color never -` |
+| `agy-cli` | sign in through the installed program | Starts `agy` with streaming JSON input and output, sandboxing and strict tool permissions. |
 | `ollama-cli` | none, Ollama on this computer | `ollama run` (the model is required) |
 | `cli` | whatever the program needs | `THESISAGENTS_LLM_COMMAND` |
 
-- `THESISAGENTS_LLM_MODEL` is the model. Anthropic has a default, the others
-  need one: model names change too often to build in. The GUI's **Settings →
+- `THESISAGENTS_LLM_MODEL` selects a model. Terminal programs use their
+  own default when available. For `ollama-cli`, supply an installed model name.
+  The GUI's **Settings →
   AI model → List models** asks the service.
 - `THESISAGENTS_LLM_BASE_URL` replaces the address, for a gateway or a
   server elsewhere. Plain HTTP is accepted only for this computer and
@@ -121,7 +123,8 @@ names who runs it:
   often run with a small context window and silently drop what does not
   fit. Raise both together (in Ollama, `num_ctx` of the model).
 - The providers other than Anthropic were checked against a local test
-  server that speaks the same protocol, not against the real services.
+  server or command-line fixtures. The terminal presets for `claude-cli`
+  and `codex-cli` were also checked with a local PDF and signed-in accounts.
 
 ## QSettings on-disk store
 

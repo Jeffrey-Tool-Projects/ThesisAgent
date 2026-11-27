@@ -134,6 +134,11 @@ set exceeds `--paywall-threshold`, the CLI asks before building per-paper decks 
 
 **Enrichment**
 
+The Enrich page and `--llm-provider` use the same terminal provider
+registry. The runner passes the paper text to the selected program on
+standard input and returns its answer to the summariser. The GUI attaches
+the resulting `PaperSummary` to the paper and passes it to Deck.
+
 ```
 ANTHROPIC_API_KEY set → intelligence.pdf extracts text (the run's saved PDF, else a fetch through
                          core.pdf_download routing) → intelligence.summarise → PaperSummary

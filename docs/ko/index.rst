@@ -176,6 +176,8 @@ Python **3.12+** 필요.
    thesisagents --paper "https://arxiv.org/abs/1706.03762" \
                   --enrich --lang ko --out ./exports/
 
+   thesisagents --pdf paper.pdf --enrich --llm-provider agy-cli --lang ko --out ./exports/
+
 CLI 플래그 전체 표: :doc:`/cli`.
 
 ----

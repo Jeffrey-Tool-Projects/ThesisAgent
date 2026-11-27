@@ -340,8 +340,8 @@ def test_a_misspelt_provider_does_not_stop_the_window(qtbot, monkeypatch):
 def _summarised(qtbot, page, monkeypatch, paper, summary):
     read = []
 
-    def summarise(_paper_, extracted, **_choice):
-        read.append(extracted.text)
+    def summarise(_settings, _paper_, text, _language, _chars):
+        read.append(text)
         return summary
 
     async def never(*_args, **_kwargs):
@@ -350,7 +350,7 @@ def _summarised(qtbot, page, monkeypatch, paper, summary):
     monkeypatch.setenv("ANTHROPIC_API_KEY", "k")
     monkeypatch.delenv(providers.PROVIDER_ENV, raising=False)
     monkeypatch.setattr("thesisagents.intelligence.pdf.fetch_and_extract", never)
-    monkeypatch.setattr("thesisagents.intelligence.summarise.summarise_paper", summarise)
+    monkeypatch.setattr("thesisagents.intelligence.summarise.summarise_with", summarise)
     page.set_collection(_collection(paper))
     _idle(qtbot, page, page._on_enrich_clicked)  # noqa: SLF001
     return read

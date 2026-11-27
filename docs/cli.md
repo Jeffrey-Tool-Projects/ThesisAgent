@@ -59,7 +59,7 @@ thesisagents (--query KEYWORDS | --paper IDENTIFIER | --pdf PATH |
 | `--llm-provider NAME` | `anthropic` | Who runs the model that writes the summaries, see `docs/configuration.md` "Language models". Also reads `THESISAGENTS_LLM_PROVIDER`. |
 | `--llm-model` | `claude-opus-5-5` with Anthropic, none otherwise | The model. Also reads `THESISAGENTS_LLM_MODEL`. |
 | `--llm-base-url URL` | the provider's own | Address of an OpenAI-compatible server, up to `/v1`. Also reads `THESISAGENTS_LLM_BASE_URL`. |
-| `--llm-command COMMAND` | the provider's own | Command line of a command-line provider (`claude-cli`, `gemini-cli`, `codex-cli`, `ollama-cli`, `cli`). The paper goes in on standard input. Also reads `THESISAGENTS_LLM_COMMAND`. |
+| `--llm-command COMMAND` | the provider's own | Override a terminal provider's command, or supply one for `cli`. The paper goes in on standard input. Also reads `THESISAGENTS_LLM_COMMAND`. |
 | `--top-tier-only` | off | Restrict results to the curated top-tier CS venue whitelist (S&P / CCS / NDSS / USENIX Security / NeurIPS / ICML / ICSE / SIGMOD / SIGCOMM / CHI / etc.) + arXiv pass-through. **Off by default** so IEEE / ACM workshop papers (which dominate "LLM × security" / "LLM × X" topics) survive. |
 | `--no-oa-resolve` | off | Skip the open-access PDF resolver step that runs after dedup. By default the pipeline looks up every paper without `pdf_url` in Unpaywall (needs `THESISAGENTS_CONTACT_EMAIL`) and falls back to an arXiv title search — typical lift of 40-70% for IEEE / ACM / Springer / Elsevier paywalled papers. Use this flag if you want raw source output without OA enrichment, or to skip the extra HTTP round-trips on a tight latency budget. |
 | `--paywall-threshold` | `0.30` | Fraction of paywalled results above which the search-mode pipeline asks the user before generating per-paper PPTs. |
@@ -116,6 +116,9 @@ thesisagents --paper "https://ieeexplore.ieee.org/document/10965643" \
 # One PDF — title / authors / year / DOI / arXiv ID / real abstract are
 # extracted heuristically from the PDF front matter.
 thesisagents --pdf ./papers/attention.pdf --out ./exports/
+
+# Use a signed-in terminal program to read the PDF and write the summary.
+thesisagents --pdf ./papers/attention.pdf --enrich --llm-provider agy-cli --out ./exports/
 
 # Override any extracted field with a flag (only applies when exactly
 # one PDF is passed).

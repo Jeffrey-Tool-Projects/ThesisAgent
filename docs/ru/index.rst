@@ -200,6 +200,8 @@ rich-tier, zh-tw). Пакет из нескольких статей повто�
    thesisagents --paper "https://arxiv.org/abs/1706.03762" \
                   --enrich --lang ru --out ./exports/
 
+   thesisagents --pdf paper.pdf --enrich --llm-provider agy-cli --lang ru --out ./exports/
+
 Полная таблица флагов CLI: :doc:`/cli`.
 
 ----

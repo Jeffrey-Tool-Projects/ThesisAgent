@@ -318,6 +318,8 @@ Localised deck + LLM enrichment
    thesisagents --paper "https://arxiv.org/abs/1706.03762" \
                 --enrich --lang zh-tw --out ./exports/
 
+   thesisagents --pdf paper.pdf --enrich --llm-provider agy-cli --lang en --out ./exports/
+
 Full flag table: :doc:`/cli`.
 
 ----

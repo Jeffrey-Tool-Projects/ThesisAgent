@@ -1427,20 +1427,36 @@ _LABELS: Final[dict[str, dict[str, str]]] = {
         "id": "Bahasa ringkasan",
     },
     "enrich.model_label": {
-        "en": "Anthropic model (override)",
-        "zh-tw": "Anthropic 模型(覆寫)",
-        "zh-cn": "Anthropic 模型(覆盖)",
-        "ja": "Anthropic モデル(上書き)",
-        "es": "Modelo Anthropic (anulación)",
-        "fr": "Modèle Anthropic (override)",
-        "de": "Anthropic-Modell (Override)",
-        "ko": "Anthropic 모델 (재정의)",
-        "pt": "Modelo Anthropic (substituição)",
-        "ru": "Модель Anthropic (переопределение)",
-        "it": "Modello Anthropic (override)",
-        "vi": "Mô hình Anthropic (ghi đè)",
-        "hi": "Anthropic मॉडल (ओवरराइड)",
-        "id": "Model Anthropic (override)",
+        "en": "Model",
+        "zh-tw": "模型",
+        "zh-cn": "模型",
+        "ja": "モデル",
+        "es": "Modelo",
+        "fr": "Modèle",
+        "de": "Modell",
+        "ko": "모델",
+        "pt": "Modelo",
+        "ru": "Модель",
+        "it": "Modello",
+        "vi": "Mô hình",
+        "hi": "मॉडल",
+        "id": "Model",
+    },
+    "enrich.use_settings": {
+        "en": "Use provider from Settings",
+        "zh-tw": "使用「設定」中的提供者",
+        "zh-cn": "使用“设置”中的提供方",
+        "ja": "設定で選んだプロバイダー",
+        "es": "Usar el proveedor de Configuración",
+        "fr": "Utiliser le fournisseur des paramètres",
+        "de": "Anbieter aus den Einstellungen verwenden",
+        "ko": "설정에서 선택한 제공자 사용",
+        "pt": "Usar o provedor das configurações",
+        "ru": "Использовать провайдера из настроек",
+        "it": "Usa il fornitore delle impostazioni",
+        "vi": "Dùng nhà cung cấp trong phần cài đặt",
+        "hi": "सेटिंग्स का प्रदाता इस्तेमाल करें",
+        "id": "Gunakan penyedia dari pengaturan",
     },
     "enrich.enrich_button": {
         "en": "Enrich",
@@ -2339,62 +2355,46 @@ _LABELS: Final[dict[str, dict[str, str]]] = {
         ),
     },
     "page.enrich_subtitle": {
-        "en": (
-            "Read each paper's PDF and write a thesis-structured summary, with an Anthropic API "
-            "key from Settings or by handing the papers to an LLM agent."
-        ),
-        "zh-tw": (
-            "讀取每篇論文的 PDF，產生依論文章節編排的摘要。可使用「設定」中的 Anthropic API 金鑰，"
-            "或把論文交給 LLM 代理處理。"
-        ),
-        "zh-cn": (
-            "读取每篇论文的 PDF，生成按论文章节编排的摘要。可使用“设置”中的 Anthropic API 密钥，"
-            "或把论文交给 LLM 代理处理。"
-        ),
-        "ja": (
-            "各論文の PDF を読み、論文の章立てに沿った要約を作成します。設定の Anthropic API "
-            "キーを使うか、論文を LLM エージェントに渡します。"
-        ),
+        "en": "Choose a command-line program or your configured provider to summarise each PDF.",
+        "zh-tw": "選擇本機命令列工具或已設定的提供者，逐篇讀取 PDF 並產生摘要。",
+        "zh-cn": "选择本地命令行工具或已配置的提供方，逐篇读取 PDF 并生成摘要。",
+        "ja": "コマンドラインツールか設定済みのプロバイダーを選び、各 PDF を要約します。",
         "es": (
-            "Lee el PDF de cada artículo y redacta un resumen con estructura de tesis, con una "
-            "clave de API de Anthropic en Ajustes o pasando los artículos a un agente LLM."
+            "Elija un programa de línea de comandos o el proveedor configurado para "
+            "resumir cada PDF."
         ),
         "fr": (
-            "Lit le PDF de chaque article et rédige un résumé structuré comme une thèse, avec une "
-            "clé API Anthropic dans les Paramètres ou en confiant les articles à un agent LLM."
+            "Choisissez un outil en ligne de commande ou le fournisseur configuré pour "
+            "résumer chaque PDF."
         ),
         "de": (
-            "Liest das PDF jedes Artikels und schreibt eine Zusammenfassung im Aufbau einer "
-            "Abschlussarbeit, mit einem Anthropic-API-Schlüssel aus den Einstellungen oder über "
-            "einen LLM-Agenten."
+            "Befehlszeilenprogramm oder eingestellten Anbieter wählen, um jede PDF "
+            "zusammenzufassen."
         ),
-        "ko": (
-            "각 논문의 PDF를 읽고 학위논문 구조에 맞춘 요약을 작성합니다. 설정의 Anthropic API "
-            "키를 쓰거나 논문을 LLM 에이전트에게 넘깁니다."
-        ),
+        "ko": "명령줄 도구 또는 설정한 제공자를 선택해 각 PDF를 요약합니다.",
         "pt": (
-            "Lê o PDF de cada artigo e escreve um resumo com estrutura de tese, com uma chave de "
-            "API da Anthropic em Configurações ou passando os artigos a um agente LLM."
+            "Escolha um programa de linha de comando ou o provedor configurado para "
+            "resumir cada PDF."
         ),
         "ru": (
-            "Читает PDF каждой статьи и составляет резюме по структуре диссертации, с ключом API "
-            "Anthropic из настроек или через LLM-агента."
+            "Выберите программу командной строки или настроенного провайдера для "
+            "подготовки резюме каждого PDF."
         ),
         "it": (
-            "Legge il PDF di ogni articolo e scrive un riassunto con la struttura di una tesi, con "
-            "una chiave API Anthropic nelle Impostazioni o affidando gli articoli a un agente LLM."
+            "Scegli un programma da riga di comando o il fornitore configurato per "
+            "riassumere ogni PDF."
         ),
         "vi": (
-            "Đọc PDF của từng bài báo và viết bản tóm tắt theo cấu trúc luận văn, bằng khóa API "
-            "Anthropic trong Cài đặt hoặc giao các bài báo cho một tác tử LLM."
+            "Chọn chương trình dòng lệnh hoặc nhà cung cấp đã cấu hình để tóm tắt từng tệp "
+            "PDF."
         ),
         "hi": (
-            "हर शोध-पत्र की PDF पढ़कर थीसिस-संरचना वाला सारांश लिखता है, सेटिंग्स की Anthropic API "
-            "कुंजी से या शोध-पत्र किसी LLM एजेंट को सौंपकर।"
+            "हर PDF का सारांश बनाने के लिए कमांड-लाइन प्रोग्राम या सेटिंग्स में चुना "
+            "प्रदाता चुनें।"
         ),
         "id": (
-            "Membaca PDF setiap makalah dan menulis ringkasan berstruktur tesis, dengan kunci API "
-            "Anthropic di Pengaturan atau dengan menyerahkan makalah ke agen LLM."
+            "Pilih program baris perintah atau penyedia yang sudah diatur untuk meringkas "
+            "setiap PDF."
         ),
     },
     "page.deck_subtitle": {
@@ -3756,20 +3756,20 @@ _LABELS: Final[dict[str, dict[str, str]]] = {
         "id": "Tinjauan slide",
     },
     "enrich.card_agent": {
-        "en": "No API key? Hand off to an agent",
-        "zh-tw": "沒有 API 金鑰？交給 AI 代理",
-        "zh-cn": "没有 API 密钥？交给 AI 代理",
-        "ja": "API キーがない場合: エージェントに任せる",
-        "es": "¿Sin clave de API? Páselo a un agente",
-        "fr": "Pas de clé API ? Confiez-le à un agent",
-        "de": "Kein API-Schlüssel? An einen Agenten übergeben",
-        "ko": "API 키가 없나요? 에이전트에게 맡기기",
-        "pt": "Sem chave de API? Passe para um agente",
-        "ru": "Нет ключа API? Передайте агенту",
-        "it": "Nessuna chiave API? Affidalo a un agente",
-        "vi": "Không có khóa API? Giao cho tác tử",
-        "hi": "API कुंजी नहीं है? किसी एजेंट को सौंपें",
-        "id": "Tanpa kunci API? Serahkan ke agen",
+        "en": "Manual file exchange (optional)",
+        "zh-tw": "手動交換檔案（選用）",
+        "zh-cn": "手动交换文件（可选）",
+        "ja": "ファイルで手動受け渡し（任意）",
+        "es": "Intercambio manual de archivos (opcional)",
+        "fr": "Échange manuel de fichiers (facultatif)",
+        "de": "Manueller Dateiaustausch (optional)",
+        "ko": "수동 파일 교환 (선택 사항)",
+        "pt": "Troca manual de arquivos (opcional)",
+        "ru": "Обмен файлами вручную (необязательно)",
+        "it": "Scambio manuale di file (facoltativo)",
+        "vi": "Trao đổi tệp thủ công (tùy chọn)",
+        "hi": "मैन्युअल फ़ाइल आदान-प्रदान (वैकल्पिक)",
+        "id": "Pertukaran berkas manual (opsional)",
     },
     "enrich.agent_hint": {
         "en": (

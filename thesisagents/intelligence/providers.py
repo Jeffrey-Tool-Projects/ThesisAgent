@@ -158,6 +158,13 @@ PROVIDERS: Final[dict[str, Provider]] = {
             model_flag="--model",
         ),
         Provider(
+            "agy-cli", "Agy (Antigravity CLI)",
+            command="agy --input-format stream-json --output-format stream-json "
+            "--sandbox --disable-slash-commands "
+            """--settings '{"toolPermission":"strict"}'""",
+            model_flag="--model",
+        ),
+        Provider(
             "ollama-cli", "Ollama", command="ollama run", local=True,
             needs_model=True,
         ),
@@ -310,7 +317,8 @@ def complete(settings: LlmSettings, system: str, user: str) -> str:
         return _complete_anthropic(settings, system, user)
     if settings.provider.is_cli:
         # One text: not every program takes a system prompt, and none the same way.
-        return cli_models.run_command(
+        run = cli_models.run_agy if settings.provider.name == "agy-cli" else cli_models.run_command
+        return run(
             settings.arguments(), f"{system}\n\n{user}", label=settings.provider.label,
             hidden=() if settings.provider.name == CLI else _app_keys(),
         )

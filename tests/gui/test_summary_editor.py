@@ -106,12 +106,16 @@ def test_the_enrich_page_edits_a_summary_without_a_model(qtbot):
     assert window.deck_page().collection().papers[1].summary.takeaways == ("Remember this",)
 
 
-def test_nothing_is_edited_while_a_run_is_going(qtbot):
+def test_nothing_is_edited_while_a_run_is_going(qtbot, monkeypatch):
+    monkeypatch.setenv("THESISAGENTS_LLM_PROVIDER", "anthropic")
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "test-key")
     page = EnrichPage(ui_language="en")
     qtbot.addWidget(page)
     page.set_collection(_collection(PAPER))
     page._table.selectRow(0)  # noqa: SLF001
-    page._running = True  # noqa: SLF001
+    monkeypatch.setattr(page, "_enrich_next", lambda: None)
+    page._enrich_button.click()  # noqa: SLF001
+    assert page.is_running()
     page._on_edit_summary()  # noqa: SLF001
     assert not hasattr(page, "_summary_editor")
 

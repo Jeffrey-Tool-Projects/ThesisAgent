@@ -255,6 +255,8 @@ PNAS / CACM / LNCS)，可傳入 ``--top-tier-only`` 啟用(預設關閉)。
    thesisagents --paper "https://arxiv.org/abs/1706.03762" \
                 --enrich --lang zh-tw --out ./exports/
 
+   thesisagents --pdf paper.pdf --enrich --llm-provider agy-cli --lang zh-tw --out ./exports/
+
 完整參數表: :doc:`/cli`。
 
 ----

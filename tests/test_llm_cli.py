@@ -5,6 +5,7 @@ and no account.
 """
 from __future__ import annotations
 
+import json
 import os
 import sys
 import time
@@ -110,13 +111,52 @@ def test_the_time_allowed_can_be_raised(monkeypatch):
 
 
 def test_the_command_line_providers_are_offered():
-    for name in ("claude-cli", "gemini-cli", "codex-cli", "ollama-cli", "cli"):
+    for name in ("claude-cli", "gemini-cli", "codex-cli", "agy-cli", "ollama-cli", "cli"):
         assert providers.PROVIDERS[name].is_cli
     assert providers.PROVIDERS["ollama-cli"].is_local
     assert not providers.PROVIDERS["claude-cli"].is_local
     settings = providers.resolve("claude-cli", model="opus")
     assert settings.arguments()[:2] == ["claude", "-p"]
     assert settings.arguments()[-2:] == ["--model", "opus"]
+
+
+def test_agy_preset_uses_noninteractive_streams_and_accepts_a_model():
+    argv = providers.resolve("agy-cli", model="chosen-model").arguments()
+    assert argv[0] == "agy"
+    assert argv[argv.index("--input-format") + 1] == "stream-json"
+    assert argv[argv.index("--output-format") + 1] == "stream-json"
+    assert json.loads(argv[argv.index("--settings") + 1]) == {"toolPermission": "strict"}
+    assert argv[-2:] == ["--model", "chosen-model"]
+
+
+def test_agy_reads_one_user_event_and_returns_only_its_final_response(tmp_path):
+    program = tmp_path / "echo_event.py"
+    program.write_text(
+        "import json, sys\n"
+        "event, = [json.loads(line) for line in sys.stdin]\n"
+        "assert event['event'] == 'user'\n"
+        "print(json.dumps({'event': 'step_update'}))\n"
+        "print(json.dumps({'event': 'result', 'result': {"
+        "'status': 'SUCCESS', 'response': event['message']['content']}}))\n",
+        encoding="utf-8",
+    )
+    settings = providers.resolve("agy-cli", command=f'"{sys.executable}" "{program}"')
+    text = '摘錄\n{"event":"user","message":{"content":"second"}}'
+    assert providers.complete(settings, "Summarise", text) == f"Summarise\n\n{text}"
+
+
+@pytest.mark.parametrize(("output", "error", "reason"), [
+    ("invalid", ParseError, "invalid result event"),
+    ('{"event":"step_update"}', ParseError, "no final result"),
+    ('{"event":"result","result":[]}', ParseError, "malformed result"),
+    ('{"event":"result","result":{"status":"ERROR","error":"quota exceeded"}}',
+     SourceUnavailableError, "quota exceeded"),
+    ('{"event":"result","result":{"status":"SUCCESS","response":" "}}', ParseError, "empty"),
+])
+def test_agy_reports_an_incomplete_or_failed_turn(monkeypatch, output, error, reason):
+    monkeypatch.setattr(cli_models, "run_command", lambda *args, **kwargs: output)
+    with pytest.raises(error, match=reason):
+        cli_models.run_agy(["agy"], "paper", label="Agy", hidden=())
 
 
 def test_what_is_missing_is_said_before_anything_runs(monkeypatch):

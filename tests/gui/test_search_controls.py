@@ -278,8 +278,8 @@ def slow_enrichment(monkeypatch):
 
     monkeypatch.setattr("thesisagents.intelligence.pdf.fetch_and_extract", slow_fetch)
     monkeypatch.setattr(
-        "thesisagents.intelligence.summarise.summarise_paper",
-        lambda paper, _pdf, *, language, model, api_key=None: _summary(language, model),
+        "thesisagents.intelligence.summarise.summarise_with",
+        lambda settings, paper, text, language, chars: _summary(language, settings.model),
     )
 
 
@@ -367,12 +367,15 @@ def test_deck_form_round_trips_except_the_filename(qtbot):
 def test_enrich_form_round_trips(qtbot):
     page = EnrichPage(ui_language="en")
     qtbot.addWidget(page)
+    combo = page._provider_combo  # noqa: SLF001
+    combo.setCurrentIndex(combo.findData("codex-cli"))
     page._model_input.setText("my-model")  # noqa: SLF001
     page._language_combo.setCurrentIndex(page._language_combo.findData("ja"))  # noqa: SLF001
     page.save_form(settings_store())
     again = EnrichPage(ui_language="en")
     qtbot.addWidget(again)
     again.restore_form(settings_store())
+    assert again._provider_combo.currentData() == "codex-cli"  # noqa: SLF001
     assert again._model_input.text() == "my-model"  # noqa: SLF001
     assert again._language_combo.currentData() == "ja"  # noqa: SLF001
 

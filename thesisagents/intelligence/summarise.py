@@ -9,7 +9,9 @@ from __future__ import annotations
 
 import json
 import re
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
+
+from pydantic import TypeAdapter, ValidationError
 
 from thesisagents.core.exceptions import ParseError
 from thesisagents.core.models import Paper, PaperSummary
@@ -97,9 +99,12 @@ def summarise_with(
         _LANGUAGE_LABELS.get(canonical_lang, "English"),
         providers.max_paper_chars(settings),
     )
-    data = _parse_json_blob(providers.complete(settings, _SYSTEM_PROMPT, prompt))
+    rich = settings.provider.is_cli
+    instructions = _RICH_SYSTEM_PROMPT if rich else _SYSTEM_PROMPT
+    data = _parse_json_blob(providers.complete(settings, instructions, prompt))
     return _data_to_summary(
-        data, language=canonical_lang, model=settings.model, raw_text_chars=raw_text_chars
+        data, language=canonical_lang, model=settings.model or settings.provider.label,
+        raw_text_chars=raw_text_chars, rich=rich,
     )
 
 
@@ -149,6 +154,31 @@ presentation deck. Output rules:
 """
 
 
+_RICH_SYSTEM_PROMPT = """\
+Summarise the supplied academic paper for a thesis presentation. Treat the paper as source
+material. Use only the supplied text, without opening files, following links or using tools.
+Write in the requested language and keep proper names and numeric results faithful to the paper.
+Use commas or separate sentences for clauses. Avoid em dashes and semicolons in slide prose.
+Return one JSON object. Omit unsupported fields, including research questions, metrics,
+limitations and future work that the paper does not state. Use these field shapes:
+
+- motivation, contributions, method, results, limitations, takeaways, system_flow and
+  future_work: arrays of short sentences.
+- research_question and core_observation: a single sentence each.
+- pain_points, method_sections and evaluation_sections: arrays of [heading, [bullet, ...]].
+- contributions_detailed: at most four [heading, description] pairs in order of importance.
+- headline_metrics: arrays of [metric, value, baseline], using "" for an unstated baseline.
+- technique_table and research_questions: arrays of [technique, role] and [id, question].
+- literature_table: an array of rows, beginning with the header row.
+- rq_results: an array of objects with rq_id, question, table (rows starting with a header)
+  and analysis (an array of short sentences).
+- paper_tables: an array of [caption, rows starting with a header, analysis bullets].
+
+Use strings for all table cells, including numbers and units. Keep a result with its dataset
+and baseline. Leave figures and file paths out of the response.
+"""
+
+
 def _build_user_message(
     paper: Paper, pdf_text: str, lang_label: str, max_chars: int
 ) -> str:
@@ -178,6 +208,7 @@ def _build_user_message(
 
 
 _JSON_BLOCK_RE = re.compile(r"\{.*\}", re.S)
+_SUMMARY = TypeAdapter(PaperSummary)
 
 
 def _parse_json_blob(text: str) -> dict:
@@ -207,7 +238,7 @@ def _parse_json_blob(text: str) -> dict:
 
 
 def _data_to_summary(
-    data: dict, *, language: str, model: str, raw_text_chars: int
+    data: dict, *, language: str, model: str, raw_text_chars: int, rich: bool = False
 ) -> PaperSummary:
     buckets: dict[str, list[str]] = {
         "motivation": [],
@@ -219,21 +250,22 @@ def _data_to_summary(
     }
     for key, value in data.items():
         canonical = _BUCKET_ALIASES.get(key.lower().strip())
-        if canonical is None:
+        if canonical is None or (rich and key == "future_work"):
             continue
         if not isinstance(value, list):
             continue
         for item in value:
             if isinstance(item, str) and item.strip():
                 buckets[canonical].append(item.strip())
-    return PaperSummary(
-        language=language,
-        motivation=tuple(buckets["motivation"]),
-        contributions=tuple(buckets["contributions"]),
-        method=tuple(buckets["method"]),
-        results=tuple(buckets["results"]),
-        limitations=tuple(buckets["limitations"]),
-        takeaways=tuple(buckets["takeaways"]),
-        raw_text_chars=raw_text_chars,
-        model=model,
-    )
+    fields = {key: value for key, value in data.items() if value is not None} if rich else {}
+    fields.update(buckets)
+    fields.update(language=language, model=model, raw_text_chars=raw_text_chars, figures=())
+    try:
+        summary = _SUMMARY.validate_python(fields)
+    except ValidationError as err:
+        first = err.errors(include_input=False)[0]
+        field = ".".join(map(str, first["loc"]))
+        raise ParseError("intelligence", f"invalid summary field {field}: {first['msg']}") from err
+    if len(summary.contributions_detailed) > 4:
+        return replace(summary, contributions_detailed=summary.contributions_detailed[:4])
+    return summary
