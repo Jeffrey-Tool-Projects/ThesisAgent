@@ -75,6 +75,20 @@ def test_thirty_equal_cite_keys_are_all_usable():
     assert keys[:3] == ["bee2020paper", "bee2020paperb", "bee2020paperc"]
 
 
+def test_a_suffixed_key_never_repeats_another_papers_base_key():
+    """Gene A and Gene C share doe2025gene, so Gene C gets doe2025geneb, the base
+    key of GeneB study. Counting base keys alone handed doe2025geneb out twice."""
+    papers = [
+        _paper(str(i), title=title, authors=("Jane Doe",), year=2025)
+        for i, title in enumerate(("Gene A", "Gene C", "GeneB study"))
+    ]
+    assert [p.bibtex_key() for p in papers] == ["doe2025gene", "doe2025gene", "doe2025geneb"]
+    keys = unique_keys(papers)
+    assert len(set(keys)) == 3
+    assert keys == ["doe2025gene", "doe2025geneb", "doe2025genebb"]
+    assert unique_keys(reversed(papers)) == ["doe2025geneb", "doe2025gene", "doe2025genec"]
+
+
 def test_csl_names_and_ids(tmp_path):
     path = _export(
         tmp_path, "csl",
@@ -101,6 +115,59 @@ def test_references_in_other_scripts_are_in_order():
     ]
     order = [papers[i].source_id for i in reference_order(papers)]
     assert order == ["b", "c", "a"]
+
+
+# --- --no-abstract ----------------------------------------------------------------------
+
+_ABSTRACT_MARKER = "Zqvmarkerword"
+_TEXT_FORMATS = ("pptx", "xlsx", "bib", "md", "json", "ris", "csv", "csl", "docx", "tex")
+
+
+def _written_text(path) -> str:
+    """Every byte of an export as text: the members of a zip (xlsx, docx, pptx),
+    the file itself otherwise, plus the ``.bib`` a LaTeX draft writes beside it."""
+    if zipfile.is_zipfile(path):
+        with zipfile.ZipFile(path) as archive:
+            return "".join(
+                archive.read(name).decode("utf-8", "replace") for name in archive.namelist()
+            )
+    text = path.read_text(encoding="utf-8")
+    companion = path.with_suffix(".bib")
+    if path.suffix == ".tex" and companion.exists():
+        text += companion.read_text(encoding="utf-8")
+    return text
+
+
+def _marked_paper() -> Paper:
+    return _paper(abstract=f"First sentence {_ABSTRACT_MARKER}. Second one. Third one.")
+
+
+@pytest.mark.parametrize("fmt", _TEXT_FORMATS)
+def test_every_format_writes_the_abstract_by_default(tmp_path, fmt):
+    """The other half of the test below: the marker is there to be left out."""
+    assert _ABSTRACT_MARKER in _written_text(_export(tmp_path, fmt, _marked_paper()))
+
+
+@pytest.mark.parametrize("fmt", _TEXT_FORMATS)
+def test_no_abstract_leaves_the_abstract_out_of_every_format(tmp_path, fmt):
+    """BibTeX, CSL JSON and JSON used to write the abstract under --no-abstract."""
+    path = _export(tmp_path, fmt, _marked_paper(), include_abstract=False)
+    assert _ABSTRACT_MARKER not in _written_text(path)
+
+
+def test_no_abstract_holds_for_every_format_of_one_export(tmp_path):
+    written = export_collection(
+        PaperCollection(Query("q", ("arxiv",)), (_marked_paper(),)),
+        ExportOptions(
+            formats=_TEXT_FORMATS, out_dir=str(tmp_path), filename_stem="all",
+            verify_identifiers=False, include_abstract=False,
+        ),
+    )
+    assert set(written) == set(_TEXT_FORMATS)
+    leaking = [fmt for fmt, path in written.items() if _ABSTRACT_MARKER in _written_text(path)]
+    assert leaking == []
+    saved = json.loads(written["json"].read_text(encoding="utf-8"))
+    assert saved["papers"][0]["abstract"] == ""
 
 
 # --- the literature review draft --------------------------------------------------------

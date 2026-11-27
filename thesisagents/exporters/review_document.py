@@ -74,8 +74,15 @@ def labels_of(collection: PaperCollection) -> list[CitationLabel]:
     return citation_labels(collection.papers)
 
 
-def review_blocks(collection: PaperCollection, language: str) -> list[Block]:
-    """The draft for ``collection`` with its headings in ``language``."""
+def review_blocks(
+    collection: PaperCollection, language: str, *, include_abstract: bool = True
+) -> list[Block]:
+    """The draft for ``collection`` with its headings in ``language``.
+
+    ``include_abstract=False`` (``--no-abstract``) keeps a paper's abstract out
+    of the draft, so a paper without a summary gets its heading only, not its
+    abstract as the paragraph under it.
+    """
     lang = normalise_language(language)
     papers = collection.papers
     blocks: list[Block] = [
@@ -85,7 +92,7 @@ def review_blocks(collection: PaperCollection, language: str) -> list[Block]:
     ]
     for number, (index, paper) in enumerate(enumerate(papers), 1):
         blocks.append(Heading(3, f"2.3.{number} {paper.title}"))
-        blocks += _paper_paragraphs(index, paper, lang)
+        blocks += _paper_paragraphs(index, paper, lang, include_abstract=include_abstract)
     if papers:
         blocks.append(_comparison(papers, lang))
     missing = _open_points(papers)
@@ -106,10 +113,12 @@ def _intro(papers: Sequence[Paper], lang: str) -> str:
     return t(lang, "review_intro_range", count=len(papers), first=years[0], last=years[-1])
 
 
-def _paper_paragraphs(index: int, paper: Paper, lang: str) -> list[Block]:
+def _paper_paragraphs(
+    index: int, paper: Paper, lang: str, *, include_abstract: bool = True
+) -> list[Block]:
     """The paper in its summary's words, else its abstract. Each paragraph is cited."""
     groups = _statements(paper.summary) if paper.summary else []
-    if not groups and paper.abstract.strip():
+    if not groups and include_abstract and paper.abstract.strip():
         groups = [(paper.abstract.strip(),)]
     space = "" if lang in _NO_SPACE else " "
     return [

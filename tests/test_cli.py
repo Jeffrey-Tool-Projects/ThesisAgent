@@ -446,60 +446,104 @@ def test_cli_per_paper_pptx_one_per_accessible_paper(
     assert {Path(f).stem for f in pptx_files} == keys
 
 
-def test_cli_aggregate_xlsx_bib_only_over_accessible(tmp_path, monkeypatch):
-    """xlsx + bib aggregate over the accessible subset, not the full result set."""
+def _download_only(monkeypatch, downloadable: set[str]):
+    """Patch the downloader so only the papers in ``downloadable`` get a PDF."""
     from thesisagents.core.pdf_download import PdfDownloadResult
 
-    accessible = _build_paper("good", pdf_url="https://example.com/good.pdf")
-    paywalled = _build_paper("bad", pdf_url=None)
-    _patch_search(monkeypatch, [accessible, paywalled])
-
     async def selective_download(collection, out_dir):
-        # Only the accessible paper "downloads".
         pdf_dir = Path(out_dir) / "pdfs"
         pdf_dir.mkdir(parents=True, exist_ok=True)
         results = []
         for paper in collection.papers:
-            if paper.pdf_url:
+            path = None
+            if paper.source_id in downloadable:
                 path = pdf_dir / f"{paper.bibtex_key()}.pdf"
                 path.write_bytes(b"%PDF-1.4 stub")
-                results.append(
-                    PdfDownloadResult(
-                        paper_key=paper.bibtex_key(),
-                        path=path,
-                        skipped_reason=None,
-                    )
+            results.append(
+                PdfDownloadResult(
+                    paper_key=paper.bibtex_key(),
+                    path=path,
+                    skipped_reason=None if path else "http_403",
                 )
-            else:
-                results.append(
-                    PdfDownloadResult(
-                        paper_key=paper.bibtex_key(),
-                        path=None,
-                        skipped_reason="no_pdf_url",
-                    )
-                )
+            )
         return results
 
     monkeypatch.setattr(cli_module, "download_pdfs", selective_download)
+
+
+def _xlsx_paper_rows(tmp_path: Path) -> int:
+    from openpyxl import load_workbook
+
+    (workbook_path,) = tmp_path.glob("*.xlsx")
+    return load_workbook(str(workbook_path))["Papers"].max_row - 1
+
+
+def test_cli_summary_exports_keep_the_papers_without_a_pdf(tmp_path, monkeypatch):
+    """One of two PDFs downloaded: one deck, but the xlsx and the bib hold both
+    papers, because they are the record of what the search returned."""
+    accessible = _build_paper("good", pdf_url="https://example.com/good.pdf")
+    failed = _build_paper("bad", pdf_url="https://example.com/bad.pdf")
+    _patch_search(monkeypatch, [accessible, failed])
+    _download_only(monkeypatch, {"good"})
     code = cli_module.main(
-        [
-            "--query", "x",
-            "--source", "arxiv",
-            "--out", str(tmp_path),
-            "--yes",
-        ]
+        ["--query", "x", "--source", "arxiv", "--out", str(tmp_path), "--yes"]
     )
     assert code == 0
-    # Exactly one per-paper PPT, named after the accessible paper.
-    pptx_files = [p for p in tmp_path.iterdir() if p.suffix == ".pptx"]
-    assert len(pptx_files) == 1
-    assert pptx_files[0].stem == accessible.bibtex_key()
-    # bib should reference only the accessible paper.
-    bib_files = [p for p in tmp_path.iterdir() if p.suffix == ".bib"]
-    assert len(bib_files) == 1
-    bib_text = bib_files[0].read_text(encoding="utf-8")
+    pptx_files = list(tmp_path.glob("*.pptx"))
+    assert [p.stem for p in pptx_files] == [accessible.bibtex_key()]
+    assert _xlsx_paper_rows(tmp_path) == 2
+    (bib_file,) = tmp_path.glob("*.bib")
+    bib_text = bib_file.read_text(encoding="utf-8")
     assert accessible.bibtex_key() in bib_text
-    assert paywalled.bibtex_key() not in bib_text
+    assert failed.bibtex_key() in bib_text
+
+
+def test_cli_writes_the_summary_exports_when_no_pdf_downloaded(tmp_path, monkeypatch, capsys):
+    """No PDF downloaded: no deck and exit code 1, but the xlsx and the bib are
+    still written with every paper."""
+    papers = [_build_paper(name, pdf_url=f"https://example.com/{name}.pdf") for name in "ab"]
+    _patch_search(monkeypatch, papers)
+    _download_only(monkeypatch, set())
+    code = cli_module.main(
+        ["--query", "x", "--source", "arxiv", "--out", str(tmp_path), "--yes"]
+    )
+    assert code == 1
+    assert "no pdf could be downloaded" in capsys.readouterr().err.lower()
+    assert list(tmp_path.glob("*.pptx")) == []
+    assert _xlsx_paper_rows(tmp_path) == 2
+    (bib_file,) = tmp_path.glob("*.bib")
+    assert bib_file.read_text(encoding="utf-8").count("@misc{") == 2
+
+
+def test_cli_papers_with_colliding_cite_keys_get_a_deck_each(tmp_path, monkeypatch):
+    """Base keys doe2025gene, doe2025gene and doe2025geneb: each paper still
+    gets its own deck under its own .bib key, with its own title on the cover."""
+    from dataclasses import replace
+
+    from pptx import Presentation
+
+    titles = ("Gene A", "Gene C", "GeneB study")
+    papers = [
+        replace(
+            _build_paper(str(i), pdf_url=f"https://example.com/{i}.pdf"),
+            title=title, authors=("Jane Doe",),
+        )
+        for i, title in enumerate(titles)
+    ]
+    _patch_search(monkeypatch, papers)
+    code = cli_module.main(
+        ["--query", "x", "--source", "arxiv", "--out", str(tmp_path), "--yes",
+         "--export", "pptx,bib"]
+    )
+    assert code == 0
+    stems = ["doe2025gene", "doe2025geneb", "doe2025genebb"]
+    assert sorted(p.stem for p in tmp_path.glob("*.pptx")) == stems
+    (bib_file,) = tmp_path.glob("*.bib")
+    bib_text = bib_file.read_text(encoding="utf-8")
+    for stem, title in zip(stems, titles, strict=True):
+        assert f"{{{stem}," in bib_text
+        cover = Presentation(str(tmp_path / f"{stem}.pptx")).slides[0]
+        assert title in " ".join(s.text_frame.text for s in cover.shapes if s.has_text_frame)
 
 
 def test_cli_aborts_when_no_pdf_accessible(tmp_path, monkeypatch, capsys):

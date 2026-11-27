@@ -36,7 +36,16 @@ _SLIDE_LEFT = Inches(0.5)
 _SLIDE_TOP = Inches(0.6)
 _SLIDE_WIDTH = Inches(9.0)
 _TITLE_HEIGHT = Inches(1.2)
+_META_TOP = Inches(1.8)
+_META_HEIGHT = Inches(0.8)
+_BODY_TOP = Inches(2.8)
 _BODY_HEIGHT = Inches(5.4)
+#: Content stays above the footer line, 7.05" on a 7.5" slide. The guard is
+#: kept as the distance from the slide's bottom edge so it holds for a slide of
+#: any height (a 5.625" one has its guard at 5.175").
+_FOOTER_MARGIN = Inches(0.45)
+_STANDARD_SLIDE_HEIGHT = Inches(7.5)
+_MIN_BOX_HEIGHT = Inches(0.3)
 #: Text colours for a shape that has none to keep, on a light and a dark slide.
 _INK = RGBColor(0x1F, 0x29, 0x37)
 _INK_ON_DARK = RGBColor(0xE5, 0xE7, 0xEB)
@@ -182,15 +191,16 @@ def add_slide(
         _take_look(slide, look)
     for name, text, top, height, size, bold in (
         ("title", title, _SLIDE_TOP, _TITLE_HEIGHT, _DEFAULT_TITLE_PT, True),
-        ("meta", meta, Inches(1.8), Inches(0.8), _DEFAULT_BODY_PT, False),
-        ("body", body, Inches(2.8), _BODY_HEIGHT, _DEFAULT_BODY_PT, False),
+        ("meta", meta, _META_TOP, _META_HEIGHT, _DEFAULT_BODY_PT, False),
+        ("body", body, _BODY_TOP, _BODY_HEIGHT, _DEFAULT_BODY_PT, False),
     ):
         if text or name == "title":
             model = _text_shape(look, name) if look is not None else None
             if model is not None:
                 _add_like(slide, model, text)
             else:
-                _add_named_textbox(slide, name, text, top, height, size, bold=bold)
+                fitted = _height_above_footer(presentation, top, height)
+                _add_named_textbox(slide, name, text, top, fitted, size, bold=bold)
     if position is not None:
         target = max(0, min(position, len(presentation.slides) - 1))
         current_index = len(presentation.slides) - 1
@@ -393,6 +403,24 @@ def _renumber(presentation: Presentation) -> None:
     for number, shape in enumerate(numbered, 1):
         separator = _PAGE_NUMBER.match(shape.text_frame.text).group(1)
         _write_text_frame(shape, f"{number}{separator}{len(numbered)}")
+
+
+def _height_above_footer(presentation: Presentation, top: int, height: int) -> int:
+    """``height`` cut so a box starting at ``top`` ends above the footer guard.
+
+    The guard is read from the deck's real slide height, 0.45" above its bottom
+    edge (7.05" on a 7.5" slide). The failure this prevents: a slide added to a
+    deck that has only a cover has no content slide to copy, and its fixed
+    5.4" body box ran from 2.8" to 8.2", past the footer line and past the
+    bottom of a 7.5" slide, so a long body was cut off. A box never gets less
+    than 0.3", which only matters on a slide too short to hold the layout.
+
+    Example: on a 7.5" slide ``_height_above_footer(prs, Inches(2.8),
+    Inches(5.4)) == Inches(4.25)``, so the body ends at 7.05".
+    """
+    slide_height = presentation.slide_height or _STANDARD_SLIDE_HEIGHT
+    room = slide_height - _FOOTER_MARGIN - top
+    return max(min(height, room), _MIN_BOX_HEIGHT)
 
 
 def _add_named_textbox(slide, name: str, text: str, top, height, font_pt: int, bold: bool = False):

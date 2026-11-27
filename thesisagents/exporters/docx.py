@@ -65,7 +65,9 @@ class DocxExporter(Exporter):
         elif document.paragraphs:
             document.add_page_break()
         labels = labels_of(collection)
-        for block in review_blocks(collection, options.language):
+        for block in review_blocks(
+            collection, options.language, include_abstract=options.include_abstract
+        ):
             if isinstance(block, Heading):
                 _add_heading(document, block.text, block.level)
             elif isinstance(block, Paragraph):

@@ -29,18 +29,27 @@ def evaluate_query(
     retains the grade, so putting a grade-2 cornerstone paper before a grade-1
     related paper receives more credit.
 
+    Ranks are kept as given. A paper listed again later in the ranking still
+    takes its position but counts zero there, as a non-relevant result would.
+    The failure this prevents: de-duplicating the whole ranking before taking
+    the top ``cutoff`` let a later paper move up, so ``["a", "a", "b"]`` at
+    cutoff 2 scored as if ``a`` and ``b`` both filled the top two places.
+    Counting the repeat once more instead would let recall pass 1.
+
     Example: ``evaluate_query(["a", "x"], {"a": 2}, cutoff=2)`` returns
-    perfect recall and precision 0.5.
+    perfect recall and precision 0.5, and
+    ``evaluate_query(["a", "a", "b"], {"a": 1, "b": 1}, cutoff=2)`` returns
+    precision 0.5 and recall 0.5.
     """
     if cutoff < 1:
         raise ValueError("cutoff must be at least 1")
-    # A paper listed twice is one hit, or recall could pass 1.
-    ranked = list(dict.fromkeys(retrieved))[:cutoff]
+    ranked = list(retrieved)[:cutoff]
     relevant = {paper_id for paper_id, grade in relevance.items() if grade > 0}
-    hits = sum(paper_id in relevant for paper_id in ranked)
+    grades = _first_listing_grades(ranked, relevance)
+    hits = sum(grade > 0 for grade in grades)
     precision = hits / cutoff
     recall = hits / len(relevant) if relevant else 0.0
-    dcg = _dcg([relevance.get(paper_id, 0) for paper_id in ranked])
+    dcg = _dcg(grades)
     ideal = sorted((grade for grade in relevance.values() if grade > 0), reverse=True)
     idcg = _dcg(ideal[:cutoff])
     return {
@@ -90,6 +99,19 @@ def _coerce_relevance(value: object) -> dict[str, int]:
             raise ValueError("relevance grades cannot be negative")
         return result
     raise ValueError("relevance must be a list of IDs or an ID-to-grade mapping")
+
+
+def _first_listing_grades(ranked: Sequence[str], relevance: Mapping[str, int]) -> list[int]:
+    """The grade at each rank, zero where the paper was already listed higher.
+
+    Example: ``_first_listing_grades(["a", "a", "b"], {"a": 2, "b": 1}) == [2, 0, 1]``.
+    """
+    seen: set[str] = set()
+    grades: list[int] = []
+    for paper_id in ranked:
+        grades.append(0 if paper_id in seen else relevance.get(paper_id, 0))
+        seen.add(paper_id)
+    return grades
 
 
 def _dcg(grades: Sequence[int]) -> float:
