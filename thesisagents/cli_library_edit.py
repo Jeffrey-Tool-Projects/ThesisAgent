@@ -230,10 +230,15 @@ def _merge(library: Library, args: argparse.Namespace) -> int:
 def _import(library: Library, args: argparse.Namespace) -> int:
     result = read_bibliography(args.file)
     if result.papers:
-        report = library.add_papers(result.papers, keywords=Path(args.file).name, kind="import")
+        # One change: a refused tag must not leave the papers and the run
+        # record behind, where a second try would count the run twice.
+        with library.together():
+            report = library.add_papers(
+                result.papers, keywords=Path(args.file).name, kind="import"
+            )
+            if args.tag:
+                library.add_tags(library.ids_of(result.papers), args.tag)
         print(f"{report.added} added, {report.merged} already in the library")
-        if args.tag:
-            library.add_tags(library.ids_of(result.papers), args.tag)
     for reason in result.skipped:
         print(f"skipped, {reason}", file=sys.stderr)
     return 0 if result.papers else 2

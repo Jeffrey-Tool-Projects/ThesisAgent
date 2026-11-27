@@ -481,8 +481,11 @@ class LibraryEntry:
 
 **Identity.** An import is a merge. A paper is matched on every key of
 `Paper.identity_keys()` (DOI, arXiv ID, title hash) with the rules of
-`core/dedup.py`: `fuzzy_link_allowed` keeps two papers with the same
-title and different DOIs apart, and `merge_papers` fills the stored
+`core/dedup.py`: `accept_matches` judges all the stored papers a new
+record shares a key with together, never joins two that carry different
+DOIs, and lets a DOI or arXiv match win over a title match (a record
+whose title matches one paper and whose arXiv ID matches another with a
+different DOI joins the second only). `merge_papers` fills the stored
 record's empty fields from the new one, recording each in
 `Paper.provenance`. A paper that carries the DOI of one stored paper and
 the arXiv ID of another joins the two into one. The stored record keeps
@@ -492,11 +495,13 @@ stored one.
 
 **Tables** (schema version 1, in `thesisagents/library/schema.py`,
 version 2 adds tags, notes, screening and saved searches, version 3
-stores the identity keys anew):
+stores the identity keys anew, version 4 rebuilds `papers` with
+`AUTOINCREMENT` so the id of a deleted paper is never given to another
+one and an edit sent with an old id reports "no paper with id"):
 
 | Table | Holds |
 |---|---|
-| `papers` | One row per distinct paper: its `Paper.to_dict()` record as JSON, and when it was first and last seen. |
+| `papers` | One row per distinct paper: its `Paper.to_dict()` record as JSON, and when it was first and last seen. Its `id` is never reused. |
 | `identity_keys` | Every key a paper is known by, pointing at its row. |
 | `runs` | One row per import: when, what kind, the query, what each source returned. |
 | `observations` | Which run saw which paper, through which source, at what rank, with what score and pruning recommendation. |
@@ -509,7 +514,10 @@ Opening a library runs the migrations it has not seen yet, each in one
 transaction with its version bump. A library with a higher version than
 this build knows raises `LibraryError` naming both versions, and so
 does a file that is not a library. To change the schema, append one
-function to `schema.MIGRATIONS` and raise `SCHEMA_VERSION`.
+function to `schema.MIGRATIONS` and raise `SCHEMA_VERSION`. Foreign keys
+are not enforced while the migrations run, because a migration that
+rebuilds a table drops the old one and, with enforcement on, that drop
+would delete every row referring to it.
 
 **Verdict reuse.** `LibraryVerificationCache` reuses a stored verdict
 only when it lets an export through (`ok`, `skipped`) and is younger
