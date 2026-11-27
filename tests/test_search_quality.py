@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import math
 
 import pytest
 
@@ -18,6 +19,24 @@ def test_evaluate_query_reports_precision_recall_and_ndcg():
     assert metrics["precision"] == pytest.approx(2 / 3)
     assert metrics["recall"] == pytest.approx(2 / 3)
     assert 0 < metrics["ndcg"] < 1
+
+
+def test_a_repeated_paper_does_not_let_rank_three_into_the_top_two():
+    """``[A, A, B]`` at cutoff 2 covers one relevant paper, not two: the repeat
+    keeps its place and counts zero, so B at rank 3 cannot fill the top two."""
+    metrics = evaluate_query(["a", "a", "b"], {"a": 1, "b": 1}, cutoff=2)
+    assert metrics["hits"] == 1
+    assert metrics["retrieved"] == 2
+    assert metrics["precision"] == pytest.approx(0.5)
+    assert metrics["recall"] == pytest.approx(0.5)
+    assert metrics["ndcg"] == pytest.approx(1 / (1 + 1 / math.log2(3)))
+
+
+def test_a_repeated_paper_never_lifts_recall_past_one():
+    metrics = evaluate_query(["a", "a", "a"], {"a": 2}, cutoff=3)
+    assert metrics["hits"] == 1
+    assert metrics["recall"] == pytest.approx(1.0)
+    assert metrics["ndcg"] == pytest.approx(1.0)
 
 
 def test_evaluate_benchmark_accepts_binary_and_graded_qrels():

@@ -182,7 +182,7 @@ py -m thesisagents --paper "https://arxiv.org/abs/1706.03762" `
 | `--export` / `-e` | 形式: `pptx,xlsx,md,bib,json,ris,csv,csl,docx,tex` の任意の組合せ。デフォルトはモードによる(下記参照)。 |
 | `--out` / `-o` | 出力ディレクトリ。デフォルト `./exports`。 |
 | `--filename-stem` | 生成されるファイル名の stem を上書き。 |
-| `--no-abstract` | エクスポートから要約内容を除外。 |
+| `--no-abstract` | すべてのエクスポート形式(pptx、xlsx、bib、md、json、ris、csv、csl、docx、tex)から論文の要旨を除外。 |
 | `--lang` / `-l` | デッキ言語: 14 種のいずれか — `en`、`zh-tw`、`zh-cn`、`ja`、`es`、`fr`、`de`、`ko`、`pt`、`ru`、`it`、`vi`、`hi`、`id`。デフォルト `en`。 |
 | `--enrich` | 自動エンリッチの fail-loud 版。`ANTHROPIC_API_KEY` と `[intelligence]` extra が必要。(キー設定時は自動エンリッチがデフォルト。) |
 | `--lightweight` | エンリッチをスキップし、要約のみのデッキを強制。手早い / 無人運転にのみ使用。**LLM エージェントが駆動する場合は下記の LLM-as-agent フローを優先。** |

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import hashlib
 from pathlib import Path
 
 import httpx
@@ -191,22 +192,146 @@ async def test_download_pdfs_handles_http_error(tmp_path: Path, monkeypatch):
     assert results[0].skipped_reason == "http_404"
 
 
-async def test_download_pdfs_skips_existing_non_empty_file(
-    tmp_path: Path, monkeypatch
-):
+async def test_download_pdfs_skips_existing_file_it_owns(tmp_path: Path, monkeypatch):
     transport = _CannedTransport(200, b"%PDF-1.4\nfresh content")
     _install_transport(monkeypatch, transport)
     paper = _paper()
-    # Pre-create the target file as if a previous run had written it.
+    first = (await download_pdfs(_collection(paper), tmp_path))[0]
+    first.path.write_bytes(b"%PDF-1.4 already here")
+    again = (await download_pdfs(_collection(paper), tmp_path))[0]
+    assert again.path == first.path
+    assert again.path.read_bytes() == b"%PDF-1.4 already here"
+    # Only the first run asked the network: the second found its own file.
+    assert len(transport.calls) == 1
+
+
+# --- a reused folder and papers that share a BibTeX key (review R02) ----------------
+
+
+class _PathEchoTransport(httpx.AsyncBaseTransport):
+    """Answer every request with a PDF whose body names the requested path."""
+
+    def __init__(self) -> None:
+        self.calls: list[str] = []
+
+    async def handle_async_request(self, request):
+        self.calls.append(request.url.path)
+        return httpx.Response(
+            200, content=b"%PDF " + request.url.path.encode(),
+            headers={"content-type": "application/pdf"}, request=request,
+        )
+
+    async def aclose(self):
+        return None
+
+
+def _twins() -> tuple[Paper, Paper]:
+    """Two different papers (DOIs differ) with one BibTeX key."""
+    a = _paper(source_id="a", doi="10.1000/a", pdf_url="https://e.example/a")
+    b = _paper(source_id="b", doi="10.1000/b", pdf_url="https://e.example/b")
+    assert a.bibtex_key() == b.bibtex_key()
+    return a, b
+
+
+async def test_a_later_batch_does_not_get_another_papers_pdf(tmp_path: Path, monkeypatch):
+    """Batch 1 saved A. Batch 2 holds only B, whose key is A's: B was reported
+    ``on_disk`` with A's PDF, and its per-paper deck was built from it."""
+    _install_transport(monkeypatch, _PathEchoTransport())
+    a, b = _twins()
+    await download_pdfs(_collection(a), tmp_path)
+    result = (await download_pdfs(_collection(b), tmp_path))[0]
+    assert result.route == pdf_download_module.ROUTE_DIRECT
+    assert result.path.read_bytes() == b"%PDF /b"
+
+
+async def test_swapping_two_papers_keeps_each_ones_file(tmp_path: Path, monkeypatch):
+    transport = _PathEchoTransport()
+    _install_transport(monkeypatch, transport)
+    a, b = _twins()
+    await download_pdfs(_collection(a, b), tmp_path)
+    results = await download_pdfs(_collection(b, a), tmp_path)
+    assert [r.path.read_bytes() for r in results] == [b"%PDF /b", b"%PDF /a"]
+    assert [r.route for r in results] == ["on_disk", "on_disk"]
+    assert transport.calls == ["/a", "/b"]
+
+
+async def test_a_folder_from_before_the_manifest_is_not_trusted(tmp_path: Path, monkeypatch):
+    """A file under the plain key with no manifest entry has an unknown
+    owner: it is neither reused nor overwritten, and the paper downloads
+    again under its identity name. That name is reused even unlisted,
+    because only this paper's identity produces it."""
+    _install_transport(monkeypatch, _PathEchoTransport())
+    a, b = _twins()
     pdf_dir = tmp_path / "pdfs"
     pdf_dir.mkdir()
-    target = pdf_dir / f"{paper.bibtex_key()}.pdf"
-    target.write_bytes(b"%PDF-1.4 already here")
-    results = await download_pdfs(_collection(paper), tmp_path)
-    assert results[0].path == target
-    assert target.read_bytes() == b"%PDF-1.4 already here"
-    # No network call should have been issued because the file existed.
-    assert transport.calls == []
+    legacy = pdf_dir / f"{a.bibtex_key()}.pdf"
+    legacy.write_bytes(b"%PDF /a")
+    digest = hashlib.sha256(b.dedup_key().encode("utf-8")).hexdigest()[:8]
+    hashed = pdf_dir / f"{a.bibtex_key()}-{digest}.pdf"
+    hashed.write_bytes(b"%PDF /b (old collision name)")
+    results = await download_pdfs(_collection(b, a), tmp_path)
+    assert results[0].path == hashed
+    assert results[0].route == pdf_download_module.ROUTE_ON_DISK
+    assert results[1].path != legacy
+    assert results[1].path.read_bytes() == b"%PDF /a"
+    assert results[1].route == pdf_download_module.ROUTE_DIRECT
+    assert legacy.read_bytes() == b"%PDF /a"
+
+
+async def test_an_unreadable_manifest_only_costs_a_download(tmp_path: Path, monkeypatch):
+    _install_transport(monkeypatch, _PathEchoTransport())
+    a, b = _twins()
+    await download_pdfs(_collection(a), tmp_path)
+    (tmp_path / "pdfs" / ".owners.json").write_text("{not json", encoding="utf-8")
+    result = (await download_pdfs(_collection(b), tmp_path))[0]
+    assert result.path.read_bytes() == b"%PDF /b"
+
+
+# --- the size cap holds while the body streams in (review R08) ---------------------
+
+
+class _EndlessChunks(httpx.AsyncByteStream):
+    """A body without Content-Length that counts the chunks it hands out."""
+
+    def __init__(self, chunk: bytes, total: int) -> None:
+        self.chunk = chunk
+        self.total = total
+        self.served = 0
+        self.closed = False
+
+    async def __aiter__(self):
+        while self.served < self.total:
+            self.served += 1
+            yield self.chunk
+
+    async def aclose(self) -> None:
+        self.closed = True
+
+
+class _StreamTransport(httpx.AsyncBaseTransport):
+    def __init__(self, stream: _EndlessChunks) -> None:
+        self.stream = stream
+
+    async def handle_async_request(self, request):
+        return httpx.Response(
+            200, stream=self.stream,
+            headers={"content-type": "application/pdf"}, request=request,
+        )
+
+    async def aclose(self):
+        return None
+
+
+async def test_an_oversized_chunked_body_stops_at_the_cap(tmp_path: Path, monkeypatch):
+    """The body was read in full before its length was checked, so every
+    parallel download could hold a whole oversized file in memory."""
+    monkeypatch.setattr(pdf_download_module, "_MAX_PDF_BYTES", 2500)
+    stream = _EndlessChunks(b"%PDF" + b"x" * 996, total=100)
+    _install_transport(monkeypatch, _StreamTransport(stream))
+    result = (await download_pdfs(_collection(_paper()), tmp_path))[0]
+    assert result.skipped_reason == "too_large"
+    assert stream.served == 3
+    assert stream.closed
 
 
 async def test_download_pdfs_too_large_is_skipped(tmp_path: Path, monkeypatch):

@@ -58,6 +58,12 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 
 | ID | Date | Title | Tags | Batch |
 |---|---|---|---|---|
+| U-20261127-06 | 2026-11-27 | Each PDF stays with its paper, summaries read the PDF the run downloaded, the size cap holds while reading | #done #review #pdf #bugfix | [2026-11](2026-11.md) |
+| U-20261127-05 | 2026-11-27 | Undated papers kept by every source, one search at a time, one rate per service | #done #review #sources #gui #bugfix | [2026-11](2026-11.md) |
+| U-20261127-04 | 2026-11-27 | Papers with different DOIs stay apart, ids are never reused, imports with tags are one change | #done #review #library #bugfix | [2026-11](2026-11.md) |
+| U-20261127-03 | 2026-11-27 | Unique deck names, summary files with every paper, abstracts left out everywhere | #done #review #exporters #bugfix | [2026-11](2026-11.md) |
+| U-20261127-02 | 2026-11-27 | Updates keep user files, releases are what CI passed | #done #review #packaging #bugfix | [2026-11](2026-11.md) |
+| U-20261127-01 | 2026-11-27 | Whole-project code review | #docs #review | [2026-11](2026-11.md) |
 | U-20261126-21 | 2026-11-26 | Command-line models: keys kept out, timeouts that hold, the right command | #done #intelligence #review #bugfix | [2026-11](2026-11.md) |
 | U-20261126-20 | 2026-11-26 | Summaries by an AI program on the command line | #done #intelligence #gui | [2026-11](2026-11.md) |
 | U-20261126-19 | 2026-11-26 | Summaries are written by Claude Opus 5.5 | #done #intelligence | [2026-11](2026-11.md) |
@@ -142,6 +148,6 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 
 | File | Period | Entries |
 |---|---|---:|
-| [2026-11.md](2026-11.md) | 2026-11 | 19 |
+| [2026-11.md](2026-11.md) | 2026-11 | 42 |
 | [2026-10.md](2026-10.md) | 2026-10 | 13 |
 | [2026-09.md](2026-09.md) | 2026-09 | 25 |

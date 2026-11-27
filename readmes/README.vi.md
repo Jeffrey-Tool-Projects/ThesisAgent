@@ -396,7 +396,7 @@ py -m thesisagents --paper "https://arxiv.org/abs/1706.03762" `
 | `--export` / `-e` | Định dạng: bất kỳ trong `pptx,xlsx,md,bib,json,ris,csv,csl,docx,tex`. Mặc định tùy chế độ (xem bên dưới). |
 | `--out` / `-o` | Thư mục đầu ra. Mặc định `./exports`. |
 | `--filename-stem` | Ghi đè stem tên file được sinh. |
-| `--no-abstract` | Bỏ nội dung tóm tắt khỏi các bản xuất. |
+| `--no-abstract` | Bỏ phần tóm tắt của bài báo khỏi mọi định dạng xuất (pptx, xlsx, bib, md, json, ris, csv, csl, docx, tex). |
 | `--lang` / `-l` | Ngôn ngữ deck: một trong 14 — `en`, `zh-tw`, `zh-cn`, `ja`, `es`, `fr`, `de`, `ko`, `pt`, `ru`, `it`, `vi`, `hi`, `id`. Mặc định `en`. |
 | `--enrich` | Biến thể fail-loud của auto-enrich. Cần `ANTHROPIC_API_KEY` và extra `[intelligence]`. (Auto-enrich là mặc định khi key được đặt.) |
 | `--lightweight` | Bỏ làm giàu + buộc deck chỉ-tóm-tắt. Chỉ dùng cho các lần chạy nhanh / không người trông coi; **khi một LLM agent đang điều khiển, hãy ưu tiên luồng LLM-as-agent** bên dưới. |

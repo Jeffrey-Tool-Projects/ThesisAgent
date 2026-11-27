@@ -10,7 +10,7 @@ from tests.sources._mock import MockTransport, install_mock
 from thesisagents.core.exceptions import ParseError, RateLimitError
 from thesisagents.core.models import Query
 from thesisagents.sources.europepmc.fetcher import EuropePmcFetcher
-from thesisagents.sources.europepmc.parser import in_year_range, parse_result
+from thesisagents.sources.europepmc.parser import parse_result
 
 _FIXTURE_DIR = Path(__file__).resolve().parents[1] / "fixtures" / "europepmc"
 _FIXTURE_BYTES = (_FIXTURE_DIR / "llm_security.json").read_bytes()
@@ -151,12 +151,3 @@ def test_parse_result_pdf_selection_ignores_html():
 def test_parse_result_url_falls_back_to_doi():
     result = {"title": "Paper", "doi": "10.1/abc"}
     assert parse_result(result).url == "https://doi.org/10.1/abc"
-
-
-def test_in_year_range_handles_none():
-    assert in_year_range(2025, 2024, 2026) is True
-    assert in_year_range(2023, 2024, 2026) is False
-    assert in_year_range(2027, 2024, 2026) is False
-    assert in_year_range(None, 2024, 2026) is False
-    assert in_year_range(None, None, None) is True
-    assert in_year_range(2025, None, None) is True

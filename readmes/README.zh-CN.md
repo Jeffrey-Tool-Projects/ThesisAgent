@@ -296,7 +296,7 @@ py -m thesisagents --paper "https://arxiv.org/abs/1706.03762" `
 | `--export` / `-e` | 格式:`pptx,xlsx,md,bib,json,ris,csv,csl,docx,tex` 之任意组合。默认依模式而定(见下)。 |
 | `--out` / `-o` | 输出目录。默认 `./exports`。 |
 | `--filename-stem` | 覆盖生成的文件名主干。 |
-| `--no-abstract` | 从导出中省略摘要内容。 |
+| `--no-abstract` | 从所有导出格式（pptx、xlsx、bib、md、json、ris、csv、csl、docx、tex）中省略论文摘要。 |
 | `--lang` / `-l` | 幻灯片语言:14 种之一 —— `en`、`zh-tw`、`zh-cn`、`ja`、`es`、`fr`、`de`、`ko`、`pt`、`ru`、`it`、`vi`、`hi`、`id`。默认 `en`。 |
 | `--enrich` | 自动增强的失败即报变体。需要 `ANTHROPIC_API_KEY` 与 `[intelligence]` extra。(设了密钥时自动增强是默认。) |
 | `--lightweight` | 跳过增强 + 强制只有摘要的幻灯片。只用于快速 / 无人值守的运行;**当有 LLM agent 在驱动时,优先用下面的 LLM-as-agent 流程**。 |

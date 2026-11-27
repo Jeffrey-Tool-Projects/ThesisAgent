@@ -299,6 +299,25 @@ def test_library_import_tags_a_paper_that_was_merged(server, library_path, tmp_p
     assert found["count"] == 2
 
 
+def test_library_import_with_a_refused_tag_imports_nothing(server, library_path, tmp_path):
+    # The papers and the run record were committed before the tag was
+    # checked, so the error left the import behind and a retry counted twice.
+    file = tmp_path / "x.bib"
+    file.write_text("@misc{a, title={One}, doi={10.1000/one}}", encoding="utf-8")
+
+    _fails(
+        server, "library_import", "a tag must contain text",
+        library=library_path, file=str(file), tags=["   "],
+    )
+
+    with Library(library_path, create=False) as library:
+        assert (len(library), library.tags(), library.runs()) == (0, {}, [])
+    result = _call(server, "library_import", library=library_path, file=str(file), tags=["t"])
+    assert result["added"] == 1
+    with Library(library_path, create=False) as library:
+        assert (len(library), library.tags(), len(library.runs())) == (1, {"t": 1}, 1)
+
+
 def test_library_update_makes_all_changes_or_none(server, library_path, sample_papers):
     _add(server, library_path, sample_papers)
     with pytest.raises(ToolError):

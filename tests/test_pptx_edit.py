@@ -250,3 +250,47 @@ def test_a_file_that_is_no_deck_is_named(tmp_path):
     path.write_bytes(b"not a zip")
     with pytest.raises(ExportError, match="not a PowerPoint file"):
         pptx_edit.inspect(path)
+
+
+# --- a slide added to a deck with only a cover ------------------------------------------
+
+
+def _cover_only_deck(tmp_path: Path, *, width_in: float, height_in: float) -> Path:
+    """A deck of one cover slide, so ``add_slide`` has no content slide to copy."""
+    from pptx.util import Inches
+
+    path = tmp_path / "cover.pptx"
+    presentation = Presentation()
+    presentation.slide_width = Inches(width_in)
+    presentation.slide_height = Inches(height_in)
+    cover = presentation.slides.add_slide(presentation.slide_layouts[0])
+    cover.shapes.title.text = "Cover"
+    presentation.save(str(path))
+    return path
+
+
+@pytest.mark.parametrize(
+    ("width_in", "height_in"), [(10.0, 7.5), (13.333, 7.5), (10.0, 5.625)]
+)
+def test_a_slide_added_after_a_cover_stays_above_the_footer(tmp_path, width_in, height_in):
+    """The body box used to run from 2.8" to 8.2" on a 7.5" slide."""
+    from pptx.util import Inches
+
+    path = _cover_only_deck(tmp_path, width_in=width_in, height_in=height_in)
+    pptx_edit.add_slide(path, title="Added", meta="Meta line", body="Long body. " * 80)
+    presentation = Presentation(str(path))
+    added = presentation.slides[1]
+    guard = presentation.slide_height - Inches(0.45)
+    assert {shape.name for shape in added.shapes} >= {"title", "meta", "body"}
+    for shape in added.shapes:
+        assert shape.top + shape.height <= guard, (shape.name, shape.top + shape.height)
+
+
+def test_the_cover_only_body_box_ends_on_the_footer_line(tmp_path):
+    from pptx.util import Inches
+
+    path = _cover_only_deck(tmp_path, width_in=10.0, height_in=7.5)
+    pptx_edit.add_slide(path, title="Added", body="Body")
+    body = next(s for s in Presentation(str(path)).slides[1].shapes if s.name == "body")
+    assert body.top == Inches(2.8)
+    assert body.top + body.height == Inches(7.05)

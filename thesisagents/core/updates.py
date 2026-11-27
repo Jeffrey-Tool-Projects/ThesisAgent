@@ -1,9 +1,11 @@
-"""Is there a newer release? One request to PyPI, nothing else.
+"""Is there a newer release? One request, nothing else.
 
-PyPI is asked rather than GitHub because the project's name there does not
-change when the repository moves, and every release is published to it
-before the Windows build. The request carries no identifier beyond the
-ordinary User-Agent.
+A pip install asks PyPI: the package is what it updates. The Windows build
+asks GitHub for its latest published release and counts it only when the
+installer is attached. Every release reaches PyPI about an hour before the
+Windows build is done, so asking PyPI there announced a version whose
+download button opened the previous release, or one whose build failed.
+The request carries no identifier beyond the ordinary User-Agent.
 
 Example::
 
@@ -13,6 +15,7 @@ Example::
 from __future__ import annotations
 
 import re
+import sys
 from typing import Final
 
 from thesisagents.fetchers.http import scoped_client
@@ -22,6 +25,12 @@ _LOG = get_logger(__name__)
 
 PYPI_URL: Final[str] = "https://pypi.org/pypi/thesisagents/json"
 RELEASES_URL: Final[str] = "https://github.com/Jeffrey-Tool-Projects/ThesisAgent/releases/latest"
+#: The latest published release. Drafts and pre-releases are never returned.
+GITHUB_LATEST_URL: Final[str] = (
+    "https://api.github.com/repos/Jeffrey-Tool-Projects/ThesisAgent/releases/latest"
+)
+#: What the Windows build needs in a release before it is announced.
+INSTALLER_ASSET: Final[str] = "thesisagents-setup-windows-x86_64.exe"
 
 _PLAIN_VERSION = re.compile(r"(\d+)\.(\d+)\.(\d+)")
 
@@ -50,17 +59,57 @@ def is_newer(candidate: str, current: str) -> bool:
     return new is not None and old is not None and new > old
 
 
-async def newer_version(current: str) -> str | None:
+def is_desktop_build() -> bool:
+    """Whether this is the compiled Windows app rather than a pip install.
+
+    Nuitka sets ``__compiled__`` in every compiled module, other freezers
+    set ``sys.frozen``.
+    """
+    return "__compiled__" in globals() or bool(getattr(sys, "frozen", False))
+
+
+def download_page(version: str) -> str:
+    """The page of ``version``, where its files are.
+
+    The page of one release rather than ``/latest``, which moves on: it
+    named another version than the one announced.
+    """
+    return f"https://github.com/Jeffrey-Tool-Projects/ThesisAgent/releases/tag/v{version}"
+
+
+async def newer_version(current: str, *, desktop: bool | None = None) -> str | None:
     """The latest release when it is newer than ``current``, else None.
 
-    Never raises: a machine without network must not hear about it.
+    ``desktop`` (the compiled app when not given) asks GitHub, see the
+    module docstring. Never raises: a machine without network must not
+    hear about it.
     """
+    desktop = is_desktop_build() if desktop is None else desktop
     try:
         async with scoped_client("updates") as client:
-            response = await client.get(PYPI_URL)
-            response.raise_for_status()
-            latest = str(response.json()["info"]["version"])
+            latest = await (_latest_installer(client) if desktop else _latest_package(client))
     except Exception as err:  # noqa: BLE001 - offline, proxy, changed format
         _LOG.info("update check failed: %s", err)
         return None
-    return latest if is_newer(latest, current) else None
+    return latest if latest and is_newer(latest, current) else None
+
+
+async def _latest_package(client) -> str:
+    response = await client.get(PYPI_URL)
+    response.raise_for_status()
+    return str(response.json()["info"]["version"])
+
+
+async def _latest_installer(client) -> str | None:
+    """The version of the latest published release that has its installer."""
+    response = await client.get(
+        GITHUB_LATEST_URL, headers={"Accept": "application/vnd.github+json"}
+    )
+    response.raise_for_status()
+    release = response.json()
+    if release.get("draft") or release.get("prerelease"):
+        return None
+    names = {str(asset.get("name", "")) for asset in release.get("assets") or ()}
+    if INSTALLER_ASSET not in names:
+        return None
+    return str(release["tag_name"]).removeprefix("v")

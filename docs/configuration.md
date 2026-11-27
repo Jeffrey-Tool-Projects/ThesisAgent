@@ -207,7 +207,8 @@ Behaviour you don't see in `--help` because it's hard-coded:
 ## Per-source rate limits
 
 Defined in each plugin's `config.py`; enforced by a per-source
-token bucket in `thesisagents.fetchers.rate_limit`. The
+token bucket in `thesisagents.fetchers.rate_limit`, one per process,
+so concurrent searches of the same source share the rate. The
 defaults match each upstream's published or observed soft limit:
 
 | Source | Rate | Jitter | Notes |

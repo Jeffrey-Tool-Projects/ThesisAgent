@@ -38,6 +38,10 @@ Added in version 2 (what the reader records, see ``curation.py``)
 Version 3 adds no table. It stores the identity keys of every paper once
 more, because the way they are formed changed: titles in other scripts keep
 their letters, and a DOI is one whether or not it is written as a link.
+
+Version 4 rebuilds ``papers`` with ``AUTOINCREMENT``, so the id of a deleted
+paper is never given to another one. The rows keep their ids and every other
+table keeps its rows.
 """
 
 from __future__ import annotations
@@ -52,7 +56,7 @@ from thesisagents.core.models import Paper
 
 #: "THAG" in ASCII. Lets a library be told from any other SQLite file.
 APPLICATION_ID: int = 0x54484147
-SCHEMA_VERSION: int = 3
+SCHEMA_VERSION: int = 4
 
 
 @contextmanager
@@ -231,11 +235,60 @@ def _add_version_3(conn: sqlite3.Connection) -> None:
         )
 
 
+_VERSION_4: tuple[str, ...] = (
+    """
+    CREATE TABLE papers_v4 (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        record TEXT NOT NULL,
+        title TEXT NOT NULL,
+        year INTEGER,
+        first_seen TEXT NOT NULL,
+        last_seen TEXT NOT NULL
+    )
+    """,
+    "INSERT INTO papers_v4 (id, record, title, year, first_seen, last_seen) "
+    "SELECT id, record, title, year, first_seen, last_seen FROM papers",
+    "DROP TABLE papers",
+    # The other tables name ``papers`` in their REFERENCES clauses, and after
+    # the rename that name is this table again.
+    "ALTER TABLE papers_v4 RENAME TO papers",
+)
+
+
+def _add_version_4(conn: sqlite3.Connection) -> None:
+    """Rebuild ``papers`` so that an id, once given out, is never given again.
+
+    The failure this prevents: ``INTEGER PRIMARY KEY`` hands out the highest
+    id plus one, so after the paper with the highest id was deleted, the next
+    import got its id. A note, tag or deletion sent with the old id (a CLI
+    command typed from an earlier listing, an MCP agent holding a search
+    result) then landed on another paper. ``AUTOINCREMENT`` keeps the highest
+    id ever used in ``sqlite_sequence`` and never goes below it.
+
+    SQLite cannot add ``AUTOINCREMENT`` to an existing table, so the table is
+    copied with its ids into a new one, the old one dropped and the new one
+    renamed (the order SQLite's documentation gives for changing a table).
+    Dropping ``papers`` with foreign keys enforced would delete every row
+    that refers to it, which is why :func:`prepare` turns enforcement off
+    for an upgrade and this function refuses to run with it on. An id that
+    was deleted before the upgrade and was higher than every id left is not
+    known to the file any more, so it can still be given out once.
+    """
+    if conn.execute("PRAGMA foreign_keys").fetchone()[0]:
+        raise LibraryError(
+            "the library cannot be upgraded while foreign keys are enforced: "
+            "rebuilding the papers table would delete what refers to it"
+        )
+    for statement in _VERSION_4:
+        conn.execute(statement)
+
+
 #: ``MIGRATIONS[n]`` upgrades a database from version ``n`` to ``n + 1``.
 MIGRATIONS: tuple[Callable[[sqlite3.Connection], None], ...] = (
     _create_version_1,
     _add_version_2,
     _add_version_3,
+    _add_version_4,
 )
 
 
@@ -252,7 +305,13 @@ def prepare(conn: sqlite3.Connection, path: str) -> int:
     upgrade that fails halfway leaves the previous version intact. ``conn``
     must be in autocommit mode (``isolation_level=None``).
 
-    Example: a fresh file ends at version 3. A file that says version 9 raises
+    Foreign keys are not enforced while migrations run, and enforcement is
+    restored afterwards. A migration that rebuilds a table drops the old one,
+    and with enforcement on that drop deletes every row referring to it.
+    PRAGMA foreign_keys has no effect inside a transaction, so it is set
+    here, before each migration's transaction begins.
+
+    Example: a fresh file ends at version 4. A file that says version 9 raises
     ``LibraryError`` naming both numbers.
     """
     try:
@@ -284,6 +343,19 @@ def prepare(conn: sqlite3.Connection, path: str) -> int:
             "written by a newer release: upgrade ThesisAgents, or point "
             "--library at another file."
         )
+    if version >= SCHEMA_VERSION:
+        return version
+    enforced = conn.execute("PRAGMA foreign_keys").fetchone()[0]
+    conn.execute("PRAGMA foreign_keys = OFF")
+    try:
+        return _migrate(conn, version)
+    finally:
+        if enforced:
+            conn.execute("PRAGMA foreign_keys = ON")
+
+
+def _migrate(conn: sqlite3.Connection, version: int) -> int:
+    """Run the migrations from ``version`` on, each in its own transaction."""
     while version < SCHEMA_VERSION:
         with transaction(conn):
             # Read again under the write lock: another process may have

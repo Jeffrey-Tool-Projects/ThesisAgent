@@ -226,10 +226,15 @@ Three decisions shape it:
 
 - **One identity model.** A stored paper is matched with the same keys
   and the same two functions search de-duplication uses
-  (`Paper.identity_keys`, `dedup.fuzzy_link_allowed`,
-  `dedup.merge_papers`). An import therefore merges exactly the records
+  (`Paper.identity_keys`, `dedup.accept_matches`,
+  `dedup.merge_papers`). An import therefore merges the records
   `dedupe` would have merged had they arrived in one search, and adding
-  a search twice changes no paper count.
+  a search twice changes no paper count. One difference remains: `dedupe`
+  holds the whole list and matches records with a DOI first, while an
+  import meets papers in the order they come, so a DOI-less record that
+  was merged into a paper by its title keeps that merge when a later
+  import brings another paper with its arXiv ID. The later paper is still
+  kept apart, because two DOIs are never joined.
 - **The relationship model is the snowball's.** Citation links are
   stored as the `PaperRelation` records snowballing produces, between
   rows instead of keys. That is why the citation providers were built
@@ -332,6 +337,16 @@ identity a paper carries, then unions the fields:
    look. A blank / punctuation-only title is likewise barred from
    linking, since `_canon_title` collapses every such title to the same
    hash. An exact DOI match is unaffected by the guard.
+   `accept_matches` applies the guard to all the groups a record shares
+   a key with at once, strongest key first: an arXiv match is refused
+   when the DOIs disagree, and a title match is checked against the
+   record merged with what its DOI and arXiv matches already brought. A
+   DOI-less record whose title matches paper A and whose arXiv ID matches
+   paper B (with another DOI) therefore joins B only, instead of making
+   one record of A and B. `dedupe` adds records with a DOI first, then
+   those with an arXiv ID, then the rest, so that outcome does not depend
+   on the order the sources returned them, and each group is merged in
+   input order so its first record stays canonical.
 3. Field union — for merged duplicates, every optional field
    (`doi`, `arxiv_id`, `pdf_url`, `venue`, `citation_count`, `year`,
    `abstract`, `authors`, `summary`) is taken from whichever source had
@@ -434,6 +449,21 @@ ANTHROPIC_API_KEY set?
 
 Both paths produce the same `PaperSummary` shape; the exporter
 doesn't know or care which one wrote it.
+
+Where the text comes from: the CLI downloads the PDFs first and the
+Python pipeline then reads each saved file
+(`intelligence.pdf.extract_pdf_file`), with no second request. A paper
+without a saved PDF, and MCP `fetch_pdf_text`, fetch through
+`core.pdf_download.fetch_pdf_to`, the downloader's own routing, so a
+paywalled publisher PDF goes through visible Chrome and an open one
+through the HTTPS-only client. Before, the CLI summarised first with a
+plain request of its own, and a publisher that refused it left the
+paper without a summary although the same run then got the PDF through
+Chrome.
+
+Both PDF fetches stream the body and stop reading as soon as the
+decoded size passes the cap (50 MB for downloads, 20 MB for text), so a
+huge response is never held in memory whole.
 
 ## The data model
 
@@ -542,6 +572,19 @@ RATE_LIMIT = RateLimit(
 The bucket is a decorator on the HTTP client — **retries also go
 through it**. There is no way to bypass the bucket without
 deleting code from the source plugin.
+
+There is one bucket per source per process
+(`rate_limit.shared_bucket(name, policy)`). Every search loads a
+new fetcher, and the fetcher, together with that source's citation
+provider, takes the shared bucket instead of building a new one.
+So two searches running at the same time, from the MCP server or
+from two GUI workers, share one rate and one burst. The bucket
+guards its state with a `threading.Lock` and waits with
+`asyncio.sleep` on the caller's own loop, so it works across the
+separate event loops of GUI worker threads. A source that searches
+through another source's API shares that source's bucket by naming
+it in `FetcherConfig.rate_limit_group` (ACM goes through the
+Crossref API and sets `"crossref"`).
 
 ### Request reuse
 

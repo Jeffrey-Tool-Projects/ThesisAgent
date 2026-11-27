@@ -15,6 +15,8 @@
 #ifndef OutputDir
   #define OutputDir "."
 #endif
+; The list of program files an installation put in its folder.
+#define Manifest "thesisagents-files.txt"
 
 [Setup]
 ; Never change AppId: it is how an update finds the installed copy.
@@ -58,7 +60,12 @@ Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{
 Name: "addtopath"; Description: "Add thesisagents-cli to PATH"; Flags: unchecked
 
 [Files]
-Source: "{#SourceDir}\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
+; RecordFile writes down every file installed, so the next version removes
+; exactly those and nothing a user saved in the folder.
+Source: "{#SourceDir}\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs; AfterInstall: RecordFile
+
+[UninstallDelete]
+Type: files; Name: "{app}\{#Manifest}"
 
 [Icons]
 Name: "{group}\ThesisAgents"; Filename: "{app}\thesisagents.exe"
@@ -66,6 +73,11 @@ Name: "{group}\{cm:UninstallProgram,ThesisAgents}"; Filename: "{uninstallexe}"
 Name: "{userdesktop}\ThesisAgents"; Filename: "{app}\thesisagents.exe"; Tasks: desktopicon
 
 [Registry]
+; First the note that this installation put the folder on PATH, then the
+; change itself: both ask NotOnPath, which the second entry makes false. The
+; uninstaller takes the folder off PATH only with the note, so a PATH entry
+; the user had made before stays.
+Root: HKCU; Subkey: "Software\ThesisAgents\Installer"; ValueType: dword; ValueName: "AddedToPath"; ValueData: "1"; Tasks: addtopath; Check: NotOnPath; Flags: uninsdeletekey
 Root: HKCU; Subkey: "Environment"; ValueType: expandsz; ValueName: "Path"; ValueData: "{olddata};{app}"; Tasks: addtopath; Check: NotOnPath
 
 [Run]
@@ -74,39 +86,67 @@ Filename: "{app}\thesisagents.exe"; Description: "{cm:LaunchProgram,ThesisAgents
 [Code]
 const
   EnvKey = 'Environment';
+  InstallerKey = 'Software\ThesisAgents\Installer';
 
-{ Whether the program folder is one this installer made and nothing else
-  uses: it is called ThesisAgents, and it holds an installed copy. }
-function IsOwnFolder: Boolean;
+var
+  InstalledFiles: TStringList;
+  RemoveFromPath: Boolean;
+
+{ Called after each file of [Files] is copied: note where it went. }
+procedure RecordFile;
 begin
-  Result := (CompareText(ExtractFileName(RemoveBackslash(ExpandConstant('{app}'))), 'ThesisAgents') = 0)
-    and FileExists(ExpandConstant('{app}\thesisagents-cli.exe'))
-    and FileExists(ExpandConstant('{app}\unins000.exe'));
+  if InstalledFiles = nil then
+    InstalledFiles := TStringList.Create;
+  InstalledFiles.Add(ExpandConstant(CurrentFileName));
 end;
 
-{ Remove the previous version's files before the new ones are copied: a
-  left-over module or DLL would be loaded by the new program. Settings, logs
-  and libraries live elsewhere. The uninstaller's own files stay, and only a
-  folder of ours is touched, because someone may have picked one that holds
-  other files too. }
-procedure CurStepChanged(CurStep: TSetupStep);
+{ Whether Path names a file inside the program folder. A list edited by hand
+  must not point the cleanup anywhere else. }
+function InProgramFolder(Path: string): Boolean;
 var
-  Found: TFindRec;
   Folder: string;
 begin
-  if (CurStep <> ssInstall) or not IsOwnFolder then
+  Folder := Lowercase(AddBackslash(ExpandConstant('{app}')));
+  Result := (Pos(Folder, Lowercase(Path)) = 1) and (Pos('..', Path) = 0)
+    and (Length(Path) > Length(Folder));
+end;
+
+{ Remove the files the previous version installed, before the new ones are
+  copied: a left-over module or DLL would be loaded by the new program. Only
+  the files on its list go, so a library, PDF or export the user saved in the
+  folder stays. An installation older than the list (v0.1.27) has none, and
+  then nothing is removed. Folders are removed when they end up empty. }
+procedure RemovePreviousFiles;
+var
+  Lines: TArrayOfString;
+  Index: Integer;
+  Folder, Directory: string;
+begin
+  if not LoadStringsFromFile(ExpandConstant('{app}\{#Manifest}'), Lines) then
     Exit;
-  Folder := AddBackslash(ExpandConstant('{app}'));
-  if FindFirst(Folder + '*', Found) then
-  try
-    repeat
-      if (Found.Name <> '.') and (Found.Name <> '..')
-        and (Pos('unins', Lowercase(Found.Name)) <> 1) then
-        DelTree(Folder + Found.Name, True, True, True);
-    until not FindNext(Found);
-  finally
-    FindClose(Found);
-  end;
+  Folder := RemoveBackslash(ExpandConstant('{app}'));
+  for Index := 0 to GetArrayLength(Lines) - 1 do
+    if InProgramFolder(Lines[Index]) then
+      DeleteFile(Lines[Index]);
+  for Index := GetArrayLength(Lines) - 1 downto 0 do
+    if InProgramFolder(Lines[Index]) then
+    begin
+      Directory := ExtractFileDir(Lines[Index]);
+      while (CompareText(Directory, Folder) <> 0) and InProgramFolder(Directory) do
+      begin
+        if not RemoveDir(Directory) then
+          Break;
+        Directory := ExtractFileDir(Directory);
+      end;
+    end;
+end;
+
+procedure CurStepChanged(CurStep: TSetupStep);
+begin
+  if CurStep = ssInstall then
+    RemovePreviousFiles
+  else if (CurStep = ssPostInstall) and (InstalledFiles <> nil) then
+    InstalledFiles.SaveToFile(ExpandConstant('{app}\{#Manifest}'));
 end;
 
 function NotOnPath: Boolean;
@@ -118,13 +158,19 @@ begin
   Result := Pos(';' + Lowercase(ExpandConstant('{app}')) + ';', ';' + Lowercase(Paths) + ';') = 0;
 end;
 
-{ Take the program folder off PATH again when it is uninstalled. }
+{ Take the program folder off PATH again when it is uninstalled, but only
+  when an installation put it there. The note is read before the uninstall
+  starts, because the uninstall removes it with the rest of the registry
+  entries. }
 procedure CurUninstallStepChanged(CurUninstallStep: TUninstallStep);
 var
   Paths, Wrapped, Entry: string;
   At: Integer;
+  Added: Cardinal;
 begin
-  if CurUninstallStep <> usPostUninstall then
+  if CurUninstallStep = usUninstall then
+    RemoveFromPath := RegQueryDWordValue(HKCU, InstallerKey, 'AddedToPath', Added) and (Added = 1);
+  if (CurUninstallStep <> usPostUninstall) or not RemoveFromPath then
     Exit;
   if not RegQueryStringValue(HKCU, EnvKey, 'Path', Paths) then
     Exit;

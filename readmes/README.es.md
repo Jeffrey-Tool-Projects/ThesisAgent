@@ -410,7 +410,7 @@ py -m thesisagents --paper "https://arxiv.org/abs/1706.03762" `
 | `--export` / `-e` | Formatos: cualquiera de `pptx,xlsx,md,bib,json,ris,csv,csl,docx,tex`. El default depende del modo (ver abajo). |
 | `--out` / `-o` | Directorio de salida. Default `./exports`. |
 | `--filename-stem` | Sobrescribe el stem de nombre de archivo generado. |
-| `--no-abstract` | Omite el contenido del resumen de las exportaciones. |
+| `--no-abstract` | Omite los resúmenes de los artículos en todos los formatos de exportación (pptx, xlsx, bib, md, json, ris, csv, csl, docx, tex). |
 | `--lang` / `-l` | Idioma de la presentación: uno de 14 — `en`, `zh-tw`, `zh-cn`, `ja`, `es`, `fr`, `de`, `ko`, `pt`, `ru`, `it`, `vi`, `hi`, `id`. Default `en`. |
 | `--enrich` | Variante fail-loud del auto-enriquecimiento. Necesita `ANTHROPIC_API_KEY` y el extra `[intelligence]`. (El auto-enriquecimiento es el default cuando la clave está configurada.) |
 | `--lightweight` | Salta el enriquecimiento + fuerza la presentación solo-resumen. Úselo solo para ejecuciones rápidas / desatendidas; **cuando un agente LLM dirige, prefiera el flujo LLM-as-agent** de abajo. |

@@ -58,14 +58,18 @@ class LatexExporter(Exporter):
         except Exception as err:
             raise ExportError(self.format, f"render failed: {err}") from err
         out_path.write_text(content, encoding="utf-8")
-        BibtexExporter().write(collection, out_path.with_suffix(".bib"))
+        BibtexExporter().write(
+            collection, out_path.with_suffix(".bib"), include_abstract=options.include_abstract
+        )
         return out_path
 
     def _render(self, collection: PaperCollection, options: ExportOptions, stem: str) -> str:
         language = normalise_language(options.language)
         keys = unique_keys(collection.papers)
         body: list[str] = []
-        for block in review_blocks(collection, options.language):
+        for block in review_blocks(
+            collection, options.language, include_abstract=options.include_abstract
+        ):
             if isinstance(block, Heading):
                 # The numbers belong to the author's own document.
                 text = block.text.split(" ", 1)[1] if block.level > 1 else block.text

@@ -217,6 +217,50 @@ def test_same_title_with_conflicting_dois_stays_two_papers(path):
         assert (report.added, report.total) == (2, 2)
 
 
+# C has no DOI, its title, author and year are A's and its arXiv ID is B's.
+# Each check alone let it in, and the import made one row of A and B.
+_TITLE_TWIN = _paper("A", "Robust Widgets", source="crossref", doi="10.1000/a")
+_ARXIV_TWIN = _paper("B", "Fragile Gadgets", doi="10.1000/b", arxiv_id="2402.00002")
+_AMBIGUOUS = _paper("C", "Robust Widgets", arxiv_id="2402.00002")
+
+
+@pytest.mark.parametrize(
+    "imports",
+    [
+        [[_TITLE_TWIN, _ARXIV_TWIN], [_AMBIGUOUS]],
+        [[_ARXIV_TWIN, _TITLE_TWIN], [_AMBIGUOUS]],
+        [[_TITLE_TWIN], [_ARXIV_TWIN], [_AMBIGUOUS]],
+        [[_ARXIV_TWIN], [_AMBIGUOUS], [_TITLE_TWIN]],
+        [[_TITLE_TWIN, _ARXIV_TWIN, _AMBIGUOUS]],
+        [[_ARXIV_TWIN, _AMBIGUOUS, _TITLE_TWIN]],
+    ],
+    ids=["AB+C", "BA+C", "A+B+C", "B+C+A", "ABC", "BCA"],
+)
+def test_a_record_matching_two_papers_with_different_dois_joins_only_one(path, imports):
+    with Library(path) as library:
+        for papers in imports:
+            library.add_papers(papers)
+        by_doi = {entry.paper.doi: entry.paper for entry in library.entries()}
+
+    assert set(by_doi) == {"10.1000/a", "10.1000/b"}
+    # The arXiv match wins over the title match: C is B.
+    assert by_doi["10.1000/a"].arxiv_id is None
+    assert by_doi["10.1000/b"].arxiv_id == "2402.00002"
+
+
+def test_a_record_merged_by_title_before_the_other_paper_came_keeps_both_dois(path):
+    # C arrives first and is A's twin by title. When B brings C's arXiv ID
+    # with another DOI, B stays a paper of its own.
+    with Library(path) as library:
+        library.add_papers([_AMBIGUOUS])
+        library.add_papers([_TITLE_TWIN])
+        report = library.add_papers([_ARXIV_TWIN])
+        dois = sorted(entry.paper.doi for entry in library.entries())
+
+    assert (report.added, report.total) == (1, 2)
+    assert dois == ["10.1000/a", "10.1000/b"]
+
+
 def test_duplicates_inside_one_import_are_merged(path):
     with Library(path) as library:
         report = library.add_papers([GNN_ARXIV, GNN_OPENALEX])
@@ -585,6 +629,97 @@ def test_a_migration_that_fails_leaves_the_previous_version(path, monkeypatch):
         assert len(library) == 1
         columns = [row[1] for row in library._conn.execute("PRAGMA table_info(papers)")]
     assert "note" not in columns
+
+
+# Fixed statements, one per table, so the dump needs no SQL built from names.
+_EVERY_TABLE = {
+    "papers": "SELECT * FROM papers ORDER BY id",
+    "identity_keys": "SELECT * FROM identity_keys ORDER BY key",
+    "runs": "SELECT * FROM runs ORDER BY id",
+    "observations": "SELECT * FROM observations ORDER BY run_id, paper_id",
+    "relations": "SELECT * FROM relations ORDER BY source_id, target_id",
+    "verifications": "SELECT * FROM verifications ORDER BY kind, value",
+    "annotations": "SELECT * FROM annotations ORDER BY paper_id",
+    "tags": "SELECT * FROM tags ORDER BY paper_id, tag",
+    "screening": "SELECT * FROM screening ORDER BY paper_id, stage",
+    "saved_searches": "SELECT * FROM saved_searches ORDER BY name",
+}
+
+
+def _every_row(conn: sqlite3.Connection) -> dict[str, list[tuple]]:
+    return {table: conn.execute(sql).fetchall() for table, sql in _EVERY_TABLE.items()}
+
+
+def test_a_version_3_library_keeps_every_row_when_ids_stop_being_reused(path, monkeypatch):
+    # Version 4 rebuilds ``papers`` with AUTOINCREMENT. Dropping the old table
+    # with foreign keys enforced would have deleted every row pointing at it.
+    with monkeypatch.context() as patch:
+        patch.setattr(schema, "SCHEMA_VERSION", 3)
+        with Library(path) as library:
+            library.add_papers(
+                [GNN_ARXIV, FOLDING, _paper("gone", "Deleted Later", doi="10.1000/gone")],
+                relations=[_link(GNN_ARXIV, FOLDING)],
+            )
+            ids = {entry.paper.source_id: entry.paper_id for entry in library.entries()}
+            library.add_tags([ids["2401.00001"]], ["chapter 2"])
+            library.set_note(ids["2401.00001"], "read again")
+            library.screen([ids["10.1000/fold"]], "include")
+            library.save_search("gnn", Query("graph neural network", ("arxiv",)))
+            library.record_verdict(KIND_DOI, "10.1000/fold", Verdict(VerificationStatus.OK))
+            assert library.schema_version == 3
+            before = _every_row(library._conn)
+    assert all(before.values()), "every table must hold a row before the upgrade"
+
+    with Library(path, create=False) as library:
+        assert library.schema_version == SCHEMA_VERSION == 4
+        assert _every_row(library._conn) == before
+        papers_sql = library._conn.execute(
+            "SELECT sql FROM sqlite_master WHERE name = 'papers'"
+        ).fetchone()[0]
+        assert "AUTOINCREMENT" in papers_sql
+        assert library._conn.execute("PRAGMA foreign_key_check").fetchall() == []
+        assert library._conn.execute("PRAGMA foreign_keys").fetchone()[0] == 1
+        # The foreign keys still point at the rebuilt table: deleting a paper
+        # takes its tags, note and links with it.
+        library.delete([ids["2401.00001"]])
+        assert library.tags() == {} and library.annotations().keys() == {ids["10.1000/fold"]}
+        assert library.relations() == ()
+        # And the id of the paper deleted now is not given out again.
+        library.delete([ids["gone"]])
+        library.add_papers([_paper("next", "Arriving Afterwards", doi="10.1000/next")])
+        new_id = next(e.paper_id for e in library.entries() if e.paper.source_id == "next")
+        assert new_id > max(ids.values())
+
+
+def test_an_upgrade_on_a_connection_that_enforces_foreign_keys_loses_nothing(path, monkeypatch):
+    # The rebuild drops the old papers table, and with foreign keys enforced
+    # that drop deletes every row pointing at it. ``prepare`` switches the
+    # enforcement off for the upgrade and back on afterwards.
+    with monkeypatch.context() as patch:
+        patch.setattr(schema, "SCHEMA_VERSION", 3)
+        with Library(path) as library:
+            library.add_papers([GNN_ARXIV, FOLDING], relations=[_link(GNN_ARXIV, FOLDING)])
+            library.add_tags([entry.paper_id for entry in library.entries()], ["kept"])
+    conn = sqlite3.connect(path, isolation_level=None)
+    conn.execute("PRAGMA foreign_keys = ON")
+    try:
+        assert schema.prepare(conn, str(path)) == SCHEMA_VERSION
+        assert conn.execute("PRAGMA foreign_keys").fetchone()[0] == 1
+        assert conn.execute("SELECT count(*) FROM tags").fetchone()[0] == 2
+        assert conn.execute("SELECT count(*) FROM relations").fetchone()[0] == 1
+        assert conn.execute("SELECT count(*) FROM identity_keys").fetchone()[0] > 0
+    finally:
+        conn.close()
+
+
+def test_the_rebuild_refuses_to_run_with_foreign_keys_enforced(path):
+    conn = sqlite3.connect(path, isolation_level=None)
+    conn.execute("PRAGMA foreign_keys = ON")
+    try:
+        with pytest.raises(LibraryError, match="foreign keys are enforced"):
+            schema.MIGRATIONS[3](conn)
+    finally:
+        conn.close()
 
 
 def test_another_applications_database_is_refused_untouched(path):

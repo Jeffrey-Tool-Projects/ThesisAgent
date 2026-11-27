@@ -98,15 +98,22 @@ def _register_editing(tool: Callable[[Callable[..., Any]], Any]) -> None:
 
         For taking over a Zotero, Mendeley, EndNote or JabRef collection. A
         paper already held is updated, not duplicated. ``skipped`` says why a
-        record was left out. ``tags`` are put on every imported paper.
+        record was left out. ``tags`` are put on every imported paper. When
+        a tag is refused, nothing of the file is imported.
         """
         result = read_bibliography(file)
         if not result.papers:
             raise ThesisAgentsError("no usable record: " + "; ".join(result.skipped[:5]))
         with Library(library) as store:
-            report = store.add_papers(result.papers, keywords=file, kind="import")
-            if tags:
-                store.add_tags(store.ids_of(result.papers), tags)
+            # One change: a refused tag must not leave the papers and the run
+            # record behind, where a second try would count the run twice.
+            try:
+                with store.together():
+                    report = store.add_papers(result.papers, keywords=file, kind="import")
+                    if tags:
+                        store.add_tags(store.ids_of(result.papers), tags)
+            except ValueError as err:
+                raise ThesisAgentsError(str(err)) from err
             return {**report.to_dict(), "skipped": list(result.skipped)}
 
 

@@ -14,14 +14,26 @@ from the paper's landing-page URL) because many publishers return 403 to
 the project's default API-style UA. When the env var
 ``THESISAGENTS_PDF_COOKIES_FILE`` points at a Netscape ``cookies.txt``
 file, matching cookies are attached on top.
+
+Each folder keeps ``pdfs/.owners.json``, which maps a file name to the
+identity (``Paper.dedup_key()``) of the paper whose PDF it holds. A file is
+reused only for its owner, so a reused export folder cannot hand one paper
+another paper's PDF because their BibTeX keys agree.
+
+:func:`fetch_pdf_to` is the same routing for one bare URL. The text fetch
+behind summaries and MCP ``fetch_pdf_text`` uses it, so a publisher PDF
+goes through visible Chrome there too.
 """
 
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import hashlib
+import json
+import os
 import re
-from collections.abc import Sequence
+from collections.abc import Awaitable, Callable, Mapping, Sequence
 from dataclasses import dataclass, replace
 from pathlib import Path
 from urllib.parse import urljoin, urlparse
@@ -37,6 +49,8 @@ _LOG = get_logger(__name__)
 _PDF_SUBDIR: str = "pdfs"
 _MAX_PDF_BYTES: int = 50_000_000
 _MAX_FILENAME_LENGTH: int = 80
+#: File name -> owning paper identity, kept inside the ``pdfs`` folder.
+_OWNERS_FILE: str = ".owners.json"
 
 #: Cap on simultaneously-downloading PDFs. Several sources can hand back PDF
 #: URLs on the SAME host under different source clients, so the cap is global.
@@ -104,10 +118,15 @@ async def download_pdfs(
     ``_DOWNLOAD_CONCURRENCY``) so a large collection doesn't hammer a single
     publisher CDN with one request per paper simultaneously, and at most
     ``_PER_HOST_CONCURRENCY`` of them run against the same host.
+
+    Every saved file is recorded in the folder's owner manifest
+    (``pdfs/.owners.json``) under the paper's identity, so a later run in
+    the same folder reuses a file only for the paper that owns it.
     """
     root = ensure_export_dir(out_dir)
     pdf_dir = ensure_export_dir(root / _PDF_SUBDIR)
     sem = asyncio.Semaphore(max(1, concurrency))
+    names = _file_names(collection.papers, pdf_dir, _load_owners(pdf_dir))
 
     per_host: dict[str, asyncio.Semaphore] = {}
 
@@ -129,9 +148,7 @@ async def download_pdfs(
     outcomes = await asyncio.gather(
         *(
             _bounded(paper, name)
-            for paper, name in zip(
-                collection.papers, _file_names(collection.papers), strict=True
-            )
+            for paper, name in zip(collection.papers, names, strict=True)
         ),
         return_exceptions=True,
     )
@@ -150,27 +167,142 @@ async def download_pdfs(
             )
         else:
             results.append(outcome)
+    _record_owners(
+        pdf_dir,
+        {
+            result.path.name: _safe_identity(paper)
+            for paper, result in zip(collection.papers, results, strict=True)
+            if result.path is not None and result.path.parent == pdf_dir
+        },
+    )
     return results
 
 
-def _file_names(papers: Sequence[Paper]) -> list[str]:
+def _file_names(
+    papers: Sequence[Paper],
+    pdf_dir: Path | None = None,
+    owners: Mapping[str, str] | None = None,
+) -> list[str]:
     """One file name (without ``.pdf``) per paper, no two alike.
 
     The failure this prevents: ``wang2023deep`` is the BibTeX key of many
-    papers. Under one name the second paper was reported as already on disk
-    with the first one's PDF. The name is told apart by the paper's
-    identity, not by its position, so the next run finds the same file.
+    papers. Under one name a second paper was reported as already on disk
+    with the first one's PDF, in the same batch and also in a later run in
+    the same folder. A per-paper deck was then built from the wrong PDF.
+
+    ``owners`` is the folder's manifest (file name to paper identity). A
+    paper gets its plain BibTeX key when the manifest gives that name to
+    this paper, or to nobody while no file sits there. Otherwise it gets the
+    key plus a hash of its identity. A file under the plain key that the
+    manifest does not list (a folder written before the manifest existed)
+    belongs to an unknown paper, so it is neither reused nor overwritten.
+    The paper downloads again under its hashed name. A file under the hashed
+    name is reused even when unlisted, because only this identity produces
+    it.
+
+    Example: two papers keyed ``wang2023deep`` get ``wang2023deep`` and
+    ``wang2023deep-1a2b3c4d``, and swapping their order in a later run gives
+    each the same file again.
     """
+    claimed = {name.casefold(): identity for name, identity in (owners or {}).items()}
     names: list[str] = []
     taken: set[str] = set()
     for paper in papers:
-        name = safe_filename(_safe_key(paper))[:_MAX_FILENAME_LENGTH]
-        if name.casefold() in taken:
-            digest = hashlib.sha256(paper.dedup_key().encode("utf-8")).hexdigest()[:8]
-            name = f"{name[: _MAX_FILENAME_LENGTH - 9]}-{digest}"
+        identity = _safe_identity(paper)
+        base = safe_filename(_safe_key(paper))[:_MAX_FILENAME_LENGTH]
+        free = base.casefold() not in taken and _name_is_free(base, identity, claimed, pdf_dir)
+        name = base if free else _identity_name(base, identity)
         taken.add(name.casefold())
         names.append(name)
     return names
+
+
+def _name_is_free(
+    base: str, identity: str, claimed: Mapping[str, str], pdf_dir: Path | None
+) -> bool:
+    """Whether ``{base}.pdf`` may be used by the paper ``identity``.
+
+    False when the manifest gives the name to another paper, or when an
+    unlisted non-empty file already sits there (its owner is unknown).
+    Example: ``_name_is_free("k", "doi:1", {"k.pdf": "doi:2"}, None)`` is False.
+    """
+    owner = claimed.get(f"{base}.pdf".casefold())
+    if owner is not None:
+        return owner == identity
+    if pdf_dir is None:
+        return True
+    target = pdf_dir / f"{base}.pdf"
+    return not (target.exists() and target.stat().st_size > 0)
+
+
+def _identity_name(base: str, identity: str) -> str:
+    """``base`` plus the first 8 hex digits of the identity's SHA-256.
+
+    The same scheme the downloader used for in-batch collisions before the
+    manifest, so a file written that way is found again under this name.
+    Example: ``_identity_name("wang2023deep", "doi:10.1/x")`` ends in ``-`` and
+    8 hex digits.
+    """
+    digest = hashlib.sha256(identity.encode("utf-8")).hexdigest()[:8]
+    return f"{base[: _MAX_FILENAME_LENGTH - 9]}-{digest}"
+
+
+def _load_owners(pdf_dir: Path) -> dict[str, str]:
+    """Read ``pdfs/.owners.json`` as file name to paper identity.
+
+    A missing, unreadable or malformed manifest reads as empty. Every file
+    in the folder then counts as unowned, which costs a fresh download but
+    never hands a paper someone else's PDF.
+    Example: ``{"wang2023deep.pdf": "doi:10.1000/a"}``.
+    """
+    path = pdf_dir / _OWNERS_FILE
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except FileNotFoundError:
+        return {}
+    except (OSError, ValueError) as err:
+        _LOG.warning("pdf owner manifest %s unreadable, ignoring it: %s", path, err)
+        return {}
+    if not isinstance(data, dict):
+        return {}
+    return {str(name): owner for name, owner in data.items() if isinstance(owner, str)}
+
+
+def _record_owners(pdf_dir: Path, entries: Mapping[str, str]) -> None:
+    """Merge ``entries`` into the manifest, written atomically.
+
+    A write failure is logged, not raised: the PDFs are on disk already, and
+    a missing entry only means the next run downloads that paper again.
+    Example: ``_record_owners(pdf_dir, {"k.pdf": "doi:10.1000/a"})``.
+    """
+    if not entries:
+        return
+    owners = _load_owners(pdf_dir)
+    owners.update(entries)
+    path = pdf_dir / _OWNERS_FILE
+    tmp = path.with_name(f"{_OWNERS_FILE}.{os.getpid()}.tmp")
+    try:
+        tmp.write_text(
+            json.dumps(owners, indent=1, sort_keys=True, ensure_ascii=False),
+            encoding="utf-8",
+        )
+        os.replace(tmp, path)
+    except OSError as err:
+        _LOG.warning("cannot write pdf owner manifest %s: %s", path, err)
+        with contextlib.suppress(OSError):
+            tmp.unlink()
+
+
+def _safe_identity(paper: Paper) -> str:
+    """``dedup_key()`` that cannot fail the naming or recording step.
+
+    Falls back to ``source:source_id`` so one malformed record does not stop
+    the whole batch. Example: ``"doi:10.1000/a"`` or ``"arxiv:1706.03762"``.
+    """
+    try:
+        return paper.dedup_key()
+    except Exception:  # noqa: BLE001  # naming must not raise
+        return f"{paper.source}:{paper.source_id}"
 
 
 def _safe_key(paper: Paper) -> str:
@@ -186,16 +318,78 @@ def _safe_key(paper: Paper) -> str:
         return paper.source_id or "unknown"
 
 
+@dataclass(frozen=True, slots=True)
+class _PdfRequest:
+    """What a direct PDF request needs besides its URL.
+
+    ``source`` picks the shared client, ``referer`` is sent when known, and
+    ``max_bytes`` caps the body while it streams in.
+    Example: ``_PdfRequest("arxiv", None, 20_000_000)``.
+    """
+
+    source: str
+    referer: str | None
+    max_bytes: int = _MAX_PDF_BYTES
+
+    @classmethod
+    def for_paper(cls, paper: Paper) -> _PdfRequest:
+        # The cap is read at call time, so a test can lower it.
+        return cls(
+            source=paper.source, referer=_referer_for(paper), max_bytes=_MAX_PDF_BYTES
+        )
+
+
 async def _download_one(paper: Paper, target: Path) -> PdfDownloadResult:
     key = paper.bibtex_key()
     if not paper.pdf_url:
         _LOG.info("skip pdf for %s: no pdf_url", key)
         return PdfDownloadResult(paper_key=key, path=None, skipped_reason="no_pdf_url")
+    # ``_file_names`` only hands out a name that is free, owned by this paper
+    # or derived from its identity, so a file found here is this paper's.
     if target.exists() and target.stat().st_size > 0:
         _LOG.info("pdf already on disk for %s: %s", key, target)
         return PdfDownloadResult(
             paper_key=key, path=target, skipped_reason=None, route=ROUTE_ON_DISK
         )
+    return await _routed_fetch(
+        paper.pdf_url, target, key, lambda: _fetch_and_validate(paper, target, key)
+    )
+
+
+async def fetch_pdf_to(
+    url: str, target: Path, *, source: str, max_bytes: int = _MAX_PDF_BYTES
+) -> PdfDownloadResult:
+    """Fetch one PDF URL into ``target`` with the downloader's routing.
+
+    The boundary this guards: the text fetch behind summaries and MCP
+    ``fetch_pdf_text`` used a plain HTTP GET of its own. A publisher that
+    refuses such requests left the paper without text, although the
+    downloader got the same PDF through visible Chrome. This shares that
+    routing (browser for paywalled hosts, browser-style headers, cookies,
+    the ``citation_pdf_url`` second hop and the streamed size cap).
+
+    ``paper_key`` of the result is ``url``, since there is no paper.
+    Example: ``await fetch_pdf_to("https://arxiv.org/pdf/1", tmp / "p.pdf",
+    source="arxiv")``.
+    """
+    request = _PdfRequest(source=source, referer=None, max_bytes=max_bytes)
+    return await _routed_fetch(
+        url, target, url, lambda: _fetch_url(request, url, target, url)
+    )
+
+
+async def _routed_fetch(
+    url: str,
+    target: Path,
+    key: str,
+    direct: Callable[[], Awaitable[PdfDownloadResult]],
+) -> PdfDownloadResult:
+    """Send a paywalled publisher URL to visible Chrome, else run ``direct``.
+
+    ``direct`` is the plain HTTPS fetch. It also runs when the browser failed
+    or is unavailable, and the result's ``route`` says which happened so the
+    caller can surface it.
+    """
     # For paywalled publisher CDNs (IEEE, ACM, Springer, Elsevier, ...)
     # httpx-style requests reliably 403. Route those through WebRunner
     # (real visible Chrome) so the session cookie / TLS handshake / JS
@@ -203,10 +397,10 @@ async def _download_one(paper: Paper, target: Path) -> PdfDownloadResult:
     from thesisagents.fetchers import webrunner_pdf
 
     route = ROUTE_DIRECT
-    if webrunner_pdf.should_use_webrunner(paper.pdf_url):
+    if webrunner_pdf.should_use_webrunner(url):
         if webrunner_pdf.is_available():
-            _LOG.info("pdf via WebRunner for %s: %s", key, paper.pdf_url)
-            ok = await webrunner_pdf.download_via_browser(paper.pdf_url, target)
+            _LOG.info("pdf via WebRunner for %s: %s", key, url)
+            ok = await webrunner_pdf.download_via_browser(url, target)
             if ok:
                 return PdfDownloadResult(
                     paper_key=key, path=target, skipped_reason=None, route=ROUTE_BROWSER
@@ -214,7 +408,7 @@ async def _download_one(paper: Paper, target: Path) -> PdfDownloadResult:
             _LOG.warning(
                 "pdf for %s: the browser could not fetch the publisher PDF %s; "
                 "trying a direct request, which the publisher usually refuses",
-                key, paper.pdf_url,
+                key, url,
             )
             route = ROUTE_DIRECT_BROWSER_FAILED
         else:
@@ -223,10 +417,10 @@ async def _download_one(paper: Paper, target: Path) -> PdfDownloadResult:
                 "automation is unavailable (selenium not installed, or "
                 "THESISAGENTS_DISABLE_WEBRUNNER=1); trying a direct request, which the "
                 "publisher usually refuses",
-                key, paper.pdf_url,
+                key, url,
             )
             route = ROUTE_DIRECT_NO_BROWSER
-    result = await _fetch_and_validate(paper, target, key)
+    result = await direct()
     return replace(  # NOSONAR dataclasses.replace returns the same dataclass type
         result, route=result.route or route
     )
@@ -235,7 +429,14 @@ async def _download_one(paper: Paper, target: Path) -> PdfDownloadResult:
 async def _fetch_and_validate(
     paper: Paper, target: Path, key: str
 ) -> PdfDownloadResult:
-    """Fetch ``paper.pdf_url`` and persist the PDF bytes.
+    """Fetch ``paper.pdf_url`` directly and persist the PDF bytes."""
+    return await _fetch_url(_PdfRequest.for_paper(paper), paper.pdf_url or "", target, key)
+
+
+async def _fetch_url(
+    request: _PdfRequest, url: str, target: Path, key: str
+) -> PdfDownloadResult:
+    """Fetch ``url`` and persist the PDF bytes.
 
     Handles the three soft failure modes: HTTP 4xx/5xx, oversized body,
     HTML-instead-of-PDF. The last is recoverable when the HTML carries
@@ -244,8 +445,8 @@ async def _fetch_and_validate(
     every OJS / DSpace / EPrints install) — we extract the tag, follow
     it once, and re-validate.
     """
-    client = await get_client(paper.source)
-    fetched = await _request_pdf(client, paper, paper.pdf_url)
+    client = await get_client(request.source)
+    fetched = await _request_pdf(client, request, url)
     if isinstance(fetched, PdfDownloadResult):
         # _request_pdf carries the failure reason but doesn't know the key.
         return PdfDownloadResult(
@@ -253,8 +454,8 @@ async def _fetch_and_validate(
         )
     body, content_type = fetched
     if not _looks_like_pdf(body, content_type):
-        retry_url = _extract_citation_pdf_url(body, base_url=paper.pdf_url)
-        if retry_url and retry_url != paper.pdf_url:
+        retry_url = _extract_citation_pdf_url(body, base_url=url)
+        if retry_url and retry_url != url:
             _LOG.info(
                 "pdf %s returned HTML; retrying via <meta name=\"citation_pdf_url\"> %s",
                 key, retry_url,
@@ -265,7 +466,7 @@ async def _fetch_and_validate(
                 return PdfDownloadResult(
                     paper_key=key, path=target, skipped_reason=None, route=ROUTE_BROWSER
                 )
-            fetched = await _request_pdf(client, paper, retry_url)
+            fetched = await _request_pdf(client, request, retry_url)
             if isinstance(fetched, PdfDownloadResult):
                 return PdfDownloadResult(
                     paper_key=key, path=None, skipped_reason="citation_pdf_url_fail",
@@ -296,14 +497,14 @@ async def _browser_fetched(url: str, target: Path) -> bool:
     return await webrunner_pdf.download_via_browser(url, target)
 
 
-async def _request_pdf(client, paper: Paper, url: str):
-    """Run one HTTP GET with browser-style headers and Cookie injection.
+async def _request_pdf(client, request: _PdfRequest, url: str):
+    """Run one streamed HTTP GET with browser-style headers and Cookie injection.
 
-    Returns ``(body, content_type)`` on a 2xx response that fits the
-    size cap, or a :class:`PdfDownloadResult` with the failure reason
-    already populated.
+    Returns ``(body, content_type)`` on a 2xx response that fits
+    ``request.max_bytes``, or a :class:`PdfDownloadResult` with the failure
+    reason already populated.
     """
-    headers = _browser_headers(paper)
+    headers = _browser_headers(request.referer)
     cookies = cookies_for_url(url)
     if cookies:
         # Pass cookies through the ``Cookie:`` header directly; httpx's
@@ -311,26 +512,51 @@ async def _request_pdf(client, paper: Paper, url: str):
         # opaque-strings-from-a-file, never managed across requests.
         headers["Cookie"] = "; ".join(f"{k}={v}" for k, v in cookies.items())
     try:
-        response = await client.get(url, headers=headers)
+        async with client.stream("GET", url, headers=headers) as response:
+            if response.status_code >= 400:
+                _LOG.warning("pdf http %s for %s", response.status_code, url)
+                return PdfDownloadResult(
+                    paper_key="", path=None,
+                    skipped_reason=f"http_{response.status_code}",
+                )
+            body = await _read_capped(response, request.max_bytes)
+            content_type = response.headers.get("content-type", "").lower()
     except Exception as err:  # noqa: BLE001  # network errors come in many shapes
         _LOG.warning("pdf network error for %s: %s", url, err)
         return PdfDownloadResult(
             paper_key="", path=None, skipped_reason="network_error"
         )
-    if response.status_code >= 400:
-        _LOG.warning("pdf http %s for %s", response.status_code, url)
-        return PdfDownloadResult(
-            paper_key="", path=None,
-            skipped_reason=f"http_{response.status_code}",
-        )
-    body = response.content
-    if len(body) > _MAX_PDF_BYTES:
-        _LOG.warning("pdf too large for %s (%d bytes)", url, len(body))
+    if body is None:
+        _LOG.warning("pdf too large for %s (over %d bytes)", url, request.max_bytes)
         return PdfDownloadResult(
             paper_key="", path=None, skipped_reason="too_large"
         )
-    content_type = response.headers.get("content-type", "").lower()
     return body, content_type
+
+
+async def _read_capped(response, max_bytes: int) -> bytes | None:
+    """The decoded body of a streamed ``response``, or None past ``max_bytes``.
+
+    The failure this prevents: reading ``response.content`` first and
+    checking the length after held a whole oversized body in memory for
+    every parallel download before it was rejected. Here the count runs on
+    decoded bytes (so a small compressed body cannot expand past the cap)
+    and reading stops at the first chunk over the cap, and the caller's
+    ``async with`` then closes the connection. A declared ``Content-Length``
+    over the cap on an unencoded body is refused before any chunk is read.
+    Example: a chunked 60 MB body against a 50 MB cap stops after about
+    50 MB and returns None.
+    """
+    encoding = response.headers.get("content-encoding", "identity").strip().lower()
+    declared = response.headers.get("content-length", "")
+    if encoding == "identity" and declared.isdigit() and int(declared) > max_bytes:
+        return None
+    body = bytearray()
+    async for chunk in response.aiter_bytes():
+        body += chunk
+        if len(body) > max_bytes:
+            return None
+    return bytes(body)
 
 
 def _looks_like_pdf(body: bytes, content_type: str) -> bool:
@@ -449,17 +675,17 @@ def _extract_citation_pdf_url(body: bytes, *, base_url: str) -> str | None:
     return urljoin(base_url, candidate)
 
 
-def _browser_headers(paper: Paper) -> dict[str, str]:
+def _browser_headers(referer: str | None) -> dict[str, str]:
     """Per-request headers that make us look like a browser to publisher
-    CDNs. ``Referer`` is the paper's landing page (when its host matches
-    the PDF host) so the request looks like a click-through from the
-    article page; that closes the most common 403 case."""
+    CDNs. ``referer`` is the paper's landing page (when its host matches
+    the PDF host, see :func:`_referer_for`) so the request looks like a
+    click-through from the article page, which closes the most common 403
+    case."""
     headers: dict[str, str] = {
         "User-Agent": _BROWSER_UA,
         "Accept": "application/pdf,*/*;q=0.8",
         "Accept-Language": "en-US,en;q=0.9",
     }
-    referer = _referer_for(paper)
     if referer:
         headers["Referer"] = referer
     return headers

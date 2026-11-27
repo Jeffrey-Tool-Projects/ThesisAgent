@@ -7,7 +7,7 @@ export preflight's verdict on their DOIs and URLs.
 
 An import is a merge, never a blind append. A paper is recognised by the same
 identity keys search de-duplication uses (:meth:`Paper.identity_keys`: DOI,
-arXiv ID, title hash) and by the same rules (``dedup.fuzzy_link_allowed``,
+arXiv ID, title hash) and by the same rules (``dedup.accept_matches``,
 ``dedup.merge_papers``), so adding the same search twice leaves the paper
 count unchanged and only records a second sighting.
 
@@ -34,11 +34,7 @@ from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any
 
-from thesisagents.core.dedup import (
-    FUZZY_KEY_PREFIX,
-    fuzzy_link_allowed,
-    merge_papers,
-)
+from thesisagents.core.dedup import accept_matches, merge_papers
 from thesisagents.core.diagnostics import (
     PaperRelation,
     PaperScore,
@@ -418,10 +414,11 @@ class Library(CurationMixin, SavedSearchMixin):
         """Store ``paper`` or merge it into the stored paper it is. Returns ``(id, is_new)``.
 
         The same matching as ``dedup.IdentityIndex.add``, against rows instead
-        of a list: every identity key is looked up, a title-hash match is
-        subject to the conflicting-DOI guard, and a paper that matches two
-        stored papers (it carries the DOI of one and the arXiv ID of the
-        other) joins them into one.
+        of a list: every identity key is looked up, the matches are checked
+        together by ``dedup.accept_matches`` (two rows with different DOIs
+        are never joined, a DOI or arXiv match wins over a title match), and
+        a paper that matches two stored papers (it carries the DOI of one and
+        the arXiv ID of the other) joins them into one.
         """
         matches = self._matches(paper)
         if not matches:
@@ -458,20 +455,21 @@ class Library(CurationMixin, SavedSearchMixin):
         return paper_id, False
 
     def _matches(self, paper: Paper) -> set[int]:
-        """The stored papers that ``paper`` is."""
-        matches: set[int] = set()
+        """The stored papers that ``paper`` is.
+
+        Every row it shares a key with is a candidate, and they are judged
+        together. Judged one at a time, a record whose title matches one
+        stored paper and whose arXiv ID matches another with a different DOI
+        passed both checks, and the import made one row of two papers.
+        """
+        candidates: list[tuple[str, int, Paper]] = []
         for key in paper.identity_keys():
             row = self._conn.execute(
                 "SELECT paper_id FROM identity_keys WHERE key = ?", (key,)
             ).fetchone()
-            if row is None:
-                continue
-            if key.startswith(FUZZY_KEY_PREFIX) and not fuzzy_link_allowed(
-                self._load(row[0]), paper
-            ):
-                continue
-            matches.add(int(row[0]))
-        return matches
+            if row is not None:
+                candidates.append((key, int(row[0]), self._load(int(row[0]))))
+        return accept_matches(paper, candidates)
 
     def holds(self, paper: Paper) -> bool:
         """Whether an import of ``paper`` would be a merge."""

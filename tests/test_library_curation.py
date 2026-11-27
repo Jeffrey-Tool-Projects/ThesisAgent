@@ -132,6 +132,28 @@ def test_deleting_removes_everything_recorded(library):
     assert not library.holds(_paper("1", "Graph neural networks for molecules", doi="10.1/a"))
 
 
+def test_the_id_of_a_deleted_paper_is_never_given_to_another(library, run):
+    # SQLite gave the next paper the highest id plus one, so after the paper
+    # with the highest id was deleted, the next import got its id, and an
+    # edit sent with the old id landed on the new paper.
+    old = max(_ids(library).values())
+    library.delete([old])
+    library.add_papers([_paper("new", "Program synthesis from examples", doi="10.1/new")])
+
+    assert _ids(library)["new"] > old
+    for edit in (
+        lambda: library.set_note(old, "meant for the deleted paper"),
+        lambda: library.add_tags([old], ["chapter 2"]),
+        lambda: library.delete([old]),
+    ):
+        with pytest.raises(LibraryError, match=f"no paper with id {old}"):
+            edit()
+    code, _out, err = run("delete", str(old), "--yes")
+    assert (code, f"no paper with id {old}" in err) == (2, True)
+    assert len(library) == 3
+    assert library.annotations() == {}
+
+
 def test_a_preprint_and_its_journal_version_become_one(library):
     library.add_papers([
         _paper("p", "Attention is all you need", doi="10.48550/x", arxiv_id="1706.03762"),
@@ -406,6 +428,22 @@ def test_cli_prisma(library, run, tmp_path):
     assert '"unique": 3' in out
     assert target.read_text(encoding="utf-8").startswith("<svg")
     assert run("prisma", "--svg", str(tmp_path))[0] == 2
+
+
+def test_cli_import_with_a_refused_tag_imports_nothing(library, run, tmp_path):
+    # The papers and the run record were committed before the tag was
+    # checked, so the error left the import behind and a retry counted twice.
+    file = tmp_path / "new.bib"
+    file.write_text("@misc{n, title={A new record}, doi={10.1/new}}", encoding="utf-8")
+    runs_before = len(library.runs())
+
+    code, out, err = run("import", str(file), "--tag", " , ")
+
+    assert (code, out) == (2, "")
+    assert "a tag must contain text" in err
+    assert (len(library), library.tags(), len(library.runs())) == (3, {}, runs_before)
+    assert run("import", str(file), "--tag", "new")[0] == 0
+    assert (len(library), library.tags(), len(library.runs())) == (4, {"new": 1}, runs_before + 1)
 
 
 def test_cli_names_a_missing_library(tmp_path, capsys):

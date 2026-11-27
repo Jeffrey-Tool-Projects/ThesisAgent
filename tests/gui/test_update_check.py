@@ -91,4 +91,5 @@ def test_the_window_offers_the_download_page(qtbot, monkeypatch):
     assert window.update_button().text() == "新版本 0.2.0"
     assert not window.update_button().isHidden()
     window.update_button().click()
-    assert opened == [update_check.RELEASES_URL]
+    # The page of the version announced: /latest may be another one by then.
+    assert opened == ["https://github.com/Jeffrey-Tool-Projects/ThesisAgent/releases/tag/v0.2.0"]

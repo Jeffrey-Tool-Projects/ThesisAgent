@@ -12,6 +12,7 @@ import asyncio
 import contextlib
 import dataclasses
 import sys
+from collections.abc import Sequence
 from pathlib import Path
 
 from thesisagents import __version__
@@ -58,7 +59,7 @@ from thesisagents.core.export_validation import (
 )
 from thesisagents.core.identifiers import parse_identifier
 from thesisagents.core.models import ExportOptions, Paper, PaperCollection, Query
-from thesisagents.core.pdf_download import download_pdfs
+from thesisagents.core.pdf_download import PdfDownloadResult, download_pdfs
 from thesisagents.core.pipeline import (
     enrich_collection,
     run_search,
@@ -253,7 +254,11 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--no-abstract",
         action="store_true",
-        help="Omit abstracts from exports (titles/authors/links only).",
+        help=(
+            "Omit the papers' abstracts from every export format (pptx, xlsx, "
+            "bib, md, json, ris, csv, csl, docx, tex). The deck also leaves out "
+            "its summary slides (title / author / link slides only)."
+        ),
     )
     parser.add_argument(
         "--lang",
@@ -545,6 +550,16 @@ async def _run(args: argparse.Namespace) -> int:
 
 
 async def _run_stages(args: argparse.Namespace, library: Library | None) -> int:
+    """Search, check identifiers, download PDFs, summarise, store, export.
+
+    The PDF download runs before the summaries. The failure this order
+    prevents: summarising first fetched each PDF with a plain request of its
+    own, a publisher refused it, and the paper had no summary although the
+    download right after got the PDF through visible Chrome. Now a summary
+    reads the saved file. The paywall prompt still comes right before the
+    download, and a declined run stores its (unsummarised) papers in the
+    library as before and spends nothing on summaries.
+    """
     formats = _resolve_formats(args)
     _validate_exports(formats)
     validate_snowball_args(args)
@@ -597,14 +612,20 @@ async def _run_stages(args: argparse.Namespace, library: Library | None) -> int:
         collection = await maybe_snowball(collection, args)
         await _verify_identifiers_early(collection, args, verification_cache)
         report_diagnostics(collection, args)
-        collection = await _maybe_enrich(collection, args)
-        add_to_library(library, collection, args)
+        # PDFs are downloaded BEFORE the summaries are written, so a summary
+        # reads the file this run saved (through Chrome for a publisher)
+        # instead of fetching it again with a request the publisher refuses.
+        # The paywall prompt gates the download and moves with it, so a
+        # declined run no longer pays for summaries first.
         if gate_pptx and collection.papers and not _confirm_paywall(
             collection, threshold=args.paywall_threshold, auto_yes=args.yes
         ):
+            add_to_library(library, collection, args)
             return 1
         if args.download_pdf and collection.papers and not args.pdf:
             pdf_results = await download_pdfs(collection, args.out)
+        collection = await _maybe_enrich(collection, args, pdf_results)
+        add_to_library(library, collection, args)
     finally:
         await shutdown_clients()
     if not collection.papers:
@@ -783,14 +804,24 @@ def _papers_with_pdf(collection: PaperCollection, pdf_results: list) -> list[Pap
     not count for the other. Results that do not line up (a caller with a
     subset) are matched by key.
     """
+    return [collection.papers[index] for index in _indices_with_pdf(collection, pdf_results)]
+
+
+def _indices_with_pdf(collection: PaperCollection, pdf_results: list) -> list[int]:
+    """The positions in ``collection.papers`` of the papers whose PDF is on disk.
+
+    Positions rather than papers, so a caller can pair each one with the key
+    the same paper has in the whole collection (see :func:`_emit_per_paper`).
+    The pairing rules are those of :func:`_papers_with_pdf`.
+
+    Example: two papers of which only the second downloaded give ``[1]``.
+    """
     if len(pdf_results) == len(collection.papers):
-        return [
-            paper
-            for paper, result in zip(collection.papers, pdf_results, strict=True)
-            if result.path is not None
-        ]
+        return [index for index, result in enumerate(pdf_results) if result.path is not None]
     saved = {result.paper_key for result in pdf_results if result.path is not None}
-    return [paper for paper in collection.papers if paper.bibtex_key() in saved]
+    return [
+        index for index, paper in enumerate(collection.papers) if paper.bibtex_key() in saved
+    ]
 
 
 def _emit_per_paper(
@@ -800,63 +831,94 @@ def _emit_per_paper(
     args: argparse.Namespace,
     verification_cache: VerificationCache | None = None,
 ) -> int:
-    """Generate one PPT per paper that has a successfully downloaded PDF.
+    """Write the summary exports for every paper, and one PPT per downloaded PDF.
 
-    Non-PPT formats (xlsx, bib, md, json) aggregate over the accessible
-    subset so the bibliography file matches the slides on disk.
+    The non-PPT formats (xlsx, bib, md, json, ...) summarise the whole search
+    result, so they get every paper whether its PDF downloaded or not. Only a
+    per-paper deck needs the PDF. The failure this prevents: the summaries used
+    to get only the papers with a PDF, so a search of four papers with three
+    downloads wrote a three-row workbook, and a run where no PDF downloaded
+    stopped before writing the workbook at all.
+
+    Each deck is named after the paper's cite key in the whole collection, the
+    key the ``.bib`` of the same run gives it, so a deck is found by the key it
+    is cited with.
+
+    Returns 1 when no deck could be written (the summary files are written all
+    the same), else 0. Example: two papers of which one downloaded give a
+    two-row ``.xlsx``, one ``<key>.pptx`` and exit code 0.
     """
-    accessible_papers = _papers_with_pdf(collection, pdf_results)
-    if not accessible_papers:
-        print(
-            "error: no PDF could be downloaded; no slides were generated.",
-            file=sys.stderr,
-        )
-        _print_pdf_summary(pdf_results, args.quiet)
-        return 1
-
-    accessible_collection = dataclasses.replace(
-        collection, papers=tuple(accessible_papers)
-    )
-
     aggregate_formats = tuple(f for f in options.formats if f != EXPORT_PPTX)
     written_aggregate: dict[str, Path] = {}
     if aggregate_formats:
         agg_options = dataclasses.replace(options, formats=aggregate_formats)
         written_aggregate = export_collection(
-            accessible_collection,  # NOSONAR dataclasses.replace returns the same dataclass type
+            collection,
             agg_options,  # NOSONAR dataclasses.replace returns the same dataclass type
             verification_cache=verification_cache,
         )
+    decks = _write_per_paper_decks(collection, options, pdf_results, verification_cache)
+    _print_results(collection, args.quiet)
+    if args.download_pdf or not decks:
+        _print_pdf_summary(pdf_results, args.quiet)
+    if not args.quiet:
+        _print_per_paper_outputs(decks, written_aggregate, len(collection.papers))
+    if not decks:
+        print(
+            "error: no PDF could be downloaded; no slides were generated.",
+            file=sys.stderr,
+        )
+        return 1
+    return 0
 
-    per_paper_written: list[tuple[Paper, Path]] = []
-    # Unique: two papers with one BibTeX key would write the same deck.
-    stems = unique_keys(accessible_papers)
-    for paper, stem in zip(accessible_papers, stems, strict=True):
-        single = PaperCollection(query=collection.query, papers=(paper,))
+
+def _write_per_paper_decks(
+    collection: PaperCollection,
+    options: ExportOptions,
+    pdf_results: list,
+    verification_cache: VerificationCache | None,
+) -> list[tuple[str, Path]]:
+    """One deck per paper whose PDF is on disk, as ``(file stem, path)`` pairs.
+
+    The stems come from :func:`unique_keys` over the whole collection, so two
+    papers that share a BibTeX key never write the same file, one deck
+    overwriting the other.
+
+    Example: papers ``a`` (no PDF) and ``b`` (PDF) give ``[("<b's key>", path)]``.
+    """
+    stems = unique_keys(collection.papers)
+    written: list[tuple[str, Path]] = []
+    for index in _indices_with_pdf(collection, pdf_results):
+        single = PaperCollection(query=collection.query, papers=(collection.papers[index],))
         per_options = dataclasses.replace(
             options,
             formats=(EXPORT_PPTX,),
-            filename_stem=stem,
+            filename_stem=stems[index],
         )
         emitted = export_collection(
             single,
             per_options,  # NOSONAR dataclasses.replace returns the same dataclass type
             verification_cache=verification_cache,
         )
-        per_paper_written.append((paper, emitted[EXPORT_PPTX]))
+        written.append((stems[index], emitted[EXPORT_PPTX]))
+    return written
 
-    _print_results(accessible_collection, args.quiet)
-    if args.download_pdf:
-        _print_pdf_summary(pdf_results, args.quiet)
-    if not args.quiet:
-        print(f"\nGenerated {len(per_paper_written)} per-paper PPT(s):")
-        for paper, path in per_paper_written:
-            print(f"  - {paper.bibtex_key()}: {Path(path).resolve()}")
-        if written_aggregate:
-            print("\nAggregate exports (accessible papers only):")
-            for fmt, path in written_aggregate.items():
-                print(f"  - {fmt}: {Path(path).resolve()}")
-    return 0
+
+def _print_per_paper_outputs(
+    decks: list[tuple[str, Path]], aggregate: dict[str, Path], paper_count: int
+) -> None:
+    """List the decks and the summary files a per-paper run wrote.
+
+    Example output: ``Generated 1 per-paper PPT(s):`` then
+    ``Aggregate exports (all 2 papers):`` with one line per file.
+    """
+    print(f"\nGenerated {len(decks)} per-paper PPT(s):")
+    for stem, path in decks:
+        print(f"  - {stem}: {Path(path).resolve()}")
+    if aggregate:
+        print(f"\nAggregate exports (all {paper_count} papers):")
+        for fmt, path in aggregate.items():
+            print(f"  - {fmt}: {Path(path).resolve()}")
 
 
 def _print_pdf_summary(pdf_results, quiet: bool) -> None:
@@ -953,9 +1015,15 @@ def _missing_model(args: argparse.Namespace) -> str:
 
 
 async def _maybe_enrich(
-    collection: PaperCollection, args: argparse.Namespace
+    collection: PaperCollection,
+    args: argparse.Namespace,
+    pdf_results: Sequence[PdfDownloadResult] = (),
 ) -> PaperCollection:
     """Resolve enrichment mode, print user-visible notices, dispatch.
+
+    ``pdf_results`` is this run's download outcome, one per paper in order.
+    A paper whose PDF was saved is summarised from that file (see
+    :func:`_downloaded_pdfs`).
 
     A ``--library-export`` run is enriched only on an explicit ``--enrich``:
     stored papers keep the summaries they were stored with, and an API key in
@@ -995,7 +1063,9 @@ async def _maybe_enrich(
         file=sys.stderr,
     )
     try:
-        return await _enrich_for_mode(collection, args)
+        return await _enrich_for_mode(
+            collection, args, _downloaded_pdfs(collection, pdf_results)
+        )
     except ConfigError as err:
         if enrich_mode == "explicit":
             raise
@@ -1006,22 +1076,41 @@ async def _maybe_enrich(
         return collection
 
 
+def _downloaded_pdfs(
+    collection: PaperCollection, pdf_results: Sequence[PdfDownloadResult]
+) -> list[Path | None] | None:
+    """The saved PDF of each paper, in collection order, for the summaries.
+
+    The downloader returns one result per paper in order, so they pair by
+    position (a BibTeX key can belong to two papers). Results that do not
+    line up give None, and every paper's text is then fetched remotely.
+    Example: ``[Path("out/pdfs/k.pdf"), None]`` for one saved and one skipped.
+    """
+    if len(pdf_results) != len(collection.papers):
+        return None
+    return [result.path for result in pdf_results]
+
+
 async def _enrich_for_mode(
-    collection: PaperCollection, args: argparse.Namespace
+    collection: PaperCollection,
+    args: argparse.Namespace,
+    local_pdfs: list[Path | None] | None = None,
 ) -> PaperCollection:
     """Dispatch enrichment between the network path and the local-PDF path.
 
     ``--pdf`` papers carry pre-extracted text in ``paper.raw`` and have
     ``pdf_url=None``, so they can't go through ``enrich_collection`` (which
-    would try to fetch the URL via httpx). The local-PDF helper feeds the
-    stashed text straight into ``summarise_paper`` instead.
+    would try to fetch the URL). The local-PDF helper feeds the stashed text
+    straight into ``summarise_paper`` instead. ``local_pdfs`` are the files
+    this run downloaded, which ``enrich_collection`` reads before it fetches
+    anything.
     """
     if args.pdf:
         return await _enrich_local_pdf_collection(collection, args)
     return await enrich_collection(
         collection, language=args.lang, model=args.llm_model,
         provider=args.llm_provider, base_url=args.llm_base_url,
-        command=getattr(args, "llm_command", None),
+        command=getattr(args, "llm_command", None), local_pdfs=local_pdfs,
     )
 
 

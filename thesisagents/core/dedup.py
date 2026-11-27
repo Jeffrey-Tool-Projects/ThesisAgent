@@ -27,11 +27,21 @@ exact failure the field-merge above exists to prevent. Grouping on
 and a record that arrives later can transitively join two earlier groups (an
 arXiv record and a publisher record joined by a third that carries both IDs).
 
-The one restraint is :func:`_identifiers_conflict`: two records that BOTH
-carry a DOI, and disagree about it, are never merged on the strength of a
-fuzzy title match alone. Same title + same first author + same year with two
-different DOIs is how a workshop paper and its extended journal version look,
-and merging those would silently drop one from the results.
+The restraint is :func:`accept_matches`: two records that carry different
+DOIs are never merged, and of the records a paper shares a key with, a DOI
+or arXiv match is decided before a title match and wins over it. Same title
++ same first author + same year with two different DOIs is how a workshop
+paper and its extended journal version look, and merging those would
+silently drop one from the results. The guard is checked against every
+candidate at once, not pair by pair: a DOI-less record whose title matches
+paper A and whose arXiv ID matches paper B agrees with each of them alone,
+and joining it to both used to make one record of A and B.
+
+:func:`dedupe` holds the whole list, so it decides the groups in a fixed
+order (records with a DOI first, then those with an arXiv ID, then the rest)
+and the input order only chooses each group's canonical record. Without that,
+the DOI-less record above arriving before B was merged into A on its title,
+and A then carried B's arXiv ID.
 """
 
 from __future__ import annotations
@@ -45,6 +55,10 @@ from thesisagents.core.models import FieldProvenance, Paper, _canon_title
 #: are the ones the conflict guard polices — DOI / arXiv keys are exact.
 FUZZY_KEY_PREFIX = "hash:"
 
+#: Prefix of the DOI identity key (``Paper.doi_key``). A match on it is never
+#: refused, see :func:`accept_matches`.
+_DOI_KEY_PREFIX = "doi:"
+
 
 def dedupe(papers: Iterable[Paper]) -> list[Paper]:
     """Collapse duplicate Papers, merging optional fields across sources.
@@ -54,11 +68,43 @@ def dedupe(papers: Iterable[Paper]) -> list[Paper]:
     fields. Callers concatenate sources in the user-supplied ``--source`` order
     so the canonical record reflects the user's source preference.
 
+    Which papers form one group does not depend on the order: the records are
+    matched strongest identifier first (see :func:`_identifier_rank`), then
+    each group is merged in input order, so its first record is canonical.
+
     Example: ``dedupe([acm_no_doi, openalex_with_doi, crossref_same_doi])``
-    returns one paper — sourced ``acm``, carrying OpenAlex's ``pdf_url`` and
+    returns one paper, sourced ``acm``, carrying OpenAlex's ``pdf_url`` and
     the DOI both later records supplied.
     """
-    return IdentityIndex(papers).papers()
+    held = list(papers)
+    index = IdentityIndex()
+    slots = [0] * len(held)
+    for position in sorted(range(len(held)), key=lambda i: (_identifier_rank(held[i]), i)):
+        slots[position], _ = index.add(held[position])
+    groups: dict[int, list[Paper]] = {}
+    for position, slot in enumerate(slots):
+        groups.setdefault(index.resolve(slot), []).append(held[position])
+    # Insertion order of ``groups`` is the order of each group's first record.
+    merged: list[Paper] = []
+    for members in groups.values():
+        record = members[0]
+        for other in members[1:]:
+            record = merge_papers(record, other)
+        merged.append(record)
+    return merged
+
+
+def _identifier_rank(paper: Paper) -> int:
+    """0 for a paper with a DOI, 1 for one with only an arXiv ID, 2 otherwise.
+
+    The failure this prevents: a record without a DOI that matches paper A by
+    title and paper B by arXiv ID is ambiguous until B has been seen. Matching
+    the records that carry identifiers first lets the arXiv match decide, in
+    whatever order the sources returned them.
+    """
+    if paper.doi_key() is not None:
+        return 0
+    return 1 if paper.arxiv_key() is not None else 2
 
 
 class IdentityIndex:
@@ -157,8 +203,8 @@ def _matching_slots(
     paper: Paper,
     keys: tuple[str, ...],
 ) -> set[int]:
-    """Slots ``paper`` belongs to: every one sharing an identity key with it."""
-    matches: set[int] = set()
+    """Slots ``paper`` belongs to: those sharing a key that :func:`accept_matches` allows."""
+    candidates: list[tuple[str, int, Paper]] = []
     for key in keys:
         position = index.get(key)
         if position is None:
@@ -166,10 +212,55 @@ def _matching_slots(
         occupant = slots[position]
         if occupant is None:
             continue
-        if key.startswith(FUZZY_KEY_PREFIX) and not fuzzy_link_allowed(occupant, paper):
+        candidates.append((key, position, occupant))
+    return accept_matches(paper, candidates)
+
+
+def accept_matches(
+    paper: Paper, candidates: Iterable[tuple[str, int, Paper]]
+) -> set[int]:
+    """Which of the records ``paper`` shares a key with it may be merged with.
+
+    The failure this prevents: a record C without a DOI, whose title, first
+    author and year match paper A and whose arXiv ID matches paper B, agrees
+    with A and with B taken one at a time. Merging it with both made one
+    record of A and B, which carried A's DOI and B's arXiv ID, and one of the
+    two papers was gone.
+
+    ``candidates`` are ``(key, handle, record)`` in the order of
+    ``paper.identity_keys()``, so DOI first, then arXiv ID, then title hash.
+    ``handle`` is whatever names the record to the caller (a slot, a row id).
+    Each candidate is checked against ``paper`` merged with the candidates
+    accepted before it, so a strong-identifier match is decided first and
+    wins over a title match:
+
+    * a DOI match is always accepted. The key names that record, even when
+      its own DOI is another one because two papers were merged by hand
+      (``Library.merge``),
+    * an arXiv match is refused when the two carry different DOIs,
+    * a title match is refused on any DOI or arXiv disagreement and for an
+      empty title (:func:`fuzzy_link_allowed`).
+
+    Example: with A = (DOI 10.1/a, title T) and B = (DOI 10.1/b, arXiv
+    2401.00001) held, C = (title T, arXiv 2401.00001) is accepted by B. A is
+    refused, because B gave the merged record the DOI 10.1/b. The result is
+    B's handle alone.
+    """
+    accepted: set[int] = set()
+    merged = paper
+    for key, handle, record in candidates:
+        if handle in accepted:
             continue
-        matches.add(position)
-    return matches
+        if key.startswith(_DOI_KEY_PREFIX):
+            allowed = True
+        elif key.startswith(FUZZY_KEY_PREFIX):
+            allowed = fuzzy_link_allowed(record, merged)
+        else:
+            allowed = not _dois_conflict(record, merged)
+        if allowed:
+            accepted.add(handle)
+            merged = merge_papers(merged, record)
+    return accepted
 
 
 def fuzzy_link_allowed(existing: Paper, candidate: Paper) -> bool:
@@ -178,7 +269,7 @@ def fuzzy_link_allowed(existing: Paper, candidate: Paper) -> bool:
     Blocked in two cases:
 
     * **Conflicting strong identifiers.** Both carry a DOI (or both an arXiv
-      ID) and they disagree — see the module docstring's workshop-vs-journal
+      ID) and they disagree, see the module docstring's workshop-vs-journal
       example. The exact-key path still merges them if a DOI does match.
     * **An empty canonical title.** ``_canon_title`` strips every
       non-alphanumeric character, so a paper titled ``"..."`` — or one whose
@@ -189,6 +280,12 @@ def fuzzy_link_allowed(existing: Paper, candidate: Paper) -> bool:
     if not _canon_title(existing.title) or not _canon_title(candidate.title):
         return False
     return not _identifiers_conflict(existing, candidate)
+
+
+def _dois_conflict(a: Paper, b: Paper) -> bool:
+    """True when both papers carry a DOI and the two are different."""
+    left, right = a.doi_key(), b.doi_key()
+    return left is not None and right is not None and left != right
 
 
 def _identifiers_conflict(a: Paper, b: Paper) -> bool:

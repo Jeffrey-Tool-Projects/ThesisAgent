@@ -359,7 +359,7 @@ py -m thesisagents --paper "https://arxiv.org/abs/1706.03762" `
 | `--export` / `-e` | 형식: `pptx,xlsx,md,bib,json,ris,csv,csl,docx,tex` 중 아무거나. 기본은 모드에 따라 다름(아래 참고). |
 | `--out` / `-o` | 출력 디렉터리. 기본 `./exports`. |
 | `--filename-stem` | 생성되는 파일명 어간을 덮어씀. |
-| `--no-abstract` | 내보내기에서 초록 내용을 생략. |
+| `--no-abstract` | 모든 내보내기 형식(pptx, xlsx, bib, md, json, ris, csv, csl, docx, tex)에서 논문 초록을 생략. |
 | `--lang` / `-l` | 덱 언어: 14개 중 하나 — `en`, `zh-tw`, `zh-cn`, `ja`, `es`, `fr`, `de`, `ko`, `pt`, `ru`, `it`, `vi`, `hi`, `id`. 기본 `en`. |
 | `--enrich` | 자동 보강의 실패-표출 변형. `ANTHROPIC_API_KEY` 와 `[intelligence]` extra 가 필요. (키가 설정되면 자동 보강이 기본.) |
 | `--lightweight` | 보강을 건너뛰고 초록 전용 덱을 강제. 빠른 / 무인 실행에만 사용. **LLM 에이전트가 구동 중이라면 아래의 LLM-as-agent 흐름을 선호하세요.** |
