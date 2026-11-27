@@ -296,7 +296,7 @@ py -m thesisagents --paper "https://arxiv.org/abs/1706.03762" `
 | `--export` / `-e` | 格式:`pptx,xlsx,md,bib,json,ris,csv,csl,docx,tex` 之任意組合。預設依模式而定(見下)。 |
 | `--out` / `-o` | 輸出目錄。預設 `./exports`。 |
 | `--filename-stem` | 覆寫產生的檔名主幹。 |
-| `--no-abstract` | 從匯出中省略摘要內容。 |
+| `--no-abstract` | 從所有匯出格式（pptx、xlsx、bib、md、json、ris、csv、csl、docx、tex）中省略論文摘要。 |
 | `--lang` / `-l` | 投影片語言:14 種之一 —— `en`、`zh-tw`、`zh-cn`、`ja`、`es`、`fr`、`de`、`ko`、`pt`、`ru`、`it`、`vi`、`hi`、`id`。預設 `en`。 |
 | `--enrich` | 自動加值的失敗即報變體。需要 `ANTHROPIC_API_KEY` 與 `[intelligence]` extra。(設了金鑰時自動加值是預設。) |
 | `--lightweight` | 跳過加值 + 強制只有摘要的投影片。只用於快速 / 無人值守的執行;**當有 LLM agent 在驅動時,偏好下面的 LLM-as-agent 流程**。 |

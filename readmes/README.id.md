@@ -405,7 +405,7 @@ py -m thesisagents --paper "https://arxiv.org/abs/1706.03762" `
 | `--export` / `-e` | Format: kombinasi dari `pptx,xlsx,md,bib,json,ris,csv,csl,docx,tex`. Default bergantung mode (lihat bawah). |
 | `--out` / `-o` | Direktori output. Default `./exports`. |
 | `--filename-stem` | Override stem nama berkas yang dihasilkan. |
-| `--no-abstract` | Hilangkan konten abstrak dari ekspor. |
+| `--no-abstract` | Hilangkan abstrak makalah dari setiap format ekspor (pptx, xlsx, bib, md, json, ris, csv, csl, docx, tex). |
 | `--lang` / `-l` | Bahasa deck: salah satu dari 14 — `en`, `zh-tw`, `zh-cn`, `ja`, `es`, `fr`, `de`, `ko`, `pt`, `ru`, `it`, `vi`, `hi`, `id`. Default `en`. |
 | `--enrich` | Varian fail-loud dari auto-enrich. Butuh `ANTHROPIC_API_KEY` dan extra `[intelligence]`. (Auto-enrich adalah default saat key di-set.) |
 | `--lightweight` | Lewati pengayaan + paksa deck hanya-abstrak. Gunakan hanya untuk run cepat / tanpa-pengawasan; **saat agen LLM yang menjalankan, utamakan alur LLM-as-agent** di bawah. |

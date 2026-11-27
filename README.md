@@ -391,7 +391,7 @@ py -m thesisagents --paper "https://arxiv.org/abs/1706.03762" `
 | `--export` / `-e` | Formats: any of `pptx,xlsx,md,bib,json,ris,csv,csl,docx,tex`. Default depends on mode (see below). |
 | `--out` / `-o` | Output directory. Default `./exports`. |
 | `--filename-stem` | Override the generated filename stem. |
-| `--no-abstract` | Omit abstract content from exports. |
+| `--no-abstract` | Omit the papers' abstracts from every export format (pptx, xlsx, bib, md, json, ris, csv, csl, docx, tex). |
 | `--lang` / `-l` | Deck language: one of 14 — `en`, `zh-tw`, `zh-cn`, `ja`, `es`, `fr`, `de`, `ko`, `pt`, `ru`, `it`, `vi`, `hi`, `id`. Default `en`. |
 | `--enrich` | Fail-loud variant of auto-enrich. Needs `ANTHROPIC_API_KEY` and `[intelligence]` extra. (Auto-enrich is default when the key is set.) |
 | `--lightweight` | Skip enrichment + force the abstract-only deck. Use only for quick / unattended runs; **when an LLM agent is driving, prefer the LLM-as-agent flow** below. |

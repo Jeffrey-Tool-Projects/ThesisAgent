@@ -245,7 +245,7 @@ py -m thesisagents --paper "https://arxiv.org/abs/1706.03762" `
 | `--export` / `-e` | प्रारूप: `pptx,xlsx,md,bib,json,ris,csv,csl,docx,tex` में से कोई भी। डिफ़ॉल्ट मोड पर निर्भर (नीचे देखें)। |
 | `--out` / `-o` | आउटपुट निर्देशिका। डिफ़ॉल्ट `./exports`। |
 | `--filename-stem` | उत्पन्न फ़ाइल नाम stem ओवरराइड करें। |
-| `--no-abstract` | निर्यात से सार सामग्री छोड़ें। |
+| `--no-abstract` | हर निर्यात प्रारूप से शोध-पत्रों के सार छोड़ें (pptx, xlsx, bib, md, json, ris, csv, csl, docx, tex)। |
 | `--lang` / `-l` | डेक भाषा: 14 में से एक — `en`, `zh-tw`, `zh-cn`, `ja`, `es`, `fr`, `de`, `ko`, `pt`, `ru`, `it`, `vi`, `hi`, `id`। डिफ़ॉल्ट `en`। |
 | `--enrich` | auto-enrich का fail-loud संस्करण। `ANTHROPIC_API_KEY` और `[intelligence]` extra आवश्यक। (key सेट होने पर auto-enrich डिफ़ॉल्ट है।) |
 | `--lightweight` | समृद्धि छोड़ें + केवल-सार डेक के लिए बाध्य करें। केवल त्वरित / अनदेखी रनों के लिए उपयोग करें; **जब कोई LLM एजेंट चला रहा हो, नीचे दिए LLM-as-agent पथ को प्राथमिकता दें**। |

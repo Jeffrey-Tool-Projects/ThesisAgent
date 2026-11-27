@@ -406,7 +406,7 @@ py -m thesisagents --paper "https://arxiv.org/abs/1706.03762" `
 | `--export` / `-e` | Formate: beliebige aus `pptx,xlsx,md,bib,json,ris,csv,csl,docx,tex`. Standard hängt vom Modus ab (siehe unten). |
 | `--out` / `-o` | Ausgabeverzeichnis. Standard `./exports`. |
 | `--filename-stem` | Überschreibt den generierten Dateinamensstamm. |
-| `--no-abstract` | Lässt Abstract-Inhalt aus den Exporten weg. |
+| `--no-abstract` | Lässt die Abstracts der Artikel in jedem Exportformat weg (pptx, xlsx, bib, md, json, ris, csv, csl, docx, tex). |
 | `--lang` / `-l` | Foliensatzsprache: eine von 14 — `en`, `zh-tw`, `zh-cn`, `ja`, `es`, `fr`, `de`, `ko`, `pt`, `ru`, `it`, `vi`, `hi`, `id`. Standard `en`. |
 | `--enrich` | Fail-loud-Variante der Auto-Anreicherung. Benötigt `ANTHROPIC_API_KEY` und das `[intelligence]`-Extra. (Auto-Anreicherung ist Standard, wenn der Schlüssel gesetzt ist.) |
 | `--lightweight` | Überspringt Anreicherung + erzwingt den Nur-Abstract-Foliensatz. Nur für schnelle / unbeaufsichtigte Läufe verwenden; **wenn ein LLM-Agent steuert, bevorzuge den LLM-as-agent-Ablauf** unten. |
