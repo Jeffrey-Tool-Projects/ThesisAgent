@@ -46,19 +46,6 @@ def parse_result(result: dict[str, Any]) -> Paper:
     )
 
 
-def in_year_range(year: int | None, year_from: int | None, year_to: int | None) -> bool:
-    """Return True if `year` is within [year_from, year_to] (None bounds = open).
-
-    Undated records are dropped only when a bound is set, matching the other
-    post-filtering plugins.
-    """
-    if year is None:
-        return year_from is None and year_to is None
-    if year_from is not None and year < year_from:
-        return False
-    return not (year_to is not None and year > year_to)
-
-
 def _authors(author_block: Any) -> list[str]:
     if not isinstance(author_block, list):
         return []

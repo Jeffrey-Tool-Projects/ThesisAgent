@@ -46,15 +46,6 @@ def parse_hit(hit: dict[str, Any]) -> Paper:
     )
 
 
-def in_year_range(year: int | None, year_from: int | None, year_to: int | None) -> bool:
-    """Return True if `year` is within [year_from, year_to] (None = open)."""
-    if year is None:
-        return False
-    if year_from is not None and year < year_from:
-        return False
-    return not (year_to is not None and year > year_to)
-
-
 def _authors(authors_block: dict[str, Any]) -> list[str]:
     raw = authors_block.get("author")
     if raw is None:

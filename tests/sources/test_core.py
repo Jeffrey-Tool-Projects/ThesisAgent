@@ -20,7 +20,7 @@ from thesisagents.core.exceptions import (
 )
 from thesisagents.core.models import Query
 from thesisagents.fetchers import http as http_module
-from thesisagents.sources.core.parser import in_year_range, parse_result
+from thesisagents.sources.core.parser import parse_result
 
 _FIXTURE_DIR = Path(__file__).resolve().parents[1] / "fixtures" / "core"
 _FIXTURE_BYTES = (_FIXTURE_DIR / "llm_security.json").read_bytes()
@@ -169,11 +169,3 @@ def test_parse_result_url_falls_back_to_doi():
 def test_parse_result_handles_missing_authors():
     result = {"id": 1, "title": "Paper", "yearPublished": 2024}
     assert parse_result(result).authors == ()
-
-
-def test_in_year_range_handles_none():
-    assert in_year_range(2025, 2024, 2026) is True
-    assert in_year_range(2023, 2024, 2026) is False
-    assert in_year_range(None, 2024, 2026) is False
-    assert in_year_range(None, None, None) is True
-    assert in_year_range(2025, None, None) is True

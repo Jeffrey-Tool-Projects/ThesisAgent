@@ -17,6 +17,7 @@ from thesisagents.core.exceptions import (
     SourceUnavailableError,
 )
 from thesisagents.core.models import Paper, Query
+from thesisagents.core.query import year_in_range
 from thesisagents.fetchers.base import Fetcher, FetcherConfig
 from thesisagents.fetchers.http import get_client
 from thesisagents.fetchers.rate_limit import RateLimit
@@ -49,7 +50,7 @@ class ArxivFetcher(Fetcher):
             papers = [
                 paper
                 for paper in papers
-                if _year_in_range(paper.year, query.year_from, query.year_to)
+                if year_in_range(paper.year, query.year_from, query.year_to)
             ]
         _LOG.info(
             "arXiv returned %d papers for query=%r (max=%d)",
@@ -103,13 +104,3 @@ class ArxivFetcher(Fetcher):
             "sortBy": "relevance",
             "sortOrder": "descending",
         }
-
-
-def _year_in_range(
-    year: int | None, year_from: int | None, year_to: int | None
-) -> bool:
-    if year is None:
-        return False
-    if year_from is not None and year < year_from:
-        return False
-    return not (year_to is not None and year > year_to)
