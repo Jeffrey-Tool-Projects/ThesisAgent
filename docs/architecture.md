@@ -558,6 +558,19 @@ The bucket is a decorator on the HTTP client — **retries also go
 through it**. There is no way to bypass the bucket without
 deleting code from the source plugin.
 
+There is one bucket per source per process
+(`rate_limit.shared_bucket(name, policy)`). Every search loads a
+new fetcher, and the fetcher, together with that source's citation
+provider, takes the shared bucket instead of building a new one.
+So two searches running at the same time, from the MCP server or
+from two GUI workers, share one rate and one burst. The bucket
+guards its state with a `threading.Lock` and waits with
+`asyncio.sleep` on the caller's own loop, so it works across the
+separate event loops of GUI worker threads. A source that searches
+through another source's API shares that source's bucket by naming
+it in `FetcherConfig.rate_limit_group` (ACM goes through the
+Crossref API and sets `"crossref"`).
+
 ### Request reuse
 
 The shared HTTP client pools connections per source. ThesisAgents does

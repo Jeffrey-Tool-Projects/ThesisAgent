@@ -10,7 +10,7 @@ from tests.sources._mock import MockTransport, install_mock
 from thesisagents.core.exceptions import ParseError, RateLimitError
 from thesisagents.core.models import Query
 from thesisagents.sources.doaj.fetcher import DoajFetcher
-from thesisagents.sources.doaj.parser import in_year_range, parse_result
+from thesisagents.sources.doaj.parser import parse_result
 
 _FIXTURE_DIR = Path(__file__).resolve().parents[1] / "fixtures" / "doaj"
 _FIXTURE_BYTES = (_FIXTURE_DIR / "llm_security.json").read_bytes()
@@ -129,11 +129,3 @@ def test_parse_result_url_falls_back_to_doi_when_no_id():
 def test_parse_result_handles_missing_authors():
     result = {"id": "x", "bibjson": {"title": "Paper", "year": "2024"}}
     assert parse_result(result).authors == ()
-
-
-def test_in_year_range_handles_none():
-    assert in_year_range(2025, 2024, 2026) is True
-    assert in_year_range(2023, 2024, 2026) is False
-    assert in_year_range(None, 2024, 2026) is False
-    assert in_year_range(None, None, None) is True
-    assert in_year_range(2025, None, None) is True

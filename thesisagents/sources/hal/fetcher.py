@@ -24,12 +24,13 @@ from thesisagents.core.exceptions import (
     SourceUnavailableError,
 )
 from thesisagents.core.models import Paper, Query
+from thesisagents.core.query import year_in_range
 from thesisagents.fetchers.base import Fetcher, FetcherConfig
 from thesisagents.fetchers.http import get_client
 from thesisagents.fetchers.rate_limit import RateLimit
 from thesisagents.utils.logging import get_logger
 
-from .parser import FIELDS, in_year_range, parse_doc
+from .parser import FIELDS, parse_doc
 
 _LOG = get_logger(__name__)
 _SOURCE_NAME = "hal"
@@ -56,7 +57,7 @@ class HalFetcher(Fetcher):
             papers = [
                 p
                 for p in papers
-                if in_year_range(p.year, query.year_from, query.year_to)
+                if year_in_range(p.year, query.year_from, query.year_to)
             ]
         _LOG.info(
             "HAL returned %d papers for query=%r (max=%d)",

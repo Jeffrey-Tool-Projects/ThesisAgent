@@ -34,6 +34,7 @@ from thesisagents.core.identifiers import PaperIdentifier
 from thesisagents.core.models import Paper, PaperCollection, Query
 from thesisagents.core.oa_resolver import resolve_oa_pdfs
 from thesisagents.core.pruning import recommend_pruning
+from thesisagents.core.query import year_in_range
 from thesisagents.core.ranking import RankedPaper, rank_with_scores
 from thesisagents.core.top_venues import is_top_tier
 from thesisagents.fetchers.base import load_fetcher
@@ -206,7 +207,7 @@ def _apply_query_filters(
         ordered = [
             entry
             for entry in ordered
-            if _in_year_range(entry.paper.year, query.year_from, query.year_to)
+            if year_in_range(entry.paper.year, query.year_from, query.year_to)
         ]
         _LOG.info(
             "year filter [%s..%s] kept %d / %d papers (unknown years kept)",
@@ -327,23 +328,6 @@ async def _safe_search(fetcher, query: Query, source: str) -> _SourceOutcome:
                 detail=f"{type(err).__name__}: {err}",
             )
     return _SourceOutcome(source, status=SourceStatus.FAILED, detail="no attempt made")
-
-
-def _in_year_range(
-    year: int | None, year_from: int | None, year_to: int | None
-) -> bool:
-    """True if ``year`` is within ``[year_from, year_to]`` (None bound = open).
-
-    Unlike the per-source ``in_year_range`` helpers (which drop year-less
-    records), this pipeline guard KEEPS a paper whose year is unknown — at this
-    stage the source already chose to return it, so an unknown year is treated
-    as "possibly in range" rather than silently filtered out.
-    """
-    if year is None:
-        return True
-    if year_from is not None and year < year_from:
-        return False
-    return not (year_to is not None and year > year_to)
 
 
 async def run_single_paper(identifier: PaperIdentifier) -> PaperCollection:
