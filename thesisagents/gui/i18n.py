@@ -1685,6 +1685,30 @@ _LABELS: Final[dict[str, dict[str, str]]] = {
         "id": "Model belum siap: {reason}. Lihat Pengaturan → Model AI.",
     },
     # --- DeckPage ----------------------------------------------------
+    "deck.source_open": {
+        "en": "Open saved search…", "zh-tw": "開啟已儲存的搜尋結果…",
+        "zh-cn": "打开已保存的搜索结果…", "ja": "保存した検索結果を開く…",
+        "es": "Abrir búsqueda guardada…", "fr": "Ouvrir une recherche enregistrée…",
+        "de": "Gespeicherte Suche öffnen…", "ko": "저장한 검색 결과 열기…",
+        "pt": "Abrir pesquisa salva…", "ru": "Открыть результаты поиска…",
+        "it": "Apri ricerca salvata…", "vi": "Mở kết quả tìm kiếm đã lưu…",
+        "hi": "सहेजे गए खोज परिणाम खोलें…", "id": "Buka hasil pencarian tersimpan…",
+    },
+    "deck.source_failed": {
+        "en": "Could not open the saved search. {error}",
+        "zh-tw": "無法開啟已儲存的搜尋結果。{error}", "zh-cn": "无法打开已保存的搜索结果。{error}",
+        "ja": "保存した検索結果を開けませんでした。{error}",
+        "es": "No se pudo abrir la búsqueda guardada. {error}",
+        "fr": "Impossible d’ouvrir la recherche enregistrée. {error}",
+        "de": "Die gespeicherte Suche ließ sich nicht öffnen. {error}",
+        "ko": "저장한 검색 결과를 열 수 없습니다. {error}",
+        "pt": "Não foi possível abrir a pesquisa salva. {error}",
+        "ru": "Не удалось открыть результаты поиска. {error}",
+        "it": "Impossibile aprire la ricerca salvata. {error}",
+        "vi": "Không mở được kết quả tìm kiếm đã lưu. {error}",
+        "hi": "सहेजे गए खोज परिणाम नहीं खुल सके। {error}",
+        "id": "Hasil pencarian tersimpan tidak dapat dibuka. {error}",
+    },
     "deck.output_group": {
         "en": "Output",
         "zh-tw": "輸出",
@@ -2120,20 +2144,20 @@ _LABELS: Final[dict[str, dict[str, str]]] = {
         "id": "Path",
     },
     "deck.status_no_collection": {
-        "en": "Run a search first; the result populates this tab.",
-        "zh-tw": "請先搜尋,結果會帶到這裡。",
-        "zh-cn": "请先搜索,结果会带到这里。",
-        "ja": "まず検索してください。結果がここに表示されます。",
-        "es": "Ejecute primero una búsqueda; el resultado aparecerá aquí.",
-        "fr": "Lancez d'abord une recherche ; le résultat apparaîtra ici.",
-        "de": "Erst eine Suche ausführen; das Ergebnis erscheint hier.",
-        "ko": "먼저 검색하세요. 결과가 여기에 표시됩니다.",
-        "pt": "Execute uma busca primeiro; o resultado aparecerá aqui.",
-        "ru": "Сначала выполните поиск; результат появится здесь.",
-        "it": "Esegui prima una ricerca; il risultato appare qui.",
-        "vi": "Hãy tìm trước; kết quả sẽ xuất hiện ở đây.",
-        "hi": "पहले search करें; परिणाम यहाँ दिखेगा।",
-        "id": "Jalankan pencarian dulu; hasil muncul di sini.",
+        "en": "Select papers in Search or open a saved search workbook (.xlsx).",
+        "zh-tw": "請在「搜尋」勾選論文，或開啟已儲存的搜尋結果（.xlsx）。",
+        "zh-cn": "请在“搜索”中勾选论文，或打开已保存的搜索结果（.xlsx）。",
+        "ja": "検索で論文を選ぶか、保存した検索結果（.xlsx）を開いてください。",
+        "es": "Seleccione artículos en la búsqueda o abra resultados guardados (.xlsx).",
+        "fr": "Sélectionnez des articles dans la recherche ou ouvrez des résultats (.xlsx).",
+        "de": "Artikel in der Suche auswählen oder gespeicherte Suchergebnisse (.xlsx) öffnen.",
+        "ko": "검색에서 논문을 선택하거나 저장한 검색 결과(.xlsx)를 여세요.",
+        "pt": "Selecione artigos na pesquisa ou abra os resultados salvos (.xlsx).",
+        "ru": "Выберите статьи в поиске или откройте сохранённые результаты (.xlsx).",
+        "it": "Seleziona gli articoli nella ricerca o apri i risultati salvati (.xlsx).",
+        "vi": "Chọn bài báo trong mục tìm kiếm hoặc mở kết quả đã lưu (.xlsx).",
+        "hi": "खोज में शोधपत्र चुनें या सहेजे गए खोज परिणाम (.xlsx) खोलें।",
+        "id": "Pilih makalah di pencarian atau buka hasil pencarian tersimpan (.xlsx).",
     },
     "deck.status_ready_raw": {
         "en": "Ready: {count} papers (lightweight tier).",
@@ -2150,6 +2174,147 @@ _LABELS: Final[dict[str, dict[str, str]]] = {
         "vi": "Sẵn sàng: {count} bài (lightweight).",
         "hi": "तैयार: {count} पेपर (lightweight)।",
         "id": "Siap: {count} makalah (ringan).",
+    },
+    "deck.summary_source": {
+        "en": "Slide content",
+        "zh-tw": "投影片內容來源",
+        "zh-cn": "幻灯片内容来源",
+        "ja": "スライドの内容",
+        "es": "Contenido de las diapositivas",
+        "fr": "Contenu des diapositives",
+        "de": "Folieninhalt",
+        "ko": "슬라이드 내용",
+        "pt": "Conteúdo dos slides",
+        "ru": "Содержимое слайдов",
+        "it": "Contenuto delle diapositive",
+        "vi": "Nội dung trang chiếu",
+        "hi": "स्लाइड की सामग्री",
+        "id": "Isi slide",
+    },
+    "deck.existing_summaries": {
+        "en": "Use existing paper records",
+        "zh-tw": "使用現有論文資料",
+        "zh-cn": "使用现有论文数据",
+        "ja": "既存の論文データを使用",
+        "es": "Usar los datos existentes",
+        "fr": "Utiliser les données existantes",
+        "de": "Vorhandene Publikationsdaten verwenden",
+        "ko": "기존 논문 자료 사용",
+        "pt": "Usar os dados existentes",
+        "ru": "Использовать имеющиеся данные статей",
+        "it": "Usa i dati esistenti",
+        "vi": "Dùng dữ liệu bài báo hiện có",
+        "hi": "मौजूदा शोधपत्र डेटा का उपयोग करें",
+        "id": "Gunakan data makalah yang ada",
+    },
+    "deck.cli_ready": {
+        "en": "{count} papers selected. {name} will prepare any missing summaries.",
+        "zh-tw": "已選取 {count} 篇論文，缺少的摘要將由 {name} 產生。",
+        "zh-cn": "已选择 {count} 篇论文，缺少的摘要将由 {name} 生成。",
+        "ja": "{count} 件の論文を選択しました。不足している要約は {name} が作成します。",
+        "es": "{count} artículos seleccionados. {name} preparará los resúmenes pendientes.",
+        "fr": "{count} articles sélectionnés. {name} rédigera les résumés manquants.",
+        "de": "{count} Artikel ausgewählt. {name} erstellt die fehlenden Zusammenfassungen.",
+        "ko": "논문 {count}편을 선택했습니다. {name}에서 누락된 요약을 작성합니다.",
+        "pt": "{count} artigos selecionados. {name} preparará os resumos em falta.",
+        "ru": "Выбрано статей: {count}. {name} подготовит недостающие аннотации.",
+        "it": "Articoli selezionati: {count}. {name} preparerà le sintesi mancanti.",
+        "vi": "Đã chọn {count} bài báo. {name} sẽ tạo các bản tóm tắt còn thiếu.",
+        "hi": "{count} शोधपत्र चुने गए हैं। {name} शेष सारांश तैयार करेगा।",
+        "id": "{count} makalah dipilih. {name} akan membuat ringkasan yang belum ada.",
+    },
+    "deck.cli_setup": {
+        "en": (
+            "{reason}. Check that the CLI is installed and on PATH. If it requires an "
+            "account, sign in from a terminal and retry."
+        ),
+        "zh-tw": "{reason}。請確認已安裝 CLI 並將它加入 PATH。若需要帳號，請在終端機登入後再匯出。",
+        "zh-cn": "{reason}。请确认已安装 CLI 并将其加入 PATH。如需账号，请在终端登录后重新导出。",
+        "ja": (
+            "{reason}。CLI がインストールされ、PATH にあるか確認してください。"
+            "アカウントが必要な場合は端末でログインして再試行してください。"
+        ),
+        "es": (
+            "{reason}. Compruebe que la CLI esté instalada y en PATH. Si necesita una cuenta, "
+            "inicie sesión en la terminal y vuelva a intentarlo."
+        ),
+        "fr": (
+            "{reason}. Vérifiez que la CLI est installée et accessible via PATH. Si un compte "
+            "est requis, connectez-vous dans un terminal, puis réessayez."
+        ),
+        "de": (
+            "{reason}. Prüfen Sie Installation und PATH der CLI. Falls ein Konto erforderlich "
+            "ist, melden Sie sich im Terminal an und versuchen Sie es erneut."
+        ),
+        "ko": (
+            "{reason}. CLI가 설치되어 있고 PATH에 있는지 확인하세요. "
+            "계정이 필요하면 터미널에서 로그인한 후 다시 시도하세요."
+        ),
+        "pt": (
+            "{reason}. Verifique se a CLI está instalada e no PATH. Se precisar de uma conta, "
+            "entre pelo terminal e tente novamente."
+        ),
+        "ru": (
+            "{reason}. Убедитесь, что CLI установлена и доступна через PATH. Если нужна "
+            "учётная запись, войдите через терминал и повторите попытку."
+        ),
+        "it": (
+            "{reason}. Verifica che la CLI sia installata e nel PATH. Se richiede un account, "
+            "accedi dal terminale e riprova."
+        ),
+        "vi": (
+            "{reason}. Kiểm tra xem CLI đã được cài đặt và có trong PATH chưa. Nếu cần tài "
+            "khoản, hãy đăng nhập trong cửa sổ dòng lệnh rồi thử lại."
+        ),
+        "hi": (
+            "{reason}। जाँचें कि CLI स्थापित है और PATH में है। यदि खाते की आवश्यकता है, तो "
+            "टर्मिनल में साइन इन करके दोबारा प्रयास करें।"
+        ),
+        "id": (
+            "{reason}. Pastikan CLI terpasang dan tersedia di PATH. Jika memerlukan akun, "
+            "masuk melalui terminal lalu coba lagi."
+        ),
+    },
+    "deck.cli_no_pdf": {
+        "en": "No PDF is available. Open a local PDF or deselect this paper in Search.",
+        "zh-tw": "找不到全文 PDF，請開啟本機 PDF，或在「搜尋」中取消勾選這篇論文。",
+        "zh-cn": "找不到全文 PDF，请打开本地 PDF，或在“搜索”中取消选择这篇论文。",
+        "ja": "PDF がありません。ローカルの PDF を開くか、検索でこの論文の選択を解除してください。",
+        "es": "No hay PDF. Abra un PDF local o desmarque este artículo en la búsqueda.",
+        "fr": (
+            "Aucun PDF disponible. Ouvrez un PDF local ou désélectionnez cet article dans la "
+            "recherche."
+        ),
+        "de": (
+            "Kein PDF verfügbar. Öffnen Sie ein lokales PDF oder wählen Sie den Artikel in "
+            "der Suche ab."
+        ),
+        "ko": "PDF가 없습니다. 로컬 PDF를 열거나 검색에서 이 논문의 선택을 해제하세요.",
+        "pt": "PDF indisponível. Abra um PDF local ou desmarque este artigo na pesquisa.",
+        "ru": "PDF недоступен. Откройте локальный PDF или снимите отметку со статьи в поиске.",
+        "it": (
+            "PDF non disponibile. Apri un PDF locale o deseleziona questo articolo nella "
+            "ricerca."
+        ),
+        "vi": "Không có PDF. Hãy mở PDF trên máy hoặc bỏ chọn bài báo trong phần tìm kiếm.",
+        "hi": "PDF उपलब्ध नहीं है। स्थानीय PDF खोलें या खोज में इस शोधपत्र का चयन हटाएँ।",
+        "id": "PDF tidak tersedia. Buka PDF lokal atau batalkan pilihan makalah ini di pencarian.",
+    },
+    "deck.cli_empty_summary": {
+        "en": "The CLI returned an empty summary.",
+        "zh-tw": "CLI 傳回的摘要沒有內容。",
+        "zh-cn": "CLI 返回的摘要没有内容。",
+        "ja": "CLI が空の要約を返しました。",
+        "es": "La CLI devolvió un resumen vacío.",
+        "fr": "La CLI a renvoyé un résumé vide.",
+        "de": "Die CLI hat eine leere Zusammenfassung zurückgegeben.",
+        "ko": "CLI가 빈 요약을 반환했습니다.",
+        "pt": "A CLI devolveu um resumo vazio.",
+        "ru": "CLI вернула пустую аннотацию.",
+        "it": "La CLI ha restituito una sintesi vuota.",
+        "vi": "CLI trả về bản tóm tắt trống.",
+        "hi": "CLI ने खाली सारांश लौटाया।",
+        "id": "CLI mengembalikan ringkasan kosong.",
     },
     "deck.status_ready_enriched": {
         "en": "Ready: {count} papers (enriched / thesis-style).",

@@ -28,9 +28,10 @@ from PySide6.QtWidgets import (
 from thesisagents.core.exceptions import ConfigError
 from thesisagents.core.models import Paper, PaperCollection, PaperSummary
 from thesisagents.exporters.i18n import SUPPORTED_LANGUAGES as DECK_LANGUAGES
+from thesisagents.gui.enrichment import local_text, summarise_for_page
 from thesisagents.gui.handoff import HandoffError, read_handoff, write_handoff
 from thesisagents.gui.i18n import LANGUAGE_DISPLAY_NAMES, t
-from thesisagents.gui.pages.settings import settings_store
+from thesisagents.gui.pages.settings import saved_provider_settings
 from thesisagents.gui.widgets.responsive import (
     AdaptiveSplit,
     Breakpoint,
@@ -335,7 +336,7 @@ class EnrichPage(QWidget):
         self._table_model.removeRows(0, self._table_model.rowCount())
         for paper in papers:
             title_item = QStandardItem(_truncate(paper.title, 80))
-            readable = paper.pdf_url or _local_text(paper)
+            readable = paper.pdf_url or local_text(paper)
             pdf_item = QStandardItem("✓" if readable else "—")
             status_item = QStandardItem(
                 t("enrich.row_pending", self._ui_language),
@@ -432,14 +433,7 @@ class EnrichPage(QWidget):
 
     def _model_settings(self, model: str = "") -> providers.LlmSettings:
         """Resolve the selected provider with its own saved model and command."""
-        provider = self._provider_combo.currentData()
-        if not provider or provider == providers.selected_provider():
-            return providers.resolve(provider, model=model)
-        store = settings_store()
-        return providers.resolve(
-            provider, model=model or store.value(f"llm/model/{provider}", "", type=str),
-            command=store.value(f"llm/base_url/{provider}", "", type=str),
-        )
+        return saved_provider_settings(self._provider_combo.currentData(), model=model)
 
     def refresh_model(self) -> None:
         """Show the model now chosen in Settings.
@@ -463,8 +457,7 @@ class EnrichPage(QWidget):
             self._on_run_finished()
             return
         paper = self._collection.papers[idx]
-        text = _local_text(paper)
-        if not paper.pdf_url and not text:
+        if not paper.pdf_url and not local_text(paper):
             # No PDF URL means we can't reach the body text: keep the
             # original paper, mark the row, move on.
             self._enriched_papers.append(paper)
@@ -477,19 +470,7 @@ class EnrichPage(QWidget):
         settings = self._run_settings
         assert settings is not None  # noqa: S101 # nosec B101  # only called during a run
 
-        async def coro() -> object:
-            # Lazy import — the intelligence extra is optional.
-            from thesisagents.intelligence.pdf import ExtractedPdf, fetch_and_extract
-            from thesisagents.intelligence.summarise import summarise_with
-
-            if text:
-                pages = int((paper.raw or {}).get("page_count") or 1)
-                extracted = ExtractedPdf(paper.url, pages, len(text), text)
-            else:
-                extracted = await fetch_and_extract(paper.pdf_url)
-            return summarise_with(settings, paper, extracted.text, language, extracted.chars)
-
-        worker = AsyncWorker(coro)
+        worker = AsyncWorker(lambda: summarise_for_page(settings, paper, language))
         worker.signals.finished.connect(self._on_paper_finished)
         worker.signals.failed.connect(self._on_paper_failed)
         worker.signals.cancelled.connect(self._on_paper_cancelled)
@@ -591,15 +572,6 @@ class EnrichPage(QWidget):
             (held,) = self._held
             self._held = None
             self.set_collection(held)
-
-
-def _local_text(paper: Paper) -> str:
-    """The text of a PDF read from disk, which has no address to fetch.
-
-    Without it every paper of *Read local PDFs* was skipped here, although
-    the CLI's ``--pdf --enrich`` summarises the same files.
-    """
-    return str((paper.raw or {}).get("extracted_text") or "")
 
 
 def _row_of(papers: list[Paper], paper: Paper, row: int) -> int:

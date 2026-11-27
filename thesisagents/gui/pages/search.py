@@ -53,6 +53,7 @@ from thesisagents.core.local_pdf import build_local_collection
 from thesisagents.core.models import ExportOptions, Paper, PaperCollection, Query
 from thesisagents.core.pipeline import run_search
 from thesisagents.core.query import normalize_query
+from thesisagents.core.search_workbook import read_search_workbook
 from thesisagents.core.snowball import Direction, expand_collection, snowball
 from thesisagents.exporters import export_collection
 from thesisagents.exporters.i18n import SUPPORTED_LANGUAGES as DECK_LANGUAGES
@@ -114,6 +115,7 @@ class SearchPage(QWidget):
     # because Signal(object) is the only typed-Python way to ship a
     # frozen dataclass across threads.
     collection_ready = Signal(object)
+    saved_search_failed = Signal(object)
     #: The library file named on this tab, emitted as it is typed. The Deck
     #: tab listens, so its export keeps identifier checks in the same library.
     library_path_changed = Signal(str)
@@ -449,6 +451,15 @@ class SearchPage(QWidget):
     def set_output_dir_provider(self, provider: Callable[[], str]) -> None:
         """Where local PDFs are copied: ``provider()`` names the export folder."""
         self._output_dir = provider
+
+    def open_saved_search(self, path: str) -> None:
+        """Load a prior export into the same selection as a live search."""
+        if self._busy():
+            return
+        self._set_busy()
+        worker = BlockingWorker(lambda: read_search_workbook(Path(path)))
+        worker.signals.failed.connect(self.saved_search_failed)
+        self._start_run(worker)
 
     def _on_local_clicked(self) -> None:
         paths, _ = QFileDialog.getOpenFileNames(

@@ -58,6 +58,7 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 
 | ID | Date | Title | Tags | Batch |
 |---|---|---|---|---|
+| U-20261127-08 | 2026-11-27 | Open saved searches and export slides with a terminal program | #done #gui #intelligence | [2026-11](2026-11.md) |
 | U-20261127-07 | 2026-11-27 | Run a terminal program directly from the Enrich page | #done #gui #intelligence | [2026-11](2026-11.md) |
 | U-20261127-06 | 2026-11-27 | Each PDF stays with its paper, summaries read the PDF the run downloaded, the size cap holds while reading | #done #review #pdf #bugfix | [2026-11](2026-11.md) |
 | U-20261127-05 | 2026-11-27 | Undated papers kept by every source, one search at a time, one rate per service | #done #review #sources #gui #bugfix | [2026-11](2026-11.md) |
@@ -149,6 +150,6 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 
 | File | Period | Entries |
 |---|---|---:|
-| [2026-11.md](2026-11.md) | 2026-11 | 42 |
+| [2026-11.md](2026-11.md) | 2026-11 | 49 |
 | [2026-10.md](2026-10.md) | 2026-10 | 13 |
 | [2026-09.md](2026-09.md) | 2026-09 | 25 |

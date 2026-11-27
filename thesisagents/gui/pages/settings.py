@@ -51,6 +51,7 @@ from thesisagents.gui.i18n import (
 from thesisagents.gui.theme import STYLE_CHOICES, STYLE_CLASSIC, THEME_CHOICES, THEME_SYSTEM
 from thesisagents.gui.widgets.model_card import ModelCard, apply_saved_model
 from thesisagents.gui.widgets.responsive import Breakpoint, adapt_form_rows, make_card
+from thesisagents.intelligence import providers
 
 # QSettings key (under organization/app) → env var name. The page reads
 # both directions: load() pulls from QSettings into the form fields,
@@ -127,6 +128,17 @@ def settings_store() -> QSettings:
     native format and would ignore that redirect.
     """
     return QSettings(QSettings.defaultFormat(), QSettings.UserScope, _ORG, _APP)
+
+
+def saved_provider_settings(name: str, *, model: str = "") -> providers.LlmSettings:
+    """Resolve a page's provider override with its saved model and command."""
+    if not name or name == providers.selected_provider():
+        return providers.resolve(name, model=model)
+    store = settings_store()
+    return providers.resolve(
+        name, model=model or store.value(f"llm/model/{name}", "", type=str),
+        command=store.value(f"llm/base_url/{name}", "", type=str),
+    )
 
 
 def apply_saved_env() -> None:

@@ -42,7 +42,7 @@ from thesisagents.core.models import Paper, PaperCollection
 from thesisagents.core.pdf_cookies import cookies_for_url
 from thesisagents.fetchers.http import get_client
 from thesisagents.utils.logging import get_logger
-from thesisagents.utils.path_safety import ensure_export_dir, safe_filename
+from thesisagents.utils.path_safety import ensure_export_dir, resolve_safe, safe_filename
 
 _LOG = get_logger(__name__)
 
@@ -266,6 +266,28 @@ def _load_owners(pdf_dir: Path) -> dict[str, str]:
     if not isinstance(data, dict):
         return {}
     return {str(name): owner for name, owner in data.items() if isinstance(owner, str)}
+
+
+def owned_pdf_paths(run_dir: Path) -> dict[str, Path]:
+    """Existing PDFs whose owner the downloader recorded in this export folder."""
+    try:
+        manifest = resolve_safe(run_dir, Path(_PDF_SUBDIR) / _OWNERS_FILE)
+    except (OSError, ValueError):
+        return {}
+    pdf_dir = run_dir.resolve() / _PDF_SUBDIR
+    if manifest.parent != pdf_dir or not manifest.is_file():
+        return {}
+    paths = {}
+    for name, identity in _load_owners(pdf_dir).items():
+        if Path(name).name != name or Path(name).suffix.lower() != ".pdf":
+            continue
+        try:
+            path = resolve_safe(pdf_dir, name)
+        except (OSError, ValueError):
+            continue
+        if path.is_file():
+            paths[identity] = path
+    return paths
 
 
 def _record_owners(pdf_dir: Path, entries: Mapping[str, str]) -> None:

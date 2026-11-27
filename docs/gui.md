@@ -416,6 +416,19 @@ page has the same button and stores what you save in the library.
 
 ### Deck
 
+Deck lists the papers you selected in Search or sent from the Library.
+To reopen an earlier search, click **Open saved search…** and choose its
+exported `.xlsx` workbook. Use the checkboxes in Search to change which
+papers appear in Deck. Keep the workbook beside its `pdfs` folder to reuse
+downloaded PDFs that have a matching entry in `pdfs/.owners.json`.
+
+To generate slides with a terminal program, select **PPTX** and choose
+the program under **Slide content**. Click **Export**. The program prepares a
+summary from the full text of each paper that still needs one in the chosen
+deck language. If a paper has no readable PDF, the status line names the
+paper. If the program is missing or asks you to sign in, follow the message
+and click **Export** again.
+
 The pre-export deck-shaping controls, in three cards: **Output**
 (directory, filename stem, deck language), **Formats** (one check box
 per export format, re-flowed to the available width) and **Options**.

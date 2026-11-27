@@ -263,6 +263,9 @@ class MainWindow(QMainWindow):
         # Search → Deck (so the user can skip enrichment), plus Enrich →
         # Deck (the enriched collection takes precedence).
         self._search_page.collection_ready.connect(self._enrich_page.set_collection)
+        self._deck_page.saved_search_requested.connect(self._search_page.open_saved_search)
+        self._search_page.saved_search_failed.connect(self._deck_page.show_source_error)
+        self._search_page.busy_changed.connect(self._deck_page.search_busy_changed)
         self._search_page.collection_ready.connect(self._deck_page.set_collection)
         self._search_page.library_path_changed.connect(self._deck_page.set_library_path)
         self._search_page.set_output_dir_provider(self._deck_page.output_dir)
@@ -335,6 +338,7 @@ class MainWindow(QMainWindow):
         else:
             self._busy_pages.discard(key)
         working = bool(self._busy_pages)
+        self._deck_page.set_source_enabled(not working)
         self._busy_bar.setVisible(working)
         if working:
             self.statusBar().showMessage(t("status.busy", self._ui_language))
