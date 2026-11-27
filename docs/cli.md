@@ -487,11 +487,14 @@ thesisagents library thesis.db prisma --svg prisma.svg
 ```
 
 The numbers are the ones `list` prints in brackets. They stay the same
-until a paper is deleted or merged into another. Searching again never
-changes a tag, a note or a decision.
+until a paper is deleted or merged into another, and the number of a
+paper that is gone is never given to another one, so an old number is
+reported as not found. Searching again never changes a tag, a note or a
+decision.
 
 - `import` reads BibTeX and RIS (Zotero, Mendeley, EndNote, JabRef) and
-  says why a record was left out.
+  says why a record was left out. The import and its `--tag` are one
+  change: when a tag is refused, nothing of the file is added.
 - `run-search` adds what it finds and prints only the papers the library
   did not hold before.
 - `duplicates` lists near misses an import cannot decide on, such as a

@@ -226,10 +226,15 @@ Three decisions shape it:
 
 - **One identity model.** A stored paper is matched with the same keys
   and the same two functions search de-duplication uses
-  (`Paper.identity_keys`, `dedup.fuzzy_link_allowed`,
-  `dedup.merge_papers`). An import therefore merges exactly the records
+  (`Paper.identity_keys`, `dedup.accept_matches`,
+  `dedup.merge_papers`). An import therefore merges the records
   `dedupe` would have merged had they arrived in one search, and adding
-  a search twice changes no paper count.
+  a search twice changes no paper count. One difference remains: `dedupe`
+  holds the whole list and matches records with a DOI first, while an
+  import meets papers in the order they come, so a DOI-less record that
+  was merged into a paper by its title keeps that merge when a later
+  import brings another paper with its arXiv ID. The later paper is still
+  kept apart, because two DOIs are never joined.
 - **The relationship model is the snowball's.** Citation links are
   stored as the `PaperRelation` records snowballing produces, between
   rows instead of keys. That is why the citation providers were built
@@ -332,6 +337,16 @@ identity a paper carries, then unions the fields:
    look. A blank / punctuation-only title is likewise barred from
    linking, since `_canon_title` collapses every such title to the same
    hash. An exact DOI match is unaffected by the guard.
+   `accept_matches` applies the guard to all the groups a record shares
+   a key with at once, strongest key first: an arXiv match is refused
+   when the DOIs disagree, and a title match is checked against the
+   record merged with what its DOI and arXiv matches already brought. A
+   DOI-less record whose title matches paper A and whose arXiv ID matches
+   paper B (with another DOI) therefore joins B only, instead of making
+   one record of A and B. `dedupe` adds records with a DOI first, then
+   those with an arXiv ID, then the rest, so that outcome does not depend
+   on the order the sources returned them, and each group is merged in
+   input order so its first record stays canonical.
 3. Field union — for merged duplicates, every optional field
    (`doi`, `arxiv_id`, `pdf_url`, `venue`, `citation_count`, `year`,
    `abstract`, `authors`, `summary`) is taken from whichever source had

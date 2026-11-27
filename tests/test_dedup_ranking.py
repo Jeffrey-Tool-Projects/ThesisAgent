@@ -529,3 +529,55 @@ def test_dedupe_is_the_index_run_over_a_whole_list():
 
     assert dedupe(papers) == IdentityIndex(papers).papers()
     assert [paper.source_id for paper in dedupe(papers)] == ["a", "b"]
+
+
+# The three records of a mis-pairing: C has no DOI, its title, first author
+# and year are A's, and its arXiv ID is B's. Judged one pair at a time, C
+# agreed with both, and dedup made one record of A and B that carried A's
+# DOI and B's arXiv ID.
+_TITLE_TWIN = _record("A", "Method X", doi="10.1/a")
+_ARXIV_TWIN = _record("B", "Another Paper Entirely", doi="10.1/b", arxiv_id="2401.00001")
+_AMBIGUOUS = _record("C", "Method X", arxiv_id="2401.00001")
+
+
+@pytest.mark.parametrize(
+    "order",
+    [
+        (_TITLE_TWIN, _ARXIV_TWIN, _AMBIGUOUS),
+        (_TITLE_TWIN, _AMBIGUOUS, _ARXIV_TWIN),
+        (_ARXIV_TWIN, _TITLE_TWIN, _AMBIGUOUS),
+        (_ARXIV_TWIN, _AMBIGUOUS, _TITLE_TWIN),
+        (_AMBIGUOUS, _TITLE_TWIN, _ARXIV_TWIN),
+        (_AMBIGUOUS, _ARXIV_TWIN, _TITLE_TWIN),
+    ],
+    ids=lambda order: "".join(paper.source_id for paper in order),
+)
+def test_dedupe_never_joins_two_dois_through_a_third_record(order):
+    by_doi = {paper.doi: paper for paper in dedupe(order)}
+
+    assert set(by_doi) == {"10.1/a", "10.1/b"}
+    # The arXiv match wins over the title match, so C is B and A is untouched.
+    assert by_doi["10.1/a"].arxiv_id is None
+    assert by_doi["10.1/b"].arxiv_id == "2401.00001"
+
+
+def test_identity_index_prefers_the_arxiv_match_over_the_title_match():
+    from thesisagents.core.dedup import IdentityIndex
+
+    index = IdentityIndex([_TITLE_TWIN, _ARXIV_TWIN])
+    slot, is_new = index.add(_AMBIGUOUS)
+
+    assert (slot, is_new) == (1, False)
+    assert len(index) == 2
+    assert index.get(0).arxiv_id is None
+    assert index.get(1).doi == "10.1/b"
+
+
+def test_an_arxiv_match_does_not_join_a_paper_with_another_doi():
+    from thesisagents.core.dedup import IdentityIndex
+
+    index = IdentityIndex([_record("pub", "On Graphs", doi="10.1/a", arxiv_id="2401.00001")])
+    slot, is_new = index.add(_record("other", "On Trees", doi="10.1/b", arxiv_id="2401.00001"))
+
+    assert (slot, is_new) == (1, True)
+    assert [paper.doi for paper in index.papers()] == ["10.1/a", "10.1/b"]

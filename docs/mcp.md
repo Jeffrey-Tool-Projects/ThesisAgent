@@ -506,7 +506,9 @@ for a CLI run, `mcp` for `library_add`.
 ### `library_update`
 
 Record what a reader decided. Papers are named by the `paper_id` of
-`library_search`. Every argument left out is left alone.
+`library_search`. Every argument left out is left alone. The `paper_id`
+of a deleted paper is never given to another one, so an old id fails with
+"no paper with id" instead of editing a different paper.
 
 ```json
 {"library": "./thesis.db", "paper_ids": [3, 7], "add_tags": ["chapter 2"],
@@ -533,7 +535,8 @@ everything recorded about them. Neither can be undone, so ask first.
 
 Add the papers of a `.bib` or `.ris` file (`file`), optionally with
 `tags`. A paper already held is updated, not duplicated, and `skipped`
-says why a record was left out.
+says why a record was left out. The import and its tags are one change:
+when a tag is refused, the tool fails and nothing of the file is added.
 
 ### `library_saved_search`
 
