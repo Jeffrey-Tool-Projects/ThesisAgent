@@ -52,7 +52,7 @@ thesisagents (--query KEYWORDS | --paper IDENTIFIER | --pdf PATH |
 | `--list-sources`, `--list-exports` | — | Print the available search sources / export formats and exit (no query needed). |
 | `--out` / `-o` | `./exports` | Created if missing. |
 | `--filename-stem` | auto | `{first-32-chars-of-query}-{YYYYMMDD-HHMMSS}` by default. |
-| `--no-abstract` | off | Drops abstracts and any LLM summary content; the deck shows only title / author / link slides. |
+| `--no-abstract` | off | Leaves the papers' abstracts out of every export format: `pptx`, `xlsx`, `md`, `bib`, `json` (the `abstract` field is written empty), `ris`, `csv`, `csl` and the `docx` / `tex` review draft with its `.bib`. The deck also drops its summary slides and shows only title / author / link slides. |
 | `--lang` / `-l` | `en` | Slide-deck template language. Supported: `en`, `zh-tw`, `zh-cn`, `ja`, `es`, `fr`, `de`, `ko`, `pt`, `ru`, `it`, `vi`, `hi`, `id` (14 in total). When combined with `--enrich`, also instructs the LLM to write its bullets in this language. |
 | `--enrich` | auto-on when `ANTHROPIC_API_KEY` is set | Fetch each paper's PDF and have the Anthropic API write a structured summary; the deck switches to thesis-style layout. Requires `ANTHROPIC_API_KEY` and the `[intelligence]` extra. **Not needed when running over MCP** — an LLM agent can call `fetch_pdf_text` + `export` directly with a hand-crafted summary. |
 | `--lightweight` | off | Force the abstract-only deck even when `ANTHROPIC_API_KEY` is set. Useful for unattended runs where you do not want to spend tokens. **When an LLM agent is in the editor session**, prefer the LLM-as-agent flow under `scripts/llm_*.py` (the LLM authors a rich `PaperSummary` per paper) over `--lightweight`. |
@@ -641,7 +641,14 @@ first author and year, as here.
 
 `bibtex_key` is how the PDFs and per-paper decks of the run are named
 (`pdfs/<bibtex_key>.pdf`, `<bibtex_key>.pptx`), so a script that acts on
-the recommendations can find the files.
+the recommendations can find the files. When two papers of the run share
+a key, the deck of the later one takes the suffixed key its `.bib` entry
+has (`doe2025gene`, then `doe2025geneb`), so no deck overwrites another.
+
+In a search that writes per-paper decks, only the papers whose PDF
+downloaded get a deck. The other formats of the run (`xlsx`, `bib`, `md`,
+`json`, ...) list every paper the search returned, downloaded or not,
+because they are the record of the search.
 
 The recommendations are advice. No paper is removed from the results,
 the exports, or the disk. Read the abstracts of the `review` and
@@ -655,7 +662,7 @@ fetch specific papers with no query to be relevant to, and say so.
 | Code | Meaning |
 |---|---|
 | `0` | Success — every requested export was written. |
-| `1` | Search returned zero results, or the single paper had no metadata. Also when `--library-search` or `--library-export` matched nothing. |
+| `1` | Search returned zero results, or the single paper had no metadata. Also when `--library-search` or `--library-export` matched nothing, and when a search that asks for per-paper decks could download no PDF. In that last case the other requested formats (`xlsx`, `bib`, ...) are still written with every paper. |
 | `2` | Validation error (unknown source, malformed identifier, bad year range, missing API key when `--enrich`, a `--library` path that is not a library, …). Also returned when the identifier preflight stops the run because a DOI or URL is wrong or unreachable. |
 
 ## Output structure

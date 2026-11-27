@@ -53,5 +53,13 @@ py -m thesisagents.evaluation.search_quality bench.json --root D:\data\qrels
 ```
 
 The report includes per-query and macro Precision@K, Recall@K and nDCG@K.
+
+`retrieved` is read as a ranking with its positions kept. A paper listed a
+second time keeps its place in the top K and counts zero there, as a
+non-relevant result would. So `["a", "a", "b"]` at `--cutoff 2` scores one hit
+(precision 0.5), because only `a` is in the top two places. The rank 3 paper
+`b` does not move up to fill the place of the repeat, and a repeat can never
+push recall past 1. The `collect` command already writes each paper once, so
+this matters for a benchmark file made by hand or by another tool.
 Judgements should be reviewed by a domain reader, committed separately from
 retrieved results, and updated only when the relevance standard changes.

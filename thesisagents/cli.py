@@ -253,7 +253,11 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--no-abstract",
         action="store_true",
-        help="Omit abstracts from exports (titles/authors/links only).",
+        help=(
+            "Omit the papers' abstracts from every export format (pptx, xlsx, "
+            "bib, md, json, ris, csv, csl, docx, tex). The deck also leaves out "
+            "its summary slides (title / author / link slides only)."
+        ),
     )
     parser.add_argument(
         "--lang",
@@ -783,14 +787,24 @@ def _papers_with_pdf(collection: PaperCollection, pdf_results: list) -> list[Pap
     not count for the other. Results that do not line up (a caller with a
     subset) are matched by key.
     """
+    return [collection.papers[index] for index in _indices_with_pdf(collection, pdf_results)]
+
+
+def _indices_with_pdf(collection: PaperCollection, pdf_results: list) -> list[int]:
+    """The positions in ``collection.papers`` of the papers whose PDF is on disk.
+
+    Positions rather than papers, so a caller can pair each one with the key
+    the same paper has in the whole collection (see :func:`_emit_per_paper`).
+    The pairing rules are those of :func:`_papers_with_pdf`.
+
+    Example: two papers of which only the second downloaded give ``[1]``.
+    """
     if len(pdf_results) == len(collection.papers):
-        return [
-            paper
-            for paper, result in zip(collection.papers, pdf_results, strict=True)
-            if result.path is not None
-        ]
+        return [index for index, result in enumerate(pdf_results) if result.path is not None]
     saved = {result.paper_key for result in pdf_results if result.path is not None}
-    return [paper for paper in collection.papers if paper.bibtex_key() in saved]
+    return [
+        index for index, paper in enumerate(collection.papers) if paper.bibtex_key() in saved
+    ]
 
 
 def _emit_per_paper(
@@ -800,63 +814,94 @@ def _emit_per_paper(
     args: argparse.Namespace,
     verification_cache: VerificationCache | None = None,
 ) -> int:
-    """Generate one PPT per paper that has a successfully downloaded PDF.
+    """Write the summary exports for every paper, and one PPT per downloaded PDF.
 
-    Non-PPT formats (xlsx, bib, md, json) aggregate over the accessible
-    subset so the bibliography file matches the slides on disk.
+    The non-PPT formats (xlsx, bib, md, json, ...) summarise the whole search
+    result, so they get every paper whether its PDF downloaded or not. Only a
+    per-paper deck needs the PDF. The failure this prevents: the summaries used
+    to get only the papers with a PDF, so a search of four papers with three
+    downloads wrote a three-row workbook, and a run where no PDF downloaded
+    stopped before writing the workbook at all.
+
+    Each deck is named after the paper's cite key in the whole collection, the
+    key the ``.bib`` of the same run gives it, so a deck is found by the key it
+    is cited with.
+
+    Returns 1 when no deck could be written (the summary files are written all
+    the same), else 0. Example: two papers of which one downloaded give a
+    two-row ``.xlsx``, one ``<key>.pptx`` and exit code 0.
     """
-    accessible_papers = _papers_with_pdf(collection, pdf_results)
-    if not accessible_papers:
-        print(
-            "error: no PDF could be downloaded; no slides were generated.",
-            file=sys.stderr,
-        )
-        _print_pdf_summary(pdf_results, args.quiet)
-        return 1
-
-    accessible_collection = dataclasses.replace(
-        collection, papers=tuple(accessible_papers)
-    )
-
     aggregate_formats = tuple(f for f in options.formats if f != EXPORT_PPTX)
     written_aggregate: dict[str, Path] = {}
     if aggregate_formats:
         agg_options = dataclasses.replace(options, formats=aggregate_formats)
         written_aggregate = export_collection(
-            accessible_collection,  # NOSONAR dataclasses.replace returns the same dataclass type
+            collection,
             agg_options,  # NOSONAR dataclasses.replace returns the same dataclass type
             verification_cache=verification_cache,
         )
+    decks = _write_per_paper_decks(collection, options, pdf_results, verification_cache)
+    _print_results(collection, args.quiet)
+    if args.download_pdf or not decks:
+        _print_pdf_summary(pdf_results, args.quiet)
+    if not args.quiet:
+        _print_per_paper_outputs(decks, written_aggregate, len(collection.papers))
+    if not decks:
+        print(
+            "error: no PDF could be downloaded; no slides were generated.",
+            file=sys.stderr,
+        )
+        return 1
+    return 0
 
-    per_paper_written: list[tuple[Paper, Path]] = []
-    # Unique: two papers with one BibTeX key would write the same deck.
-    stems = unique_keys(accessible_papers)
-    for paper, stem in zip(accessible_papers, stems, strict=True):
-        single = PaperCollection(query=collection.query, papers=(paper,))
+
+def _write_per_paper_decks(
+    collection: PaperCollection,
+    options: ExportOptions,
+    pdf_results: list,
+    verification_cache: VerificationCache | None,
+) -> list[tuple[str, Path]]:
+    """One deck per paper whose PDF is on disk, as ``(file stem, path)`` pairs.
+
+    The stems come from :func:`unique_keys` over the whole collection, so two
+    papers that share a BibTeX key never write the same file, one deck
+    overwriting the other.
+
+    Example: papers ``a`` (no PDF) and ``b`` (PDF) give ``[("<b's key>", path)]``.
+    """
+    stems = unique_keys(collection.papers)
+    written: list[tuple[str, Path]] = []
+    for index in _indices_with_pdf(collection, pdf_results):
+        single = PaperCollection(query=collection.query, papers=(collection.papers[index],))
         per_options = dataclasses.replace(
             options,
             formats=(EXPORT_PPTX,),
-            filename_stem=stem,
+            filename_stem=stems[index],
         )
         emitted = export_collection(
             single,
             per_options,  # NOSONAR dataclasses.replace returns the same dataclass type
             verification_cache=verification_cache,
         )
-        per_paper_written.append((paper, emitted[EXPORT_PPTX]))
+        written.append((stems[index], emitted[EXPORT_PPTX]))
+    return written
 
-    _print_results(accessible_collection, args.quiet)
-    if args.download_pdf:
-        _print_pdf_summary(pdf_results, args.quiet)
-    if not args.quiet:
-        print(f"\nGenerated {len(per_paper_written)} per-paper PPT(s):")
-        for paper, path in per_paper_written:
-            print(f"  - {paper.bibtex_key()}: {Path(path).resolve()}")
-        if written_aggregate:
-            print("\nAggregate exports (accessible papers only):")
-            for fmt, path in written_aggregate.items():
-                print(f"  - {fmt}: {Path(path).resolve()}")
-    return 0
+
+def _print_per_paper_outputs(
+    decks: list[tuple[str, Path]], aggregate: dict[str, Path], paper_count: int
+) -> None:
+    """List the decks and the summary files a per-paper run wrote.
+
+    Example output: ``Generated 1 per-paper PPT(s):`` then
+    ``Aggregate exports (all 2 papers):`` with one line per file.
+    """
+    print(f"\nGenerated {len(decks)} per-paper PPT(s):")
+    for stem, path in decks:
+        print(f"  - {stem}: {Path(path).resolve()}")
+    if aggregate:
+        print(f"\nAggregate exports (all {paper_count} papers):")
+        for fmt, path in aggregate.items():
+            print(f"  - {fmt}: {Path(path).resolve()}")
 
 
 def _print_pdf_summary(pdf_results, quiet: bool) -> None:

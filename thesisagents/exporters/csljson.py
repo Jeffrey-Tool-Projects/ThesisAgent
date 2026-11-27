@@ -48,7 +48,7 @@ class CslJsonExporter(Exporter):
     def export(self, collection: PaperCollection, options: ExportOptions) -> Path:
         try:
             items = [
-                _render_item(key, paper)
+                _render_item(key, paper, include_abstract=options.include_abstract)
                 for key, paper in _keyed(collection)
             ]
             content = json.dumps(items, ensure_ascii=False, indent=2) + "\n"
@@ -65,7 +65,10 @@ def _keyed(collection: PaperCollection):
     yield from zip(unique_keys(collection.papers), collection.papers, strict=True)
 
 
-def _render_item(key: str, paper: Paper) -> dict:
+def _render_item(key: str, paper: Paper, *, include_abstract: bool = True) -> dict:
+    """One CSL item. ``include_abstract=False`` (``--no-abstract``) leaves the
+    ``abstract`` key out, which the item used to carry whatever the option said.
+    """
     item: dict = {
         "id": key,
         "type": _TYPE_ARTICLE if paper.venue else _TYPE_MANUSCRIPT,
@@ -82,7 +85,7 @@ def _render_item(key: str, paper: Paper) -> dict:
         item["DOI"] = paper.doi
     if paper.url:
         item["URL"] = paper.url
-    if paper.abstract:
+    if include_abstract and paper.abstract:
         item["abstract"] = paper.short_abstract()
     return item
 
