@@ -77,38 +77,46 @@ class TokenBucket:
 
     async def acquire(self) -> None:
         """Wait until a request may be sent, then take its token."""
-        wait = self._reserve()
+        wait, cost = self._reserve()
         if wait > 0:
             try:
                 await self._sleep(wait)
             except asyncio.CancelledError:
-                self._refund()
+                self._refund(cost)
                 raise
-        if self._policy.jitter_seconds > 0:
-            await self._sleep(random.uniform(0, self._policy.jitter_seconds))  # noqa: S311  # nosec B311  # jitter only, not security-relevant
 
-    def _reserve(self) -> float:
-        """Take a token, possibly one not refilled yet, and return the wait for it.
+    def _reserve(self) -> tuple[float, float]:
+        """Take a token, possibly one not refilled yet. Returns the wait and its cost.
 
         The token count may go below zero: each negative unit is a slot that a
         waiting caller has already claimed, so the next caller's wait already
         includes the callers ahead of it.
+
+        The jitter is part of the slot. **Failure mode prevented**: added as
+        a sleep after the token was taken, a caller delayed by its jitter
+        could send right before the next caller's slot, closer to it than
+        ``1 / requests_per_second``. Charged here, it pushes the slots behind
+        it back by the same amount.
         """
+        jitter = (
+            random.uniform(0, self._policy.jitter_seconds)  # noqa: S311  # nosec B311  # jitter only, not security-relevant
+            if self._policy.jitter_seconds > 0 else 0.0
+        )
         with self._lock:
             now = self._clock()
             elapsed = max(0.0, now - self._last_refill)
             self._last_refill = now
             rate = self._policy.requests_per_second
             self._tokens = min(self._capacity, self._tokens + elapsed * rate)
-            self._tokens -= 1.0
-            if self._tokens >= 0:
-                return 0.0
-            return -self._tokens / rate
+            cost = 1.0 + jitter * rate
+            self._tokens -= cost
+            until_token = max(0.0, -(self._tokens + jitter * rate) / rate)
+            return until_token + jitter, cost
 
-    def _refund(self) -> None:
-        """Give back the token of a caller that was cancelled while waiting."""
+    def _refund(self, cost: float) -> None:
+        """Give back the slot of a caller that was cancelled while waiting."""
         with self._lock:
-            self._tokens = min(self._capacity, self._tokens + 1.0)
+            self._tokens = min(self._capacity, self._tokens + cost)
 
 
 _SHARED: dict[str, TokenBucket] = {}

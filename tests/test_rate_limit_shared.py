@@ -177,3 +177,21 @@ def test_sources_on_the_same_upstream_share_one_bucket():
     assert load_fetcher("acm").bucket is crossref.bucket
     assert load_fetcher("semantic_scholar").bucket is load_fetcher("semantic_scholar").bucket
     assert load_fetcher("arxiv").bucket is not crossref.bucket
+
+
+async def test_jitter_never_brings_two_requests_closer_than_the_rate(monkeypatch, clock):
+    # Slept after the token was taken, a jitter of 0.9 s put the first request
+    # at 0.9 s and the second at 1.0 s, a tenth of a second apart.
+    draws = iter([0.9, 0.0, 0.3, 0.0])
+    monkeypatch.setattr(rate_limit.random, "uniform", lambda _low, _high: next(draws))
+    bucket = TokenBucket(RateLimit(requests_per_second=1.0, burst=1, jitter_seconds=1.0))
+    sent: list[float] = []
+
+    async def request() -> None:
+        await bucket.acquire()
+        sent.append(clock())
+
+    await clock.run(request(), request(), request(), request())
+    gaps = [later - earlier for earlier, later in zip(sent, sent[1:], strict=False)]
+    assert sent[0] == pytest.approx(0.9)
+    assert all(gap >= 1.0 - 1e-9 for gap in gaps), sent
