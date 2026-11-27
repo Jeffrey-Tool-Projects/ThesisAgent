@@ -45,6 +45,8 @@ class AcmFetcher(Fetcher):
         rate_limit=RateLimit(requests_per_second=2.0, burst=2, jitter_seconds=0.1),
         requires_api_key=False,
         enabled_by_default=False,  # plugin: needs explicit --source acm
+        # Same upstream as the crossref plugin, so the same quota.
+        rate_limit_group="crossref",
     )
 
     async def search(self, query: Query) -> list[Paper]:

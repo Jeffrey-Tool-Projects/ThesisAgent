@@ -19,7 +19,7 @@ from thesisagents.core.exceptions import CitationNotAvailableError
 from thesisagents.core.identifiers import canonical_doi
 from thesisagents.core.models import Paper
 from thesisagents.fetchers.citations import CitationProvider, get_json
-from thesisagents.fetchers.rate_limit import TokenBucket
+from thesisagents.fetchers.rate_limit import shared_bucket
 
 from .fetcher import _SELECT_FIELDS, OpenAlexFetcher
 from .parser import parse_work
@@ -42,7 +42,8 @@ class OpenAlexCitations(CitationProvider):
     name = _SOURCE_NAME
 
     def __init__(self) -> None:
-        self._bucket = TokenBucket(OpenAlexFetcher.config.rate_limit)
+        # The same bucket as this upstream's search fetcher: one quota.
+        self._bucket = shared_bucket(_SOURCE_NAME, OpenAlexFetcher.config.rate_limit)
 
     async def references(self, paper: Paper, limit: int) -> list[Paper]:
         return await self._linked(paper, "cited_by", limit, sort=None)

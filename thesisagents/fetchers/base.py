@@ -8,7 +8,7 @@ from dataclasses import dataclass
 
 from thesisagents.core.exceptions import ConfigError
 from thesisagents.core.models import Paper, Query
-from thesisagents.fetchers.rate_limit import RateLimit, TokenBucket
+from thesisagents.fetchers.rate_limit import RateLimit, TokenBucket, shared_bucket
 from thesisagents.utils.logging import get_logger
 
 _LOG = get_logger(__name__)
@@ -29,6 +29,11 @@ class FetcherConfig:
     # default-ON. Used by IEEE / Scholar — both scrape paths are
     # default-on but the user can flip them off via this env var.
     opt_out_env_var: str | None = None
+    # The upstream service whose request quota this source draws on, when
+    # it is not the source's own name. ACM searches through the Crossref
+    # API, so it sets "crossref" and both plugins share one bucket
+    # instead of together sending twice Crossref's rate.
+    rate_limit_group: str | None = None
 
 
 class Fetcher(ABC):
@@ -37,7 +42,11 @@ class Fetcher(ABC):
     config: FetcherConfig
 
     def __init__(self) -> None:
-        self._bucket = TokenBucket(self.config.rate_limit)
+        # The process-wide bucket of this source, not a new one: every
+        # search loads a new fetcher, and a fresh full bucket per search
+        # let concurrent searches each send the whole burst.
+        group = self.config.rate_limit_group or self.config.name
+        self._bucket = shared_bucket(group, self.config.rate_limit)
 
     @property
     def bucket(self) -> TokenBucket:

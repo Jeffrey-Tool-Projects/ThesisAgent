@@ -120,6 +120,28 @@ def _restore_environment():
             os.environ[name] = value
 
 
+@pytest.fixture(autouse=True)
+def _fresh_rate_limits():
+    """Start every test with full, unshared rate-limit buckets.
+
+    The boundary this guards: the per-source token buckets are shared by the
+    whole process (``fetchers/rate_limit.py::shared_bucket``), so a quota that
+    one test used up would carry over to the next.
+
+    Failure mode it prevents: arXiv allows one request every three seconds, so
+    without the reset each later test that searched arXiv first waited for the
+    token an earlier test took, and the suite slowed by seconds per test.
+
+    Example: two tests that each call ``ArxivFetcher().search(...)`` once both
+    send their request at once.
+    """
+    from thesisagents.fetchers.rate_limit import clear_shared_buckets
+
+    clear_shared_buckets()
+    yield
+    clear_shared_buckets()
+
+
 @pytest.fixture
 def sample_papers():
     from thesisagents.core.models import Paper

@@ -27,7 +27,7 @@ from thesisagents.core.exceptions import CitationNotAvailableError
 from thesisagents.core.identifiers import canonical_doi
 from thesisagents.core.models import Paper
 from thesisagents.fetchers.citations import CitationProvider, get_json
-from thesisagents.fetchers.rate_limit import TokenBucket
+from thesisagents.fetchers.rate_limit import shared_bucket
 
 from .fetcher import CrossrefFetcher
 from .parser import parse_record
@@ -47,7 +47,8 @@ class CrossrefCitations(CitationProvider):
     name = _SOURCE_NAME
 
     def __init__(self) -> None:
-        self._bucket = TokenBucket(CrossrefFetcher.config.rate_limit)
+        # The same bucket as this upstream's search fetcher: one quota.
+        self._bucket = shared_bucket(_SOURCE_NAME, CrossrefFetcher.config.rate_limit)
 
     async def references(self, paper: Paper, limit: int) -> list[Paper]:
         doi = canonical_doi(paper.doi)

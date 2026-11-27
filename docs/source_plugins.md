@@ -216,7 +216,7 @@ class YourFetcher(Fetcher):
     )
 
     def __init__(self) -> None:
-        super().__init__()  # builds the token bucket from config.rate_limit
+        super().__init__()  # takes the source's shared token bucket (config.rate_limit)
         # OPTIONAL: enforce env-var presence here. `load_fetcher` catches
         # the ConfigError and the pipeline silently skips your plugin.
         self._api_key = os.environ.get("THESISAGENTS_YOUR_NAME_API_KEY")
@@ -442,7 +442,8 @@ fetcher: `arxiv` has a fetcher and no citation provider.
        name = "my_source"
 
        def __init__(self) -> None:
-           self._bucket = TokenBucket(MySourceFetcher.config.rate_limit)
+           # The search fetcher's bucket, so both draw on one quota.
+           self._bucket = shared_bucket(self.name, MySourceFetcher.config.rate_limit)
 
        async def references(self, paper: Paper, limit: int) -> list[Paper]:
            data = await get_json(self.name, self._bucket, url, params=...)
