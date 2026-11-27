@@ -24,7 +24,7 @@ from collections.abc import Callable
 from dataclasses import replace
 from pathlib import Path
 
-from PySide6.QtCore import QModelIndex, QPoint, QSettings, Qt, QThreadPool, Signal
+from PySide6.QtCore import QModelIndex, QObject, QPoint, QSettings, Qt, QThreadPool, Signal
 from PySide6.QtWidgets import (
     QCheckBox,
     QComboBox,
@@ -130,6 +130,10 @@ class SearchPage(QWidget):
         self._proxy = PaperFilterProxy(self)
         self._proxy.setSourceModel(self._papers_model)
         self._worker: AsyncWorker | None = None
+        # The signals object of the run whose result the page is waiting for.
+        # A result from any other worker is stale and ignored, see
+        # ``_is_stale_result``.
+        self._run_signals: QObject | None = None
         # Where local PDFs are copied (``{folder}/pdfs``). The main window
         # points it at the Deck page's output folder, so the copies sit next
         # to the deck built from them.
@@ -463,6 +467,8 @@ class SearchPage(QWidget):
         goes to ``{export folder}/pdfs``. The papers then behave like search
         results, so they can be ticked, enriched and built into a deck.
         """
+        if self._busy():
+            return
         out_dir = self._output_dir() or str(Path.cwd() / "exports")
         self._set_busy()
         self._local_button.setEnabled(False)
@@ -471,10 +477,7 @@ class SearchPage(QWidget):
         def call() -> SearchOutcome:
             return SearchOutcome(build_local_collection(paths, out_dir), local_folder=out_dir)
 
-        worker = BlockingWorker(call)
-        worker.signals.finished.connect(self._on_search_finished)
-        worker.signals.failed.connect(self._on_worker_failed)
-        QThreadPool.globalInstance().start(worker)
+        self._start_run(BlockingWorker(call))
 
     # --- remembered form ------------------------------------------------
 
@@ -591,6 +594,10 @@ class SearchPage(QWidget):
         )
 
     def _on_search_clicked(self) -> None:
+        # Enter in the query field reaches this even while the Search button
+        # is disabled, so the busy check has to live here and not on the button.
+        if self._busy():
+            return
         try:
             query = self.current_query()
         except ValueError as err:
@@ -634,12 +641,10 @@ class SearchPage(QWidget):
             return SearchOutcome(collection, discovered=discovered, library=report)
 
         worker = AsyncWorker(coro)
-        worker.signals.finished.connect(self._on_search_finished)
-        worker.signals.failed.connect(self._on_worker_failed)
         worker.signals.cancelled.connect(self._on_search_cancelled)
         self._worker = worker
         self._cancel_button.setVisible(True)
-        QThreadPool.globalInstance().start(worker)
+        self._start_run(worker)
 
     def _on_cancel_clicked(self) -> None:
         """Stop the running search at its next network wait."""
@@ -649,6 +654,8 @@ class SearchPage(QWidget):
 
     def _on_search_cancelled(self) -> None:
         """A cancelled search changes nothing: the previous result stays."""
+        if self._is_stale_result():
+            return
         self._end_busy()
         self._set_status(t("search.status_cancelled", self._ui_language))
 
@@ -660,6 +667,8 @@ class SearchPage(QWidget):
         Max results and the year range apply. The papers then behave like
         search results: they can be exported, enriched and built into a deck.
         """
+        if self._busy():
+            return
         library_path = self._library_path()
         if not library_path:
             self._set_status(t("search.error_no_library", self._ui_language))
@@ -677,10 +686,7 @@ class SearchPage(QWidget):
                 )
                 return SearchOutcome(collection, library_total=len(library))
 
-        worker = BlockingWorker(call)
-        worker.signals.finished.connect(self._on_search_finished)
-        worker.signals.failed.connect(self._on_worker_failed)
-        QThreadPool.globalInstance().start(worker)
+        self._start_run(BlockingWorker(call))
 
     def _on_browse_library(self) -> None:
         # A save dialog without the overwrite prompt: the file may exist (an
@@ -706,11 +712,48 @@ class SearchPage(QWidget):
         self.busy_changed.emit(True)
 
     def _busy(self) -> bool:
+        """True while a search, library search or local PDF read is running.
+
+        Every entry point that starts one of those calls this first. **Failure
+        mode prevented**: Enter in the query field bypasses the disabled
+        Search button, so without the check a second worker replaced the
+        first as the current one and the older query, finishing later,
+        overwrote the newer result and re-enabled the form early.
+        """
         return not self._search_button.isEnabled()
+
+    def _start_run(self, worker: AsyncWorker | BlockingWorker) -> None:
+        """Make ``worker`` the current run, connect its result, and start it.
+
+        The page remembers the worker's signals object so the handlers can
+        tell this run's result from a late one of an earlier worker. The
+        signals connect to bound methods and never to a lambda (see
+        ``gui/workers.py``).
+        """
+        worker.signals.finished.connect(self._on_search_finished)
+        worker.signals.failed.connect(self._on_worker_failed)
+        self._run_signals = worker.signals
+        QThreadPool.globalInstance().start(worker)
+
+    def _is_stale_result(self) -> bool:
+        """True when the signal being handled comes from a worker that is not current.
+
+        A direct call (``show_results``, tests) has no sender and is never
+        stale. **Failure mode prevented**: a result delivered after its run
+        stopped being the current one replaced the table and ended the busy
+        state of the run that is still going.
+
+        Example: run A starts, then A's result is delivered after run B became
+        current. ``sender()`` is A's signals object, which is not
+        ``_run_signals`` (B's), so the result is dropped.
+        """
+        sender = self.sender()
+        return sender is not None and sender is not self._run_signals
 
     def _end_busy(self) -> None:
         """Re-enable the buttons and hide Cancel after any run ends."""
         self._worker = None
+        self._run_signals = None
         self._cancel_button.setVisible(False)
         self._cancel_button.setEnabled(True)
         self._search_button.setEnabled(True)
@@ -721,6 +764,8 @@ class SearchPage(QWidget):
         self.busy_changed.emit(False)
 
     def _on_search_finished(self, result: object) -> None:
+        if self._is_stale_result():
+            return
         outcome = result if isinstance(result, SearchOutcome) else None
         collection = outcome.collection if outcome is not None else result
         if not isinstance(collection, PaperCollection):  # pragma: no cover — defensive
@@ -743,6 +788,8 @@ class SearchPage(QWidget):
         self._set_status(finished_status(collection, outcome, self._ui_language))
 
     def _on_worker_failed(self, err: object) -> None:
+        if self._is_stale_result():
+            return
         self._end_busy()
         self._set_status(
             t("search.error_generic", self._ui_language, error=str(err))
@@ -785,7 +832,7 @@ class SearchPage(QWidget):
 
         worker = BlockingWorker(export_call)
         worker.signals.finished.connect(self._on_export_finished)
-        worker.signals.failed.connect(self._on_worker_failed)
+        worker.signals.failed.connect(self._on_export_failed)
         QThreadPool.globalInstance().start(worker)
 
     def _on_export_finished(self, written: object) -> None:
@@ -798,6 +845,17 @@ class SearchPage(QWidget):
         self._set_status(
             t("search.status_export_done", self._ui_language, path=str(any_path))
         )
+
+    def _on_export_failed(self, err: object) -> None:
+        """An export failed: report it without touching the search run.
+
+        An export is not a run of the form, so its failure must not end the
+        busy state of a search that may still be going.
+        """
+        self.busy_changed.emit(False)
+        subset = self.selected_collection()
+        self._export_button.setEnabled(bool(subset and subset.papers) and not self._busy())
+        self._set_status(t("search.error_generic", self._ui_language, error=str(err)))
 
     def _set_status(self, text: str) -> None:
         self._status_label.setText(text)
