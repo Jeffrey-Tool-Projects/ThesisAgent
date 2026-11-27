@@ -9,6 +9,7 @@ from PySide6.QtCore import QAbstractTableModel, QModelIndex, QSortFilterProxyMod
 
 from thesisagents.core.diagnostics import PruningAction, SearchDiagnostics
 from thesisagents.core.models import Paper, PaperCollection
+from thesisagents.gui.enrichment import SummaryChanges, apply_summary_changes
 from thesisagents.gui.i18n import t
 
 _COLUMN_KEYS: Final[tuple[str, ...]] = (
@@ -55,18 +56,18 @@ class PapersTableModel(QAbstractTableModel):
 
     def __init__(self, language: str = "en", parent=None) -> None:
         super().__init__(parent)
-        self._papers: tuple[Paper, ...] = ()
+        self.collection: PaperCollection | None = None
         self._checked: list[bool] = []
         self._diagnostics: SearchDiagnostics | None = None
         self._language = language
 
     def set_collection(self, collection: PaperCollection | None) -> None:
         self.beginResetModel()
-        self._papers = tuple(collection.papers) if collection else ()
+        self.collection = collection
         self._diagnostics = collection.diagnostics if collection else None
         # A fresh result starts with every paper ticked, so a user who never
         # touches the boxes sends the whole result on, as before.
-        self._checked = [True] * len(self._papers)
+        self._checked = [True] * len(self.papers())
         self.endResetModel()
         self.checks_changed.emit()
 
@@ -78,13 +79,18 @@ class PapersTableModel(QAbstractTableModel):
         )
 
     def papers(self) -> tuple[Paper, ...]:
-        return self._papers
+        return self.collection.papers if self.collection is not None else ()
+
+    def update_summaries(self, changes: SummaryChanges) -> None:
+        """Keep row order and checks when Enrich updates a summary."""
+        if self.collection is not None:
+            self.collection = apply_summary_changes(self.collection, changes)
 
     # --- the subset sent on (check boxes in the title column) ---------
 
     def checked_papers(self) -> tuple[Paper, ...]:
         """The ticked papers, in result order: what Enrich, Deck and Export get."""
-        return tuple(p for p, ticked in zip(self._papers, self._checked, strict=True) if ticked)
+        return tuple(p for p, ticked in zip(self.papers(), self._checked, strict=True) if ticked)
 
     def checked_count(self) -> int:
         return sum(self._checked)
@@ -108,9 +114,9 @@ class PapersTableModel(QAbstractTableModel):
             if 0 <= row < len(self._checked) and self._checked[row] != checked:
                 self._checked[row] = checked
                 changed = True
-        if changed and self._papers:
+        if changed and self.papers():
             self.dataChanged.emit(
-                self.index(0, 0), self.index(len(self._papers) - 1, 0),
+                self.index(0, 0), self.index(len(self.papers()) - 1, 0),
                 [Qt.ItemDataRole.CheckStateRole],
             )
             self.checks_changed.emit()
@@ -131,7 +137,7 @@ class PapersTableModel(QAbstractTableModel):
     def rowCount(self, parent: QModelIndex = QModelIndex()) -> int:  # noqa: N802, B008  # Qt override
         if parent.isValid():
             return 0
-        return len(self._papers)
+        return len(self.papers())
 
     def columnCount(self, parent: QModelIndex = QModelIndex()) -> int:  # noqa: N802, B008  # Qt override
         if parent.isValid():
@@ -151,9 +157,9 @@ class PapersTableModel(QAbstractTableModel):
         return None
 
     def data(self, index: QModelIndex, role: int = Qt.DisplayRole) -> object:
-        if not index.isValid() or not (0 <= index.row() < len(self._papers)):
+        if not index.isValid() or not (0 <= index.row() < len(self.papers())):
             return None
-        paper = self._papers[index.row()]
+        paper = self.papers()[index.row()]
         if role == Qt.ToolTipRole:
             return self._explanation(paper)
         if role == Qt.ItemDataRole.CheckStateRole and index.column() == 0:

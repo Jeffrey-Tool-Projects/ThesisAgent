@@ -358,15 +358,14 @@ stack.
 
 ### Enrich
 
-Drives the per-paper PDF + LLM enrichment step through the Python
-pipeline. The Search page emits a `collection_ready` signal as soon as
-the results table populates. The Enrich page catches it and lists one
-row per paper with three columns:
+Enrich lists the papers you select in Search or send from the Library.
+To resume an earlier search here, click **Open saved search…** and choose
+the exported `.xlsx` workbook. Search and Deck show the same selection.
+The table has one row per paper.
 
 - **Title**, shortened to 80 characters.
-- **PDF**, a tick when the paper has a `pdf_url` on file (lifted by
-  Unpaywall / S2 / arXiv / CORE.ac.uk), a dash otherwise. A paper
-  with no PDF link is skipped.
+- **PDF**, a tick when the paper has a PDF link or locally extracted text.
+  Enrich skips papers with neither.
 - **Status**, pending, then done, skipped or failed with the first 60
   characters of the error.
 
@@ -377,6 +376,8 @@ subscription-based program, sign in through its terminal first. Press
 can send the text to the service you signed in to. The app attaches each
 returned summary to its paper and sends the collection to **Deck**.
 A failed paper keeps its search record and any existing summary.
+When a terminal program is missing or requires sign-in, the status line
+shows how to proceed. After correcting the problem, click **Enrich** again.
 
 **Cancel** stops the run. A paper whose PDF is still downloading is
 stopped at once, one already in the summary call finishes first and its
@@ -385,6 +386,9 @@ and keep their search record, so the Deck page still gets every paper.
 If the Search page sends new results (a new search, or changed ticks)
 while a run is going, they are held and shown once the run ends,
 because swapping them in mid-run would point the run at the wrong rows.
+Changing the selection keeps completed summaries with their papers.
+To build slides from them, choose **Use existing paper records** on Deck
+and export **PPTX**.
 
 For an agent on another computer, you can exchange a file manually.
 
@@ -415,6 +419,19 @@ Figures and tables taken from the paper are kept as they are. The Library
 page has the same button and stores what you save in the library.
 
 ### Deck
+
+Deck lists the papers you selected in Search or sent from the Library.
+To reopen an earlier search, click **Open saved search…** and choose its
+exported `.xlsx` workbook. Use the checkboxes in Search to change which
+papers appear in Deck. Keep the workbook beside its `pdfs` folder to reuse
+downloaded PDFs that have a matching entry in `pdfs/.owners.json`.
+
+To generate slides with a terminal program, select **PPTX** and choose
+the program under **Slide content**. Click **Export**. The program prepares a
+summary from the full text of each paper that still needs one in the chosen
+deck language. If a paper has no readable PDF, the status line names the
+paper. If the program is missing or asks you to sign in, follow the message
+and click **Export** again.
 
 The pre-export deck-shaping controls, in three cards: **Output**
 (directory, filename stem, deck language), **Formats** (one check box

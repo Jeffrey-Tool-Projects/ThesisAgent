@@ -18,6 +18,7 @@ point — the page does not call the search pipeline itself.
 
 from __future__ import annotations
 
+import asyncio
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -32,6 +33,7 @@ from PySide6.QtWidgets import (
     QHeaderView,
     QLabel,
     QLineEdit,
+    QListWidget,
     QPushButton,
     QSpinBox,
     QTableView,
@@ -39,7 +41,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from thesisagents.core.exceptions import ExportError
+from thesisagents.core.exceptions import ConfigError, ExportError
 from thesisagents.core.models import ExportOptions, PaperCollection
 from thesisagents.exporters import export_collection
 from thesisagents.exporters.i18n import SUPPORTED_LANGUAGES as DECK_LANGUAGES
@@ -47,8 +49,9 @@ from thesisagents.exporters.review import DeckReview, review_deck
 from thesisagents.exporters.review import format_report as format_review
 from thesisagents.exporters.template import TemplateValidationReport, validate_template
 from thesisagents.exporters.template import format_report as format_template_report
+from thesisagents.gui.enrichment import cli_provider_choices, prepare_cli_deck
 from thesisagents.gui.i18n import LANGUAGE_DISPLAY_NAMES, t
-from thesisagents.gui.pages.settings import saved_vpn_access
+from thesisagents.gui.pages.settings import saved_provider_settings, saved_vpn_access
 from thesisagents.gui.pdf_stage import PdfStageReport, run_pdf_stage
 from thesisagents.gui.widgets.deck_editor import DeckEditor
 from thesisagents.gui.widgets.report_dialog import ReportDialog
@@ -110,12 +113,14 @@ class DeckPage(QWidget):
     #: ``True`` when an export starts on a worker thread, ``False`` when it
     #: ends either way. Drives the main window's progress indicator.
     busy_changed = Signal(bool)
+    saved_search_requested = Signal()
 
     def __init__(self, ui_language: str = "en", parent: QWidget | None = None) -> None:
         super().__init__(parent)
         self._ui_language = ui_language
         self._collection: PaperCollection | None = None
         self._collection_is_enriched: bool = False
+        self._exporting = False
         self._last_written_dir: Path | None = None
         self._last_deck: Path | None = None
         self._last_report: ReportDialog | None = None
@@ -165,6 +170,11 @@ class DeckPage(QWidget):
             display = LANGUAGE_DISPLAY_NAMES.get(code, code)
             self._language_combo.addItem(display, code)
         output_form.addRow(t("deck.language_label", language), self._language_combo)
+        self._cli_provider = QComboBox(self)
+        self._cli_provider.addItem(t("deck.existing_summaries", language), "")
+        for label, name in cli_provider_choices(language):
+            self._cli_provider.addItem(label, name)
+        output_form.addRow(t("deck.summary_source", language), self._cli_provider)
         adapt_form_rows(output_card, output_form)
         controls_layout.addWidget(output_card)
 
@@ -251,6 +261,16 @@ class DeckPage(QWidget):
         results = QWidget(self)
         results_layout = QVBoxLayout(results)
         results_layout.setContentsMargins(6, 0, 0, 0)
+        papers_row = QHBoxLayout()
+        papers_row.addWidget(QLabel(t("library.tab_papers", language), results))
+        papers_row.addStretch(1)
+        self._source_button = QPushButton(t("deck.source_open", language), results)
+        self._source_button.clicked.connect(self.saved_search_requested)
+        papers_row.addWidget(self._source_button)
+        results_layout.addLayout(papers_row)
+        self._paper_titles = QListWidget(results)
+        self._paper_titles.setAccessibleName(t("library.tab_papers", language))
+        results_layout.addWidget(self._paper_titles, stretch=1)
         review_row = QHBoxLayout()
         self._review_button = QPushButton(t("deck.review_button", language), self)
         self._review_button.clicked.connect(self._on_review_clicked)
@@ -281,6 +301,9 @@ class DeckPage(QWidget):
 
         self._split = AdaptiveSplit(controls, results, footer=footer, parent=self)
         outer.addWidget(self._split)
+        self._format_checks["pptx"].toggled.connect(self._cli_provider.setEnabled)
+        self._format_checks["pptx"].toggled.connect(self._update_collection_status)
+        self._cli_provider.currentIndexChanged.connect(self._update_collection_status)
 
     def apply_breakpoint(self, breakpoint: Breakpoint) -> None:
         """Re-arrange for the window size class (called by the main window)."""
@@ -295,6 +318,7 @@ class DeckPage(QWidget):
     # --- public API -----------------------------------------------------
 
     def set_collection(self, collection: object) -> None:
+        self._paper_titles.clear()
         if collection is None or not isinstance(collection, PaperCollection):
             self._collection = None
             self._collection_is_enriched = False
@@ -304,6 +328,7 @@ class DeckPage(QWidget):
             )
             return
         self._collection = collection
+        self._paper_titles.addItems([paper.title for paper in collection.papers])
         # Heuristic: when any paper has a populated summary, the
         # collection has been through EnrichPage. Surface the distinction
         # because the user wants to know whether the exported deck will
@@ -311,7 +336,19 @@ class DeckPage(QWidget):
         self._collection_is_enriched = any(
             p.summary is not None for p in collection.papers
         )
-        self._export_button.setEnabled(bool(collection.papers))
+        self._refresh_export_button()
+        self._update_collection_status()
+
+    def _update_collection_status(self) -> None:
+        collection = self._collection
+        if self._exporting or collection is None:
+            return
+        if self._cli_provider.currentData() and self._format_checks["pptx"].isChecked():
+            self._status_label.setText(t(
+                "deck.cli_ready", self._ui_language,
+                name=self._cli_provider.currentText(), count=len(collection.papers),
+            ))
+            return
         status_key = (
             "deck.status_ready_enriched"
             if self._collection_is_enriched
@@ -324,6 +361,18 @@ class DeckPage(QWidget):
     def collection(self) -> PaperCollection | None:
         return self._collection
 
+    def set_source_enabled(self, enabled: bool) -> None:
+        self._source_button.setEnabled(enabled)
+
+    def set_source_status(self, text: str) -> None:
+        self._status_label.setText(text)
+
+    def _refresh_export_button(self) -> None:
+        self._export_button.setEnabled(
+            bool(self._collection and self._collection.papers)
+            and not self._exporting
+        )
+
     def status_text(self) -> str:
         return self._status_label.text()
 
@@ -332,6 +381,9 @@ class DeckPage(QWidget):
 
     def format_checkbox(self, fmt: str) -> QCheckBox:
         return self._format_checks[fmt]
+
+    def cli_provider_combo(self) -> QComboBox:
+        return self._cli_provider
 
     def verify_identifiers_checkbox(self) -> QCheckBox:
         return self._verify_identifiers_check
@@ -358,6 +410,7 @@ class DeckPage(QWidget):
         values: dict[str, object] = {
             "out_dir": self._out_dir_input.text(),
             "language": self._language_combo.currentData() or "en",
+            "cli_provider": self._cli_provider.currentData(),
             "formats": ",".join(self._selected_formats()),
             "max_slides": self._max_slides_spin.value(),
             "include_abstract": self._include_abstract_check.isChecked(),
@@ -377,6 +430,8 @@ class DeckPage(QWidget):
         language = _stored(store, "language", str)
         if language is not None and self._language_combo.findData(language) >= 0:
             self._language_combo.setCurrentIndex(self._language_combo.findData(language))
+        provider = _stored(store, "cli_provider", str)
+        self._cli_provider.setCurrentIndex(max(0, self._cli_provider.findData(provider)))
         formats = _stored(store, "formats", str)
         if formats is not None:
             wanted = set(str(formats).split(","))
@@ -515,6 +570,8 @@ class DeckPage(QWidget):
         )
 
     def _on_export_clicked(self) -> None:
+        if self._exporting or not self.isEnabled():
+            return
         formats = self._selected_formats()
         download_pdfs = self._download_pdfs_check.isChecked()
         out_dir = self._out_dir_input.text().strip()
@@ -524,12 +581,15 @@ class DeckPage(QWidget):
             return
         try:
             options = self._export_options(formats, out_dir)
-        except ValueError as err:
+            provider = self._cli_provider.currentData() if "pptx" in formats else ""
+            settings = saved_provider_settings(provider) if provider else None
+        except (ConfigError, ValueError) as err:
             # A template config with no template: say so here, the options
             # object refuses the combination before any worker starts.
             self._on_export_failed(err)
             return
         collection = self._collection
+        self._exporting = True
         self._export_button.setEnabled(False)
         self._open_folder_button.setEnabled(False)
         self._files_model.removeRows(0, self._files_model.rowCount())
@@ -538,15 +598,23 @@ class DeckPage(QWidget):
 
         library_path = self._library_path
         vpn_access = saved_vpn_access()
+        ui_language = self._ui_language
 
         def call() -> _ExportOutcome:
+            prepared = (
+                asyncio.run(prepare_cli_deck(
+                    collection, settings, options.language,
+                    ui_language=ui_language, vpn_access=vpn_access,
+                ))
+                if settings is not None else collection
+            )
             written: dict[str, Path] = {}
             if formats and not library_path:
-                written = export_collection(collection, options)
+                written = export_collection(prepared, options)
             elif formats:
                 with Library(library_path) as library:
                     written = export_collection(
-                        collection, options, verification_cache=library.verification_cache()
+                        prepared, options, verification_cache=library.verification_cache()
                     )
             pdfs = (
                 run_pdf_stage(collection, out_dir, vpn_access=vpn_access)
@@ -560,8 +628,9 @@ class DeckPage(QWidget):
         QThreadPool.globalInstance().start(worker)
 
     def _on_export_finished(self, result: object) -> None:
+        self._exporting = False
         self.busy_changed.emit(False)
-        self._export_button.setEnabled(True)
+        self._refresh_export_button()
         if isinstance(result, _ExportOutcome):
             outcome = result
         else:
@@ -620,8 +689,9 @@ class DeckPage(QWidget):
         return self._download_pdfs_check
 
     def _on_export_failed(self, err: object) -> None:
+        self._exporting = False
         self.busy_changed.emit(False)
-        self._export_button.setEnabled(True)
+        self._refresh_export_button()
         self._status_label.setText(
             t("deck.error_generic", self._ui_language, error=str(err)),
         )

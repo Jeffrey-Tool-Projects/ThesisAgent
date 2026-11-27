@@ -280,12 +280,43 @@ def _cli_problem(settings: LlmSettings) -> str | None:
         return str(err)
     if program is None:
         name = cli_models.split_command(settings.command)[0]
-        return f"{name} is not installed or not on PATH"
+        return f"{name} is not installed or not on PATH. Install it or choose another CLI"
     if settings.provider.needs_model and not settings.model:
         return (
             f"no model is chosen for {settings.provider.label}. Set {MODEL_ENV}, "
             "pass --llm-model, or choose one in the settings"
         )
+    return None
+
+
+def _login_hint(settings: LlmSettings) -> str:
+    provider = settings.provider
+    if provider.is_local:
+        return ""
+    action = {
+        "claude-cli": "Run 'claude auth login'",
+        "codex-cli": "Run 'codex login'",
+        "gemini-cli": "Open 'gemini' and sign in",
+        "agy-cli": "Open 'agy' and sign in",
+    }.get(provider.name, "Open your configured command and sign in")
+    return f"{provider.label} requires sign-in. {action} in a terminal, then retry"
+
+
+def cli_readiness_problem(settings: LlmSettings) -> str | None:
+    """Check CLI configuration and any supported account status once per batch. Blocking."""
+    if not settings.provider.is_cli:
+        return "Choose a command-line provider"
+    reason = _cli_problem(settings)
+    if reason or settings.command != settings.provider.command:
+        return reason
+    # Replacing the preset command can select a wrapper or another account.
+    # Only the actual custom invocation can report its authentication state.
+    program = cli_models.split_command(settings.command)[0]
+    try:
+        if cli_models.login_required(program, settings.provider.name, _app_keys()):
+            return _login_hint(settings)
+    except (ConfigError, SourceUnavailableError) as err:
+        return str(err)
     return None
 
 
@@ -321,6 +352,7 @@ def complete(settings: LlmSettings, system: str, user: str) -> str:
         return run(
             settings.arguments(), f"{system}\n\n{user}", label=settings.provider.label,
             hidden=() if settings.provider.name == CLI else _app_keys(),
+            login_hint=_login_hint(settings),
         )
     return _complete_compatible(settings, system, user)
 

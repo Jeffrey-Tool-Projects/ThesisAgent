@@ -57,6 +57,13 @@ _ANSI: Final[re.Pattern[str]] = re.compile(
     r"\x1b\[[0-9;?]*[A-Za-z]|\x1b\][^\x07\x1b]*(?:\x07|\x1b\\)"
 )
 _STDERR_SHOWN: Final[int] = 400
+_LOGIN_REQUIRED: Final[re.Pattern[str]] = re.compile(
+    r"\b(?:not (?:logged|signed) in|(?:please|must) (?:log|sign) in|"
+    r"please run /login|(?:authentication|login|sign[- ]in) (?:is )?required|"
+    r"unauthenticated|not authenticated|(?:sign|log) in again|please set an auth method|"
+    r"(?:access|refresh) token (?:has )?expired)\b",
+    re.IGNORECASE,
+)
 
 
 def split_command(command: str) -> list[str]:
@@ -99,7 +106,7 @@ def find_program(command: str) -> str | None:
 
 def run_command(
     command: str | Sequence[str], prompt: str, *, timeout: float | None = None,
-    label: str = "", hidden: Iterable[str] = (),
+    label: str = "", hidden: Iterable[str] = (), login_hint: str = "",
 ) -> str:
     """Run ``command`` with ``prompt`` on standard input and return what it printed.
 
@@ -109,6 +116,24 @@ def run_command(
     fails or takes too long, and ``ParseError`` when it prints nothing.
     """
     arguments = split_command(command) if isinstance(command, str) else list(command)
+    code, output, diagnostic = _invoke(arguments, prompt, timeout, label, hidden)
+    name = label or arguments[0]
+    if code != 0:
+        if login_hint and _LOGIN_REQUIRED.search(diagnostic + "\n" + output):
+            raise ConfigError(login_hint)
+        detail = diagnostic[-_STDERR_SHOWN:] or output[-_STDERR_SHOWN:]
+        raise SourceUnavailableError(
+            _SOURCE, f"{name} ended with code {code}: {detail or 'no message'}",
+        )
+    if not output.strip():
+        raise ParseError("intelligence", f"{name} printed nothing")
+    return output
+
+
+def _invoke(
+    arguments: Sequence[str], prompt: str, timeout: float | None, label: str,
+    hidden: Iterable[str],
+) -> tuple[int, str, str]:
     if not arguments:
         raise ConfigError("no command is set for the command-line model")
     found = shutil.which(arguments[0])
@@ -142,26 +167,37 @@ def run_command(
             stdout, stderr = process.communicate(prompt.encode("utf-8"), timeout=seconds)
         except subprocess.TimeoutExpired as err:
             _end_tree(process)
+            hint = f". Raise {TIMEOUT_ENV}" if timeout is None else ""
             raise SourceUnavailableError(
-                _SOURCE, f"{name} did not finish within {seconds:g} s. Raise {TIMEOUT_ENV}"
+                _SOURCE, f"{name} did not finish within {seconds:g} s{hint}"
             ) from err
-    output = _clean(stdout)
-    if process.returncode != 0:
-        detail = _clean(stderr)[-_STDERR_SHOWN:] or output[-_STDERR_SHOWN:]
-        raise SourceUnavailableError(
-            _SOURCE,
-            f"{name} ended with code {process.returncode}: {detail or 'no message'}. "
-            "Is it signed in?",
-        )
-    if not output.strip():
-        raise ParseError("intelligence", f"{name} printed nothing")
-    return output
+    return process.returncode, _clean(stdout), _clean(stderr)
 
 
-def run_agy(command: Sequence[str], prompt: str, *, label: str, hidden: Iterable[str]) -> str:
+def login_required(program: str, provider: str, hidden: Iterable[str]) -> bool:
+    """Check the noninteractive account status for a supported preset."""
+    if provider == "claude-cli":
+        _, output, _ = _invoke([program, "auth", "status", "--json"], "", 10, program, hidden)
+        try:
+            status = json.loads(output)
+        except (ValueError, RecursionError):
+            # Older releases without this subcommand report errors on the actual run.
+            return False
+        return isinstance(status, dict) and status.get("loggedIn") is False
+    if provider == "codex-cli":
+        code, output, error = _invoke([program, "login", "status"], "", 10, program, hidden)
+        return code != 0 and bool(_LOGIN_REQUIRED.search(error + "\n" + output))
+    return False
+
+
+def run_agy(
+    command: Sequence[str], prompt: str, *, label: str, hidden: Iterable[str], login_hint: str = "",
+) -> str:
     """Send one user event on stdin and return the final response from the event stream."""
     event = {"event": "user", "message": {"content": prompt}}
-    output = run_command(command, json.dumps(event) + "\n", label=label, hidden=hidden)
+    output = run_command(
+        command, json.dumps(event) + "\n", label=label, hidden=hidden, login_hint=login_hint,
+    )
     try:
         last = json.loads(output.rstrip().rsplit("\n", 1)[-1])
     except (ValueError, RecursionError) as err:
@@ -173,6 +209,8 @@ def run_agy(command: Sequence[str], prompt: str, *, label: str, hidden: Iterable
         raise ParseError("intelligence", f"{label} returned a malformed result")
     if result.get("status") != "SUCCESS":
         detail = str(result.get("error") or result.get("status") or "unknown status")
+        if login_hint and _LOGIN_REQUIRED.search(detail):
+            raise ConfigError(login_hint)
         raise SourceUnavailableError(_SOURCE, f"{label}: {detail[:_STDERR_SHOWN]}")
     response = result.get("response")
     if not isinstance(response, str) or not response.strip():

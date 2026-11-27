@@ -8,6 +8,7 @@ Excel / Numbers / LibreOffice.
 
 from __future__ import annotations
 
+import json
 import re
 from datetime import datetime
 from pathlib import Path
@@ -173,7 +174,14 @@ def _write_paper_row(
 ) -> None:
     sheet.cell(row=row, column=1, value=index)
     sheet.cell(row=row, column=2, value=_sheet_safe(paper.title))
-    sheet.cell(row=row, column=3, value=_sheet_safe(", ".join(paper.authors)))
+    names = [_sheet_safe(name) for name in paper.authors]
+    authors = ", ".join(names)
+    sheet.cell(row=row, column=3, value=authors)
+    if ", " in authors and any(", " in name or len(name.split()) < 2 for name in names):
+        # The displayed separator can also occur within a single author's name.
+        sheet.cell(row=1, column=12, value="Author names (JSON)")
+        sheet.column_dimensions["L"].hidden = True
+        sheet.cell(row=row, column=12, value=json.dumps(names, ensure_ascii=False))
     sheet.cell(row=row, column=4, value=paper.year)
     sheet.cell(row=row, column=5, value=_sheet_safe(paper.venue))
     sheet.cell(row=row, column=6, value=_sheet_safe(paper.source))

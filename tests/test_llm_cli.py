@@ -171,6 +171,70 @@ def test_what_is_missing_is_said_before_anything_runs(monkeypatch):
     )
 
 
+@pytest.mark.parametrize(("name", "flags", "response", "action"), [
+    ("claude-cli", ["auth", "status", "--json"],
+     (1, '{"loggedIn":false}', ""), "claude auth login"),
+    ("codex-cli", ["login", "status"], (1, "", "Not logged in"), "codex login"),
+])
+def test_readiness_checks_the_account_without_a_prompt(monkeypatch, name, flags, response, action):
+    monkeypatch.setattr(cli_models, "find_program", lambda command: sys.executable)
+
+    def probe(arguments, prompt, timeout, label, hidden):
+        assert arguments[1:] == flags
+        assert prompt == ""
+        assert "OPENAI_API_KEY" in hidden
+        return response
+
+    monkeypatch.setattr(cli_models, "_invoke", probe)
+    assert action in providers.cli_readiness_problem(providers.resolve(name))
+
+
+@pytest.mark.parametrize(("name", "response"), [
+    ("claude-cli", (0, '{"loggedIn":true}', "")),
+    ("codex-cli", (0, "", "Logged in")),
+    ("claude-cli", (1, "", "unknown argument status")),
+    ("codex-cli", (1, "", "unsupported command")),
+])
+def test_supported_accounts_and_older_clis_can_continue(monkeypatch, name, response):
+    monkeypatch.setattr(cli_models, "find_program", lambda command: sys.executable)
+    monkeypatch.setattr(cli_models, "_invoke", lambda *args: response)
+    assert providers.cli_readiness_problem(providers.resolve(name)) is None
+
+
+def test_cli_readiness_respects_custom_commands_and_reports_missing_programs():
+    settings = providers.resolve("codex-cli", command=_program("raise SystemExit(8)"))
+    assert providers.cli_readiness_problem(settings) is None
+    missing = providers.resolve("gemini-cli", command="no-such-ai-program")
+    assert "not installed" in providers.cli_readiness_problem(missing)
+    assert providers.cli_readiness_problem(providers.resolve("openai"))
+
+
+@pytest.mark.parametrize(("name", "diagnostic", "hint"), [
+    ("gemini-cli", "Please set an Auth method in your settings", "Open 'gemini'"),
+    ("codex-cli", "Not logged in", "codex login"),
+    ("claude-cli", "Not logged in · Please run /login", "claude auth login"),
+    ("cli", "Authentication required", "configured command"),
+])
+def test_invocation_reports_login_remedy(name, diagnostic, hint):
+    command = _program(f"import sys; print('{diagnostic}', file=sys.stderr); sys.exit(1)")
+    with pytest.raises(ConfigError, match=hint):
+        providers.complete(providers.resolve(name, command=command), "read", "paper")
+
+
+def test_stream_error_reports_login_remedy(monkeypatch):
+    failure = '{"event":"result","result":{"status":"ERROR","error":"UNAUTHENTICATED"}}'
+    monkeypatch.setattr(cli_models, "run_command", lambda *a, **kw: failure)
+    with pytest.raises(ConfigError, match="Open 'agy'"):
+        providers.complete(providers.resolve("agy-cli", command=_program("pass")), "read", "paper")
+
+
+def test_an_unrelated_error_keeps_the_program_diagnostic():
+    settings = providers.resolve("claude-cli", command=_program("import sys; sys.exit('quota')"))
+    with pytest.raises(SourceUnavailableError, match="quota") as caught:
+        providers.complete(settings, "read", "paper")
+    assert "sign" not in str(caught.value)
+
+
 def test_a_paper_is_summarised_by_the_program(monkeypatch):
     monkeypatch.setenv(
         providers.COMMAND_ENV,

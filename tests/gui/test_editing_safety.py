@@ -319,10 +319,10 @@ def test_a_summary_goes_to_its_paper_when_the_list_changed(enrich):
     enrich.set_collection(_collection(ONE, TWO))
     # A search ended while the editor for row 0 was open.
     enrich.set_collection(_collection(TWO, ONE))
-    enrich._on_summary_edited(0, edited)  # noqa: SLF001
+    enrich._on_summary_edited(ONE, edited)  # noqa: SLF001
     assert [p.summary for p in enrich.collection().papers] == [None, summary]
     enrich.set_collection(_collection(TWO))
-    enrich._on_summary_edited(0, edited)  # noqa: SLF001
+    enrich._on_summary_edited(ONE, edited)  # noqa: SLF001
     assert enrich.collection().papers == (TWO,)
     assert "no longer has this paper" in enrich.status_text()
 
