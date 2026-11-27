@@ -135,7 +135,8 @@ set exceeds `--paywall-threshold`, the CLI asks before building per-paper decks 
 **Enrichment**
 
 ```
-ANTHROPIC_API_KEY set → intelligence.pdf extracts text → intelligence.summarise → PaperSummary
+ANTHROPIC_API_KEY set → intelligence.pdf extracts text (the run's saved PDF, else a fetch through
+                         core.pdf_download routing) → intelligence.summarise → PaperSummary
 no key, model in the loop → MCP fetch_pdf_text → model authors PaperSummary
                             → MCP export, or a scripts/regen_<key>.py that calls the exporter
 no key, no model → lightweight, abstract-based deck

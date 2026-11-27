@@ -9,9 +9,10 @@ from __future__ import annotations
 
 import asyncio
 import dataclasses
-from collections.abc import Coroutine
+from collections.abc import Coroutine, Sequence
 from dataclasses import dataclass
-from typing import Any
+from pathlib import Path
+from typing import TYPE_CHECKING, Any
 
 from thesisagents.core.constants import (
     RATE_LIMIT_RETRY_ATTEMPTS,
@@ -38,6 +39,9 @@ from thesisagents.core.ranking import RankedPaper, rank_with_scores
 from thesisagents.core.top_venues import is_top_tier
 from thesisagents.fetchers.base import load_fetcher
 from thesisagents.utils.logging import get_logger
+
+if TYPE_CHECKING:
+    from thesisagents.intelligence.pdf import ExtractedPdf
 
 _LOG = get_logger(__name__)
 
@@ -373,10 +377,20 @@ async def enrich_collection(
     base_url: str | None = None,
     command: str | None = None,
     concurrency: int = _ENRICH_CONCURRENCY,
+    local_pdfs: Sequence[Path | None] | None = None,
 ) -> PaperCollection:
-    """Download each paper's PDF, summarise it with an LLM, attach the result.
+    """Read each paper's PDF, summarise it with an LLM, attach the result.
 
-    Papers without a ``pdf_url`` or whose PDF can't be fetched / parsed pass
+    ``local_pdfs`` lines up with ``collection.papers``: an entry that is a
+    path is a PDF this run already saved, and its text is read from disk
+    with no request. The failure this prevents: the CLI summarised before
+    it downloaded, and the summary's own plain HTTP fetch was refused by a
+    publisher whose PDF the same run then got through visible Chrome, so
+    the paper had a PDF and no summary. A ``None`` entry, or no
+    ``local_pdfs`` at all, fetches ``pdf_url`` through the downloader's
+    publisher routing. A list of the wrong length raises ``ValueError``.
+
+    Papers without a PDF or whose PDF can't be fetched / parsed pass
     through unchanged — the exporter then falls back to the abstract-based
     deck. Enrichments run concurrently but a semaphore caps how many run at
     once (``concurrency``, default ``_ENRICH_CONCURRENCY``) so a large
@@ -388,16 +402,25 @@ async def enrich_collection(
     papers in flight at a time.
     """
     sem = asyncio.Semaphore(max(1, concurrency))
+    if local_pdfs is None:
+        local_pdfs = [None] * len(collection.papers)
+    if len(local_pdfs) != len(collection.papers):
+        raise ValueError(
+            f"local_pdfs has {len(local_pdfs)} entries for {len(collection.papers)} papers"
+        )
 
-    async def _bounded(paper: Paper) -> Paper:
+    async def _bounded(paper: Paper, local_pdf: Path | None) -> Paper:
         async with sem:
             return await _enrich_one(
                 paper, language=language, model=model, provider=provider, base_url=base_url,
-                command=command,
+                command=command, local_pdf=local_pdf,
             )
 
     enriched_papers = await asyncio.gather(
-        *(_bounded(paper) for paper in collection.papers)
+        *(
+            _bounded(paper, local_pdf)
+            for paper, local_pdf in zip(collection.papers, local_pdfs, strict=True)
+        )
     )
     # ``replace`` keeps ``diagnostics``: a summary changes neither a paper's
     # identity key nor the score that ranked it.
@@ -414,24 +437,22 @@ async def _enrich_one(
     provider: str | None = None,
     base_url: str | None = None,
     command: str | None = None,
+    local_pdf: Path | None = None,
 ) -> Paper:
-    if not paper.pdf_url:
+    if not paper.pdf_url and local_pdf is None:
         _LOG.info(
             "skip enrichment for %s (%s): no pdf_url", paper.bibtex_key(), paper.source
         )
         return paper
     try:
-        from thesisagents.intelligence.pdf import fetch_and_extract
         from thesisagents.intelligence.summarise import summarise_paper
     except ImportError as err:
         raise ConfigError(
             "intelligence extras not installed; "
             "run `pip install thesisagents[intelligence]`"
         ) from err
-    try:
-        pdf = await fetch_and_extract(paper.pdf_url, source=paper.source)
-    except ThesisAgentsError as err:  # FetchError is a ThesisAgentsError subclass
-        _LOG.warning("PDF fetch failed for %s: %s", paper.bibtex_key(), err)
+    pdf = await _paper_text(paper, local_pdf)
+    if pdf is None:
         return paper
     try:
         summary = await asyncio.to_thread(
@@ -446,3 +467,27 @@ async def _enrich_one(
     return dataclasses.replace(  # NOSONAR dataclasses.replace returns the same dataclass type
         paper, summary=summary
     )
+
+
+async def _paper_text(paper: Paper, local_pdf: Path | None) -> ExtractedPdf | None:
+    """The extracted text of ``paper``'s PDF, or None when it can't be had.
+
+    A PDF this run already saved (``local_pdf``) is read from disk and never
+    fetched again. Otherwise ``pdf_url`` is fetched through the downloader's
+    publisher routing (visible Chrome for paywalled hosts). Fetch and parse
+    errors are logged and give None, so one paper's failure leaves the
+    others' summaries alone.
+    Example: ``await _paper_text(paper, Path("out/pdfs/k.pdf"))``.
+    """
+    from thesisagents.intelligence.pdf import extract_pdf_file, fetch_and_extract
+
+    try:
+        if local_pdf is not None:
+            return await asyncio.to_thread(
+                extract_pdf_file, local_pdf,
+                url=paper.pdf_url or paper.url or str(local_pdf), source=paper.source,
+            )
+        return await fetch_and_extract(paper.pdf_url or "", source=paper.source)
+    except ThesisAgentsError as err:  # FetchError is a ThesisAgentsError subclass
+        _LOG.warning("PDF text unavailable for %s: %s", paper.bibtex_key(), err)
+        return None

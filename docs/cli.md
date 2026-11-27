@@ -641,7 +641,10 @@ first author and year, as here.
 
 `bibtex_key` is how the PDFs and per-paper decks of the run are named
 (`pdfs/<bibtex_key>.pdf`, `<bibtex_key>.pptx`), so a script that acts on
-the recommendations can find the files.
+the recommendations can find the files. A PDF whose key another paper
+already holds in that folder gets 8 hex digits of its identity appended
+(`pdfs/<bibtex_key>-1a2b3c4d.pdf`), and `pdfs/.owners.json` records
+which paper owns each file.
 
 The recommendations are advice. No paper is removed from the results,
 the exports, or the disk. Read the abstracts of the `review` and

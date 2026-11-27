@@ -75,6 +75,37 @@ def test_fetch_pdf_text_tool(monkeypatch, server):
     assert payload["text"].startswith("full paper")
 
 
+def test_fetch_pdf_text_routes_a_publisher_pdf_through_the_browser(monkeypatch, server):
+    """Review R07: the tool sent every URL a plain request, which a publisher
+    refuses, although ``download_pdfs`` gets the same PDF through Chrome."""
+    import httpx
+
+    from thesisagents.core import pdf_download
+    from thesisagents.fetchers import webrunner_pdf
+
+    publisher_pdf = "https://dl.acm.org/doi/pdf/10.1145/1"
+
+    async def fake_browser(_url, target):
+        target.write_bytes(b"%PDF-1.4 from chrome")
+        return True
+
+    async def refusing_client(_source):
+        return httpx.AsyncClient(
+            transport=httpx.MockTransport(lambda request: httpx.Response(403, request=request))
+        )
+
+    monkeypatch.setattr(webrunner_pdf, "is_available", lambda: True)
+    monkeypatch.setattr(webrunner_pdf, "download_via_browser", fake_browser)
+    monkeypatch.setattr(pdf_download, "get_client", refusing_client)
+    monkeypatch.setattr("thesisagents.intelligence.pdf.get_client", refusing_client, raising=False)
+    monkeypatch.setattr(
+        "thesisagents.intelligence.pdf._extract_text",
+        lambda body, source: (body.decode(), 1),  # noqa: ARG005  # signature mirror
+    )
+    payload = asyncio.run(_call(server, "fetch_pdf_text", pdf_url=publisher_pdf))
+    assert payload["text"] == "%PDF-1.4 from chrome"
+
+
 def test_fetch_paper_tool(monkeypatch, server, sample_papers):
     async def fake_single(identifier):
         return PaperCollection(

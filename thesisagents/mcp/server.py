@@ -284,7 +284,12 @@ def _env_var_truthy(name: str) -> bool:
 def _register_pdf_tool(server: FastMCP) -> None:
     @_tool(server)
     async def fetch_pdf_text(pdf_url: str, source: str = "intelligence") -> dict[str, Any]:
-        """Download a paper's PDF over HTTPS-only and extract its body text.
+        """Download a paper's PDF and extract its body text.
+
+        The download shares ``download_pdfs``' routing: a paywalled
+        publisher host is fetched by visible Chrome, an open host by the
+        HTTPS-only client with a streamed size cap. Before, this tool sent
+        every URL a plain request, which publishers refuse.
 
         Use this when you (an LLM agent) want to produce an enriched
         ``PaperSummary`` yourself: call ``fetch_paper`` for metadata, then

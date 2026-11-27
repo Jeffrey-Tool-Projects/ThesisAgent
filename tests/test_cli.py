@@ -1459,3 +1459,69 @@ def test_cli_snowball_from_a_single_paper_keeps_discovery_order(
         "Attention Mechanisms Reviewed", "Sparse Attention at Scale", "Cooking With Gas",
     )]
     assert order == sorted(order)
+
+
+def test_cli_summarises_the_pdf_the_browser_downloaded(tmp_path, monkeypatch, sample_papers):
+    """Review R07: the CLI summarised before it downloaded, and the summary's
+    own plain request was refused by the publisher. The same run then got the
+    PDF through Chrome, and the paper still had no summary."""
+    import dataclasses
+
+    import httpx
+
+    from thesisagents.core import pdf_download
+    from thesisagents.core.models import PaperSummary
+    from thesisagents.fetchers import webrunner_pdf
+    from thesisagents.intelligence import summarise
+
+    publisher_pdf = "https://dl.acm.org/doi/pdf/10.1145/1"
+    paper = dataclasses.replace(sample_papers[0], pdf_url=publisher_pdf)
+
+    async def fake_run_search(query, **_kwargs):  # NOSONAR async stub
+        return PaperCollection(query=query, papers=(paper,))
+
+    async def fake_shutdown():  # NOSONAR async stub
+        return None
+
+    monkeypatch.setattr(cli_module, "run_search", fake_run_search)
+    monkeypatch.setattr(cli_module, "shutdown_clients", fake_shutdown)
+    monkeypatch.setattr(cli_module, "download_pdfs", pdf_download.download_pdfs)
+    opened: list[str] = []
+
+    async def fake_browser(url, target):
+        opened.append(url)
+        target.write_bytes(b"%PDF-1.4 from chrome")
+        return True
+
+    monkeypatch.setattr(webrunner_pdf, "is_available", lambda: True)
+    monkeypatch.setattr(webrunner_pdf, "download_via_browser", fake_browser)
+    refused: list[str] = []
+
+    def refuse(request):
+        refused.append(str(request.url))
+        return httpx.Response(403, content=b"denied")
+
+    async def refusing_client(_source):
+        return httpx.AsyncClient(transport=httpx.MockTransport(refuse))
+
+    monkeypatch.setattr(pdf_download, "get_client", refusing_client)
+    monkeypatch.setattr("thesisagents.intelligence.pdf.get_client", refusing_client, raising=False)
+    monkeypatch.setattr(
+        "thesisagents.intelligence.pdf._extract_text",
+        lambda body, source: (body.decode(), 1),  # noqa: ARG005  # signature mirror
+    )
+    summarised: list[str] = []
+
+    def fake_summarise(_paper, pdf, **_kwargs):
+        summarised.append(pdf.text)
+        return PaperSummary(language="en", takeaways=("t",))
+
+    monkeypatch.setattr(summarise, "summarise_paper", fake_summarise)
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "test-key")
+    code = cli_module.main(
+        ["--query", "x", "--source", "arxiv", "--out", str(tmp_path), "--export", "bib"]
+    )
+    assert code == 0
+    assert summarised == ["%PDF-1.4 from chrome"]
+    assert opened == [publisher_pdf]
+    assert refused == []
