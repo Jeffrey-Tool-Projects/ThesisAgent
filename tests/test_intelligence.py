@@ -8,7 +8,7 @@ import httpx
 import pytest
 
 from thesisagents.core.exceptions import ConfigError, ParseError
-from thesisagents.core.models import Paper, PaperCollection, Query
+from thesisagents.core.models import Paper, PaperCollection, PaperSummary, Query
 from thesisagents.core.pipeline import enrich_collection
 from thesisagents.fetchers import http as http_module
 from thesisagents.intelligence import pdf as pdf_module
@@ -51,7 +51,11 @@ def _install_pdf_transport(monkeypatch, transport):
     async def fake_get_client(_source):
         return httpx.AsyncClient(transport=transport)
 
-    monkeypatch.setattr("thesisagents.intelligence.pdf.get_client", fake_get_client)
+    # The text fetch shares the downloader's routing, so its client is that
+    # module's. The old private client is patched too (when present) so a
+    # regression test run against the old code fails on its assertion.
+    monkeypatch.setattr("thesisagents.core.pdf_download.get_client", fake_get_client)
+    monkeypatch.setattr("thesisagents.intelligence.pdf.get_client", fake_get_client, raising=False)
 
 
 class _CannedPdfTransport(httpx.AsyncBaseTransport):
@@ -326,3 +330,123 @@ async def test_enrich_collection_attaches_summary(monkeypatch):
     assert summary.motivation == ("m",)
     assert summary.takeaways == ("t",)
     assert summary.language == "en"
+
+
+# ---------------------------------------------------------------------------
+# One fetch route for text and downloads (review R07) and the streamed cap (R08)
+# ---------------------------------------------------------------------------
+
+_PUBLISHER_PDF = "https://dl.acm.org/doi/pdf/10.1145/1"
+
+
+def _browser_gets(monkeypatch, body: bytes) -> list[str]:
+    """Stub visible Chrome as succeeding with ``body``. Returns the URLs it opened."""
+    from thesisagents.fetchers import webrunner_pdf
+
+    visited: list[str] = []
+
+    async def fake_download(url, target):
+        visited.append(url)
+        target.write_bytes(body)
+        return True
+
+    monkeypatch.setattr(webrunner_pdf, "is_available", lambda: True)
+    monkeypatch.setattr(webrunner_pdf, "download_via_browser", fake_download)
+    return visited
+
+
+def _echo_extract(monkeypatch) -> None:
+    """Make the "extracted text" the PDF bytes, so a test sees which file was read."""
+    monkeypatch.setattr(
+        "thesisagents.intelligence.pdf._extract_text",
+        lambda body, source: (body.decode(), 1),  # noqa: ARG005  # signature mirror
+    )
+
+
+async def test_fetch_and_extract_sends_a_publisher_pdf_to_the_browser(monkeypatch):
+    """A plain request to a publisher is refused (403 here). The text fetch
+    used one, while the downloader got the same PDF through Chrome."""
+    transport = _CannedPdfTransport(403, b"denied", content_type="text/html")
+    _install_pdf_transport(monkeypatch, transport)
+    visited = _browser_gets(monkeypatch, b"%PDF-1.4 from chrome")
+    _echo_extract(monkeypatch)
+    result = await pdf_module.fetch_and_extract(_PUBLISHER_PDF, source="acm")
+    assert result.text == "%PDF-1.4 from chrome"
+    assert visited == [_PUBLISHER_PDF]
+
+
+class _CountedChunks(httpx.AsyncByteStream):
+    """A body without Content-Length that counts the chunks it hands out."""
+
+    def __init__(self) -> None:
+        self.served = 0
+        self.closed = False
+
+    async def __aiter__(self):
+        while self.served < 100:
+            self.served += 1
+            yield b"%PDF" + b"x" * 996
+
+    async def aclose(self):
+        self.closed = True
+
+
+class _ChunkTransport(httpx.AsyncBaseTransport):
+    def __init__(self, stream):
+        self.stream = stream
+
+    async def handle_async_request(self, request):
+        return httpx.Response(
+            200, stream=self.stream, headers={"content-type": "application/pdf"},
+            request=request,
+        )
+
+    async def aclose(self):
+        return None
+
+
+async def test_fetch_and_extract_stops_reading_past_the_cap(monkeypatch):
+    """The whole body was read before the cap was checked."""
+    monkeypatch.setattr(pdf_module, "MAX_PDF_BYTES", 2500)
+    stream = _CountedChunks()
+    _install_pdf_transport(monkeypatch, _ChunkTransport(stream))
+    with pytest.raises(ParseError, match="cap"):
+        await pdf_module.fetch_and_extract("https://arxiv.org/pdf/big", source="arxiv")
+    assert stream.served == 3
+    assert stream.closed
+
+
+async def test_enrich_collection_reads_the_pdf_already_on_disk(monkeypatch, tmp_path):
+    """A saved PDF is summarised from the file, with no request at all."""
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "test-key")
+    saved = tmp_path / "paper.pdf"
+    saved.write_bytes(b"%PDF-1.4 saved earlier")
+    _echo_extract(monkeypatch)
+
+    async def no_fetch(*_args, **_kwargs):
+        raise AssertionError("a saved PDF must not be fetched again")
+
+    monkeypatch.setattr(pdf_module, "fetch_and_extract", no_fetch)
+    seen: list[str] = []
+
+    def fake_summarise(_paper, pdf, **_kwargs):
+        seen.append(pdf.text)
+        return PaperSummary(language="en", takeaways=("t",))
+
+    monkeypatch.setattr(summarise_module, "summarise_paper", fake_summarise)
+    coll = PaperCollection(
+        query=Query(keywords="x", sources=("arxiv",), max_results=2),
+        papers=(_paper(), _paper(source_id="2", pdf_url=None)),
+    )
+    out = await enrich_collection(coll, language="en", local_pdfs=[saved, None])
+    assert seen == ["%PDF-1.4 saved earlier"]
+    assert out.papers[0].summary is not None
+    assert out.papers[1].summary is None
+
+
+async def test_enrich_collection_rejects_misaligned_local_pdfs(tmp_path):
+    coll = PaperCollection(
+        query=Query(keywords="x", sources=("arxiv",), max_results=1), papers=(_paper(),),
+    )
+    with pytest.raises(ValueError, match="local_pdfs"):
+        await enrich_collection(coll, language="en", local_pdfs=[])

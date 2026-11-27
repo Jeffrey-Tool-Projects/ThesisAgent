@@ -577,8 +577,10 @@ Returns:
 
 ### `fetch_pdf_text`
 
-Download a paper's PDF over HTTPS-only and extract its body text. This
-is the MCP entry point for the **LLM-as-agent enrichment flow** — the
+Download a paper's PDF and extract its body text. The download uses
+the same routing as `download_pdfs`: a paywalled publisher host goes
+through visible Chrome, an open host through the HTTPS-only client.
+This is the MCP entry point for the **LLM-as-agent enrichment flow** — the
 calling LLM reads the body text in its own context and produces the
 structured `summary` itself, no API key required.
 
@@ -639,6 +641,16 @@ Returns:
 Papers without a `pdf_url` come back with `reason: "no_pdf_url"`;
 HTTP 403 / non-PDF content-type / oversize bodies come back with the
 matching reason string.
+
+A file is named after the paper's BibTeX key, or the key plus 8 hex
+digits of the paper's identity when another paper already has that
+name. `pdfs/.owners.json` records which paper (by DOI, arXiv ID or
+title hash) owns each file, and a file is reused (`on_disk`) only for
+its owner. So two papers that share a BibTeX key never get each other's
+PDF, even across calls into the same `out_dir`. A file under the plain
+key that the manifest does not list (a folder from an older version)
+has an unknown owner: it is left alone and the paper downloads again
+under its hashed name.
 
 `route` says how each PDF was fetched: `browser` (visible Chrome, the
 required path for paywalled publisher hosts), `direct` (an ordinary

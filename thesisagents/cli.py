@@ -12,6 +12,7 @@ import asyncio
 import contextlib
 import dataclasses
 import sys
+from collections.abc import Sequence
 from pathlib import Path
 
 from thesisagents import __version__
@@ -58,7 +59,7 @@ from thesisagents.core.export_validation import (
 )
 from thesisagents.core.identifiers import parse_identifier
 from thesisagents.core.models import ExportOptions, Paper, PaperCollection, Query
-from thesisagents.core.pdf_download import download_pdfs
+from thesisagents.core.pdf_download import PdfDownloadResult, download_pdfs
 from thesisagents.core.pipeline import (
     enrich_collection,
     run_search,
@@ -549,6 +550,16 @@ async def _run(args: argparse.Namespace) -> int:
 
 
 async def _run_stages(args: argparse.Namespace, library: Library | None) -> int:
+    """Search, check identifiers, download PDFs, summarise, store, export.
+
+    The PDF download runs before the summaries. The failure this order
+    prevents: summarising first fetched each PDF with a plain request of its
+    own, a publisher refused it, and the paper had no summary although the
+    download right after got the PDF through visible Chrome. Now a summary
+    reads the saved file. The paywall prompt still comes right before the
+    download, and a declined run stores its (unsummarised) papers in the
+    library as before and spends nothing on summaries.
+    """
     formats = _resolve_formats(args)
     _validate_exports(formats)
     validate_snowball_args(args)
@@ -601,14 +612,20 @@ async def _run_stages(args: argparse.Namespace, library: Library | None) -> int:
         collection = await maybe_snowball(collection, args)
         await _verify_identifiers_early(collection, args, verification_cache)
         report_diagnostics(collection, args)
-        collection = await _maybe_enrich(collection, args)
-        add_to_library(library, collection, args)
+        # PDFs are downloaded BEFORE the summaries are written, so a summary
+        # reads the file this run saved (through Chrome for a publisher)
+        # instead of fetching it again with a request the publisher refuses.
+        # The paywall prompt gates the download and moves with it, so a
+        # declined run no longer pays for summaries first.
         if gate_pptx and collection.papers and not _confirm_paywall(
             collection, threshold=args.paywall_threshold, auto_yes=args.yes
         ):
+            add_to_library(library, collection, args)
             return 1
         if args.download_pdf and collection.papers and not args.pdf:
             pdf_results = await download_pdfs(collection, args.out)
+        collection = await _maybe_enrich(collection, args, pdf_results)
+        add_to_library(library, collection, args)
     finally:
         await shutdown_clients()
     if not collection.papers:
@@ -998,9 +1015,15 @@ def _missing_model(args: argparse.Namespace) -> str:
 
 
 async def _maybe_enrich(
-    collection: PaperCollection, args: argparse.Namespace
+    collection: PaperCollection,
+    args: argparse.Namespace,
+    pdf_results: Sequence[PdfDownloadResult] = (),
 ) -> PaperCollection:
     """Resolve enrichment mode, print user-visible notices, dispatch.
+
+    ``pdf_results`` is this run's download outcome, one per paper in order.
+    A paper whose PDF was saved is summarised from that file (see
+    :func:`_downloaded_pdfs`).
 
     A ``--library-export`` run is enriched only on an explicit ``--enrich``:
     stored papers keep the summaries they were stored with, and an API key in
@@ -1040,7 +1063,9 @@ async def _maybe_enrich(
         file=sys.stderr,
     )
     try:
-        return await _enrich_for_mode(collection, args)
+        return await _enrich_for_mode(
+            collection, args, _downloaded_pdfs(collection, pdf_results)
+        )
     except ConfigError as err:
         if enrich_mode == "explicit":
             raise
@@ -1051,22 +1076,41 @@ async def _maybe_enrich(
         return collection
 
 
+def _downloaded_pdfs(
+    collection: PaperCollection, pdf_results: Sequence[PdfDownloadResult]
+) -> list[Path | None] | None:
+    """The saved PDF of each paper, in collection order, for the summaries.
+
+    The downloader returns one result per paper in order, so they pair by
+    position (a BibTeX key can belong to two papers). Results that do not
+    line up give None, and every paper's text is then fetched remotely.
+    Example: ``[Path("out/pdfs/k.pdf"), None]`` for one saved and one skipped.
+    """
+    if len(pdf_results) != len(collection.papers):
+        return None
+    return [result.path for result in pdf_results]
+
+
 async def _enrich_for_mode(
-    collection: PaperCollection, args: argparse.Namespace
+    collection: PaperCollection,
+    args: argparse.Namespace,
+    local_pdfs: list[Path | None] | None = None,
 ) -> PaperCollection:
     """Dispatch enrichment between the network path and the local-PDF path.
 
     ``--pdf`` papers carry pre-extracted text in ``paper.raw`` and have
     ``pdf_url=None``, so they can't go through ``enrich_collection`` (which
-    would try to fetch the URL via httpx). The local-PDF helper feeds the
-    stashed text straight into ``summarise_paper`` instead.
+    would try to fetch the URL). The local-PDF helper feeds the stashed text
+    straight into ``summarise_paper`` instead. ``local_pdfs`` are the files
+    this run downloaded, which ``enrich_collection`` reads before it fetches
+    anything.
     """
     if args.pdf:
         return await _enrich_local_pdf_collection(collection, args)
     return await enrich_collection(
         collection, language=args.lang, model=args.llm_model,
         provider=args.llm_provider, base_url=args.llm_base_url,
-        command=getattr(args, "llm_command", None),
+        command=getattr(args, "llm_command", None), local_pdfs=local_pdfs,
     )
 
 

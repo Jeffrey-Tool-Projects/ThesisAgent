@@ -647,6 +647,9 @@ first author and year, as here.
 the recommendations can find the files. When two papers of the run share
 a key, the deck of the later one takes the suffixed key its `.bib` entry
 has (`doe2025gene`, then `doe2025geneb`), so no deck overwrites another.
+A PDF whose key another paper already holds in that folder gets 8 hex
+digits of its identity appended (`pdfs/<bibtex_key>-1a2b3c4d.pdf`), and
+`pdfs/.owners.json` records which paper owns each file.
 
 In a search that writes per-paper decks, only the papers whose PDF
 downloaded get a deck. The other formats of the run (`xlsx`, `bib`, `md`,

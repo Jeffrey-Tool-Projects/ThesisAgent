@@ -450,6 +450,21 @@ ANTHROPIC_API_KEY set?
 Both paths produce the same `PaperSummary` shape; the exporter
 doesn't know or care which one wrote it.
 
+Where the text comes from: the CLI downloads the PDFs first and the
+Python pipeline then reads each saved file
+(`intelligence.pdf.extract_pdf_file`), with no second request. A paper
+without a saved PDF, and MCP `fetch_pdf_text`, fetch through
+`core.pdf_download.fetch_pdf_to`, the downloader's own routing, so a
+paywalled publisher PDF goes through visible Chrome and an open one
+through the HTTPS-only client. Before, the CLI summarised first with a
+plain request of its own, and a publisher that refused it left the
+paper without a summary although the same run then got the PDF through
+Chrome.
+
+Both PDF fetches stream the body and stop reading as soon as the
+decoded size passes the cap (50 MB for downloads, 20 MB for text), so a
+huge response is never held in memory whole.
+
 ## The data model
 
 Three frozen dataclasses carry the entire flow. Their fields
