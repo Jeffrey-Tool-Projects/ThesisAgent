@@ -58,6 +58,7 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 
 | ID | Date | Title | Tags | Batch |
 |---|---|---|---|---|
+| U-20261127-01 | 2026-11-27 | Whole-project code review | #docs #review | [2026-11](2026-11.md) |
 | U-20261126-21 | 2026-11-26 | Command-line models: keys kept out, timeouts that hold, the right command | #done #intelligence #review #bugfix | [2026-11](2026-11.md) |
 | U-20261126-20 | 2026-11-26 | Summaries by an AI program on the command line | #done #intelligence #gui | [2026-11](2026-11.md) |
 | U-20261126-19 | 2026-11-26 | Summaries are written by Claude Opus 5.5 | #done #intelligence | [2026-11](2026-11.md) |
@@ -142,6 +143,6 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 
 | File | Period | Entries |
 |---|---|---:|
-| [2026-11.md](2026-11.md) | 2026-11 | 19 |
+| [2026-11.md](2026-11.md) | 2026-11 | 42 |
 | [2026-10.md](2026-10.md) | 2026-10 | 13 |
 | [2026-09.md](2026-09.md) | 2026-09 | 25 |
