@@ -478,7 +478,7 @@ Returns (the same library):
 ```json
 {
   "path": "/abs/path/thesis.db",
-  "schema_version": 2,
+  "schema_version": 4,
   "papers": 5,
   "runs": 2,
   "relations": 2,

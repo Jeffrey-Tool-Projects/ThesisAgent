@@ -58,6 +58,7 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 
 | ID | Date | Title | Tags | Batch |
 |---|---|---|---|---|
+| U-20261127-04 | 2026-11-27 | Papers with different DOIs stay apart, ids are never reused, imports with tags are one change | #done #review #library #bugfix | [2026-11](2026-11.md) |
 | U-20261127-03 | 2026-11-27 | Unique deck names, summary files with every paper, abstracts left out everywhere | #done #review #exporters #bugfix | [2026-11](2026-11.md) |
 | U-20261127-02 | 2026-11-27 | Updates keep user files, releases are what CI passed | #done #review #packaging #bugfix | [2026-11](2026-11.md) |
 | U-20261127-01 | 2026-11-27 | Whole-project code review | #docs #review | [2026-11](2026-11.md) |
