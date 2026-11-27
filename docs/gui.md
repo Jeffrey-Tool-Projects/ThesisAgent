@@ -358,15 +358,14 @@ stack.
 
 ### Enrich
 
-Drives the per-paper PDF + LLM enrichment step through the Python
-pipeline. The Search page emits a `collection_ready` signal as soon as
-the results table populates. The Enrich page catches it and lists one
-row per paper with three columns:
+Enrich lists the papers you select in Search or send from the Library.
+To resume an earlier search here, click **Open saved search…** and choose
+the exported `.xlsx` workbook. Search and Deck show the same selection.
+The table has one row per paper.
 
 - **Title**, shortened to 80 characters.
-- **PDF**, a tick when the paper has a `pdf_url` on file (lifted by
-  Unpaywall / S2 / arXiv / CORE.ac.uk), a dash otherwise. A paper
-  with no PDF link is skipped.
+- **PDF**, a tick when the paper has a PDF link or locally extracted text.
+  Enrich skips papers with neither.
 - **Status**, pending, then done, skipped or failed with the first 60
   characters of the error.
 
@@ -377,6 +376,8 @@ subscription-based program, sign in through its terminal first. Press
 can send the text to the service you signed in to. The app attaches each
 returned summary to its paper and sends the collection to **Deck**.
 A failed paper keeps its search record and any existing summary.
+When a terminal program is missing or requires sign-in, the status line
+shows how to proceed. After correcting the problem, click **Enrich** again.
 
 **Cancel** stops the run. A paper whose PDF is still downloading is
 stopped at once, one already in the summary call finishes first and its
@@ -385,6 +386,9 @@ and keep their search record, so the Deck page still gets every paper.
 If the Search page sends new results (a new search, or changed ticks)
 while a run is going, they are held and shown once the run ends,
 because swapping them in mid-run would point the run at the wrong rows.
+Changing the selection keeps completed summaries with their papers.
+To build slides from them, choose **Use existing paper records** on Deck
+and export **PPTX**.
 
 For an agent on another computer, you can exchange a file manually.
 

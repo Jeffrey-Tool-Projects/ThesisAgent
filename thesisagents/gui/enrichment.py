@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Iterator
 from dataclasses import replace
 
 from thesisagents.core.exceptions import ConfigError, ThesisAgentsError
@@ -10,6 +11,27 @@ from thesisagents.fetchers.http import shutdown_clients
 from thesisagents.gui.i18n import t
 from thesisagents.gui.pdf_stage import needs_institutional_access
 from thesisagents.intelligence import providers
+
+type SummaryChanges = tuple[tuple[Paper, Paper], ...]
+
+
+def apply_summary_changes(collection: PaperCollection, changes: SummaryChanges) -> PaperCollection:
+    """Carry summaries across selection changes only for the original paper objects."""
+    updated = {id(original): enriched for original, enriched in changes}
+    if any(id(paper) in updated for paper in collection.papers):
+        return replace(collection, papers=tuple(updated.get(id(p), p) for p in collection.papers))
+    return collection
+
+
+def cli_provider_choices(language: str) -> Iterator[tuple[str, str]]:
+    """The label and provider name for each terminal program offered by the GUI."""
+    for provider in providers.PROVIDERS.values():
+        if provider.is_cli:
+            label = (
+                t("model.cli_custom", language) if provider.name == providers.CLI
+                else t("model.cli", language, name=provider.label)
+            )
+            yield label, provider.name
 
 
 def local_text(paper: Paper) -> str:

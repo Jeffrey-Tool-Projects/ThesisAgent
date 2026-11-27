@@ -1460,8 +1460,8 @@ _LABELS: Final[dict[str, dict[str, str]]] = {
     },
     "enrich.enrich_button": {
         "en": "Enrich",
-        "zh-tw": "Enrich",
-        "zh-cn": "Enrich",
+        "zh-tw": "開始豐富化",
+        "zh-cn": "开始丰富化",
         "ja": "Enrich",
         "es": "Enriquecer",
         "fr": "Enrichir",
@@ -1586,22 +1586,6 @@ _LABELS: Final[dict[str, dict[str, str]]] = {
         "hi": "विफल: {error}",
         "id": "gagal: {error}",
     },
-    "enrich.status_no_collection": {
-        "en": "Run a search first; results populate this tab.",
-        "zh-tw": "請先在 Search 分頁搜尋,結果會帶到這裡。",
-        "zh-cn": "请先在 Search 分页搜索,结果会带到这里。",
-        "ja": "まず Search タブで検索してください。結果がここに表示されます。",
-        "es": "Ejecute primero una búsqueda; los resultados aparecerán aquí.",
-        "fr": "Lancez d'abord une recherche ; les résultats apparaîtront ici.",
-        "de": "Erst eine Suche ausführen; die Ergebnisse erscheinen hier.",
-        "ko": "먼저 Search 탭에서 검색하세요. 결과가 여기에 표시됩니다.",
-        "pt": "Execute uma busca primeiro; os resultados aparecerão aqui.",
-        "ru": "Сначала выполните поиск; результаты появятся здесь.",
-        "it": "Esegui prima una ricerca; i risultati appariranno qui.",
-        "vi": "Hãy tìm kiếm trước; kết quả sẽ xuất hiện ở đây.",
-        "hi": "पहले एक search करें; परिणाम यहाँ दिखेंगे।",
-        "id": "Jalankan pencarian dulu; hasil muncul di sini.",
-    },
     "enrich.status_ready": {
         "en": "Ready: {count} papers.",
         "zh-tw": "就緒: {count} 篇論文。",
@@ -1620,10 +1604,8 @@ _LABELS: Final[dict[str, dict[str, str]]] = {
     },
     "enrich.status_running": {
         "en": "Enriching… {done}/{total}",
-        "zh-tw": (
-            "Enrich 中… {done}/{total}"  # NOSONAR zh-tw zh-cn ja translations match, not a constant
-        ),
-        "zh-cn": "Enrich 中… {done}/{total}",
+        "zh-tw": "正在產生摘要… {done}/{total}",
+        "zh-cn": "正在生成摘要… {done}/{total}",
         "ja": "Enrich 中… {done}/{total}",
         "es": "Enriqueciendo… {done}/{total}",
         "fr": "Enrichissement… {done}/{total}",
@@ -1638,8 +1620,8 @@ _LABELS: Final[dict[str, dict[str, str]]] = {
     },
     "enrich.status_done": {
         "en": "Done: {successes}/{total} enriched.",
-        "zh-tw": "完成: {successes}/{total} 已 enrich。",
-        "zh-cn": "完成: {successes}/{total} 已 enrich。",
+        "zh-tw": "共 {total} 篇論文，其中 {successes} 篇已有摘要。",
+        "zh-cn": "共 {total} 篇论文，其中 {successes} 篇已有摘要。",
         "ja": "完了: {successes}/{total} を enrich。",
         "es": "Hecho: {successes}/{total} enriquecidos.",
         "fr": "Terminé : {successes}/{total} enrichis.",
@@ -2228,8 +2210,8 @@ _LABELS: Final[dict[str, dict[str, str]]] = {
             "{reason}. Check that the CLI is installed and on PATH. If it requires an "
             "account, sign in from a terminal and retry."
         ),
-        "zh-tw": "{reason}。請確認已安裝 CLI 並將它加入 PATH。若需要帳號，請在終端機登入後再匯出。",
-        "zh-cn": "{reason}。请确认已安装 CLI 并将其加入 PATH。如需账号，请在终端登录后重新导出。",
+        "zh-tw": "{reason}。請確認 CLI 已安裝並在 PATH 中。若需要帳號，請在終端機登入後重試。",
+        "zh-cn": "{reason}。请确认已安装 CLI 并将其加入 PATH。如需账号，请在终端登录后重试。",
         "ja": (
             "{reason}。CLI がインストールされ、PATH にあるか確認してください。"
             "アカウントが必要な場合は端末でログインして再試行してください。"

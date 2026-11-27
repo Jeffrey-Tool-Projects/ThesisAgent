@@ -49,7 +49,7 @@ from thesisagents.exporters.review import DeckReview, review_deck
 from thesisagents.exporters.review import format_report as format_review
 from thesisagents.exporters.template import TemplateValidationReport, validate_template
 from thesisagents.exporters.template import format_report as format_template_report
-from thesisagents.gui.enrichment import prepare_cli_deck
+from thesisagents.gui.enrichment import cli_provider_choices, prepare_cli_deck
 from thesisagents.gui.i18n import LANGUAGE_DISPLAY_NAMES, t
 from thesisagents.gui.pages.settings import saved_provider_settings, saved_vpn_access
 from thesisagents.gui.pdf_stage import PdfStageReport, run_pdf_stage
@@ -63,7 +63,6 @@ from thesisagents.gui.widgets.responsive import (
     make_card,
 )
 from thesisagents.gui.workers import BlockingWorker
-from thesisagents.intelligence import providers
 from thesisagents.library import Library
 
 # Match thesisagents.exporters.__init__.SUPPORTED_FORMATS ordering.
@@ -114,7 +113,7 @@ class DeckPage(QWidget):
     #: ``True`` when an export starts on a worker thread, ``False`` when it
     #: ends either way. Drives the main window's progress indicator.
     busy_changed = Signal(bool)
-    saved_search_requested = Signal(str)
+    saved_search_requested = Signal()
 
     def __init__(self, ui_language: str = "en", parent: QWidget | None = None) -> None:
         super().__init__(parent)
@@ -122,7 +121,6 @@ class DeckPage(QWidget):
         self._collection: PaperCollection | None = None
         self._collection_is_enriched: bool = False
         self._exporting = False
-        self._opening_saved_search = False
         self._last_written_dir: Path | None = None
         self._last_deck: Path | None = None
         self._last_report: ReportDialog | None = None
@@ -174,13 +172,8 @@ class DeckPage(QWidget):
         output_form.addRow(t("deck.language_label", language), self._language_combo)
         self._cli_provider = QComboBox(self)
         self._cli_provider.addItem(t("deck.existing_summaries", language), "")
-        for provider in providers.PROVIDERS.values():
-            if provider.is_cli:
-                label = (
-                    t("model.cli_custom", language) if provider.name == providers.CLI
-                    else t("model.cli", language, name=provider.label)
-                )
-                self._cli_provider.addItem(label, provider.name)
+        for label, name in cli_provider_choices(language):
+            self._cli_provider.addItem(label, name)
         output_form.addRow(t("deck.summary_source", language), self._cli_provider)
         adapt_form_rows(output_card, output_form)
         controls_layout.addWidget(output_card)
@@ -272,7 +265,7 @@ class DeckPage(QWidget):
         papers_row.addWidget(QLabel(t("library.tab_papers", language), results))
         papers_row.addStretch(1)
         self._source_button = QPushButton(t("deck.source_open", language), results)
-        self._source_button.clicked.connect(self._choose_saved_search)
+        self._source_button.clicked.connect(self.saved_search_requested)
         papers_row.addWidget(self._source_button)
         results_layout.addLayout(papers_row)
         self._paper_titles = QListWidget(results)
@@ -368,32 +361,17 @@ class DeckPage(QWidget):
     def collection(self) -> PaperCollection | None:
         return self._collection
 
-    def _choose_saved_search(self) -> None:
-        path, _ = QFileDialog.getOpenFileName(
-            self, t("deck.source_open", self._ui_language), self.output_dir(), "Excel (*.xlsx)"
-        )
-        if path:
-            self._opening_saved_search = True
-            self._refresh_export_button()
-            self._status_label.setText(t("status.busy", self._ui_language))
-            self.saved_search_requested.emit(path)
-
     def set_source_enabled(self, enabled: bool) -> None:
         self._source_button.setEnabled(enabled)
 
-    def search_busy_changed(self, busy: bool) -> None:
-        if self._opening_saved_search and not busy:
-            self._opening_saved_search = False
-            self._refresh_export_button()
+    def set_source_status(self, text: str) -> None:
+        self._status_label.setText(text)
 
     def _refresh_export_button(self) -> None:
         self._export_button.setEnabled(
             bool(self._collection and self._collection.papers)
-            and not self._exporting and not self._opening_saved_search
+            and not self._exporting
         )
-
-    def show_source_error(self, error: object) -> None:
-        self._status_label.setText(t("deck.source_failed", self._ui_language, error=str(error)))
 
     def status_text(self) -> str:
         return self._status_label.text()
@@ -592,7 +570,7 @@ class DeckPage(QWidget):
         )
 
     def _on_export_clicked(self) -> None:
-        if self._exporting or self._opening_saved_search:
+        if self._exporting or not self.isEnabled():
             return
         formats = self._selected_formats()
         download_pdfs = self._download_pdfs_check.isChecked()

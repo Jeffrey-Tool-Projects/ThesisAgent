@@ -61,7 +61,7 @@ def page(qtbot, monkeypatch):
 
 
 def _titles(page: SearchPage) -> list[str]:
-    return [paper.title for paper in page._collection.papers]  # noqa: SLF001
+    return [paper.title for paper in page.collection().papers]
 
 
 # ---------------------------------------------------------------- snowball

@@ -263,13 +263,15 @@ class MainWindow(QMainWindow):
         # Search → Deck (so the user can skip enrichment), plus Enrich →
         # Deck (the enriched collection takes precedence).
         self._search_page.collection_ready.connect(self._enrich_page.set_collection)
-        self._deck_page.saved_search_requested.connect(self._search_page.open_saved_search)
-        self._search_page.saved_search_failed.connect(self._deck_page.show_source_error)
-        self._search_page.busy_changed.connect(self._deck_page.search_busy_changed)
+        for page in (self._enrich_page, self._deck_page):
+            page.saved_search_requested.connect(self._search_page.choose_saved_search)
+        self._search_page.saved_search_loading.connect(self._on_saved_search_loading)
+        self._search_page.saved_search_failed.connect(self._on_saved_search_failed)
         self._search_page.collection_ready.connect(self._deck_page.set_collection)
         self._search_page.library_path_changed.connect(self._deck_page.set_library_path)
         self._search_page.set_output_dir_provider(self._deck_page.output_dir)
         self._enrich_page.collection_ready.connect(self._deck_page.set_collection)
+        self._enrich_page.summaries_changed.connect(self._search_page.papers_model().update_summaries)
         self._search_page.collection_ready.connect(self._on_search_collection)
         # The Library page follows the Search page's library file, and hands
         # its papers on to Enrich and Deck the same way a search does.
@@ -332,12 +334,24 @@ class MainWindow(QMainWindow):
             count = len(collection.papers)
             self._nav.set_badge(_DECK, str(count) if count else "")
 
+    def _on_saved_search_loading(self, loading: bool) -> None:
+        for page in (self._enrich_page, self._deck_page):
+            page.setEnabled(not loading)
+            if loading:
+                page.set_source_status(t("status.busy", self._ui_language))
+
+    def _on_saved_search_failed(self, error: object) -> None:
+        message = t("deck.source_failed", self._ui_language, error=str(error))
+        for page in (self._enrich_page, self._deck_page):
+            page.set_source_status(message)
+
     def _on_busy_changed(self, key: str, busy: bool) -> None:
         if busy:
             self._busy_pages.add(key)
         else:
             self._busy_pages.discard(key)
         working = bool(self._busy_pages)
+        self._enrich_page.set_source_enabled(not working)
         self._deck_page.set_source_enabled(not working)
         self._busy_bar.setVisible(working)
         if working:

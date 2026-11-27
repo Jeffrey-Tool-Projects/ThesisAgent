@@ -115,6 +115,7 @@ class SearchPage(QWidget):
     # because Signal(object) is the only typed-Python way to ship a
     # frozen dataclass across threads.
     collection_ready = Signal(object)
+    saved_search_loading = Signal(bool)
     saved_search_failed = Signal(object)
     #: The library file named on this tab, emitted as it is typed. The Deck
     #: tab listens, so its export keeps identifier checks in the same library.
@@ -127,7 +128,6 @@ class SearchPage(QWidget):
     def __init__(self, ui_language: str = "en", parent: QWidget | None = None) -> None:
         super().__init__(parent)
         self._ui_language = ui_language
-        self._collection: PaperCollection | None = None
         self._papers_model = PapersTableModel(language=ui_language)
         self._proxy = PaperFilterProxy(self)
         self._proxy.setSourceModel(self._papers_model)
@@ -136,6 +136,7 @@ class SearchPage(QWidget):
         # A result from any other worker is stale and ignored, see
         # ``_is_stale_result``.
         self._run_signals: QObject | None = None
+        self._opening_saved_search = False
         # Where local PDFs are copied (``{folder}/pdfs``). The main window
         # points it at the Deck page's output folder, so the copies sit next
         # to the deck built from them.
@@ -410,10 +411,11 @@ class SearchPage(QWidget):
 
     def selected_collection(self) -> PaperCollection | None:
         """The current result narrowed to the ticked papers, or ``None``."""
-        if self._collection is None:
+        collection = self.collection()
+        if collection is None:
             return None
         return replace(  # NOSONAR dataclasses.replace returns the same dataclass type
-            self._collection, papers=self._papers_model.checked_papers()
+            collection, papers=self._papers_model.checked_papers()
         )
 
     def _on_checks_changed(self) -> None:
@@ -424,7 +426,7 @@ class SearchPage(QWidget):
                 checked=self._papers_model.checked_count(), total=total,
             ) if total else ""
         )
-        if self._loading or self._collection is None:
+        if self._loading or self.collection() is None:
             return
         subset = self.selected_collection()
         self._export_button.setEnabled(bool(subset and subset.papers) and not self._busy())
@@ -452,10 +454,20 @@ class SearchPage(QWidget):
         """Where local PDFs are copied: ``provider()`` names the export folder."""
         self._output_dir = provider
 
+    def choose_saved_search(self) -> None:
+        path, _ = QFileDialog.getOpenFileName(
+            self.window(), t("deck.source_open", self._ui_language),
+            self._output_dir(), "Excel (*.xlsx)",
+        )
+        if path:
+            self.open_saved_search(path)
+
     def open_saved_search(self, path: str) -> None:
         """Load a prior export into the same selection as a live search."""
         if self._busy():
             return
+        self._opening_saved_search = True
+        self.saved_search_loading.emit(True)
         self._set_busy()
         worker = BlockingWorker(lambda: read_search_workbook(Path(path)))
         worker.signals.failed.connect(self.saved_search_failed)
@@ -772,6 +784,9 @@ class SearchPage(QWidget):
         self._local_button.setEnabled(True)
         subset = self.selected_collection()
         self._export_button.setEnabled(bool(subset and subset.papers))
+        if self._opening_saved_search:
+            self._opening_saved_search = False
+            self.saved_search_loading.emit(False)
         self.busy_changed.emit(False)
 
     def _on_search_finished(self, result: object) -> None:
@@ -784,7 +799,6 @@ class SearchPage(QWidget):
                 RuntimeError(f"unexpected worker result type: {type(collection)!r}")
             )
             return
-        self._collection = collection
         self._loading = True
         try:
             self._papers_model.set_collection(collection)
@@ -878,7 +892,7 @@ class SearchPage(QWidget):
 
     def collection(self) -> PaperCollection | None:
         """The whole current result (ticked or not), ``None`` before a search."""
-        return self._collection
+        return self._papers_model.collection
 
     def show_results(
         self, collection: PaperCollection, unchecked_rows: tuple[int, ...] | list[int] = ()

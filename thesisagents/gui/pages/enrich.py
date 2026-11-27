@@ -28,7 +28,13 @@ from PySide6.QtWidgets import (
 from thesisagents.core.exceptions import ConfigError
 from thesisagents.core.models import Paper, PaperCollection, PaperSummary
 from thesisagents.exporters.i18n import SUPPORTED_LANGUAGES as DECK_LANGUAGES
-from thesisagents.gui.enrichment import local_text, summarise_for_page
+from thesisagents.gui.enrichment import (
+    SummaryChanges,
+    apply_summary_changes,
+    cli_provider_choices,
+    local_text,
+    summarise_for_page,
+)
 from thesisagents.gui.handoff import HandoffError, read_handoff, write_handoff
 from thesisagents.gui.i18n import LANGUAGE_DISPLAY_NAMES, t
 from thesisagents.gui.pages.settings import saved_provider_settings
@@ -39,7 +45,7 @@ from thesisagents.gui.widgets.responsive import (
     make_card,
 )
 from thesisagents.gui.widgets.summary_editor import SummaryEditor
-from thesisagents.gui.workers import AsyncWorker
+from thesisagents.gui.workers import AsyncWorker, BlockingWorker
 from thesisagents.intelligence import providers
 
 #: QSettings group the form is saved under when the window closes.
@@ -55,6 +61,8 @@ class EnrichPage(QWidget):
     # Re-emitted to downstream tabs (Deck) whenever an enrichment run
     # finishes — even partially — so they can render whatever survived.
     collection_ready = Signal(object)
+    summaries_changed = Signal(object)
+    saved_search_requested = Signal()
     #: ``True`` when an enrichment run starts, ``False`` when its last paper
     #: is done. Drives the main window's progress indicator.
     busy_changed = Signal(bool)
@@ -103,10 +111,8 @@ class EnrichPage(QWidget):
 
         self._provider_combo = QComboBox(self)
         self._provider_combo.addItem(t("enrich.use_settings", language), "")
-        for provider in providers.PROVIDERS.values():
-            if provider.command:
-                label = t("model.cli", language, name=provider.label)
-                self._provider_combo.addItem(label, provider.name)
+        for label, name in cli_provider_choices(language):
+            self._provider_combo.addItem(label, name)
         form.addRow(t("model.provider", language), self._provider_combo)
 
         self._model_input = QLineEdit(self)
@@ -135,6 +141,13 @@ class EnrichPage(QWidget):
         results = QWidget(self)
         results_layout = QVBoxLayout(results)
         results_layout.setContentsMargins(6, 0, 0, 0)
+        papers_row = QHBoxLayout()
+        papers_row.addWidget(QLabel(t("library.tab_papers", language), results))
+        papers_row.addStretch(1)
+        self._source_button = QPushButton(t("deck.source_open", language), results)
+        self._source_button.clicked.connect(self.saved_search_requested)
+        papers_row.addWidget(self._source_button)
+        results_layout.addLayout(papers_row)
         self._table = QTableView(self)
         self._table.setModel(self._table_model)
         self._table.setSelectionBehavior(QTableView.SelectRows)
@@ -160,7 +173,7 @@ class EnrichPage(QWidget):
             lambda *_: self._refresh_edit_button()
         )
 
-        self._status_label = QLabel(t("enrich.status_no_collection", language), self)
+        self._status_label = QLabel(t("deck.status_no_collection", language), self)
         self._status_label.setObjectName("Muted")
         self._status_label.setWordWrap(True)
         self._status_label.setTextInteractionFlags(Qt.TextSelectableByMouse)
@@ -196,7 +209,7 @@ class EnrichPage(QWidget):
             self._enrich_button.setEnabled(False)
             self._set_agent_buttons(False)
             self._status_label.setText(
-                t("enrich.status_no_collection", self._ui_language),
+                t("deck.status_no_collection", self._ui_language),
             )
             return
         self._collection = collection
@@ -224,6 +237,12 @@ class EnrichPage(QWidget):
 
     def status_text(self) -> str:
         return self._status_label.text()
+
+    def set_source_enabled(self, enabled: bool) -> None:
+        self._source_button.setEnabled(enabled)
+
+    def set_source_status(self, text: str) -> None:
+        self._status_label.setText(text)
 
     def table_model(self) -> QStandardItemModel:
         return self._table_model
@@ -300,19 +319,17 @@ class EnrichPage(QWidget):
         except (HandoffError, OSError) as err:
             self._status_label.setText(t("enrich.agent_error", self._ui_language, error=str(err)))
             return
-        self._collection = result.collection
+        changes = self._publish_summary_changes(collection.papers, result.collection.papers)
+        self._collection = apply_summary_changes(collection, changes)
         self._enriched_papers = []
-        self._populate_table(result.collection.papers)
-        for row, paper in enumerate(result.collection.papers):
-            if paper.summary is not None:
-                self._set_row_status(row, "enrich.row_done")
+        self._populate_table(self._collection.papers)
         self._status_label.setText(
             t(
                 "enrich.agent_imported", self._ui_language,
                 count=result.imported, unmatched=result.unmatched,
             )
         )
-        self.collection_ready.emit(result.collection)
+        self.collection_ready.emit(self._collection)
 
     def save_form(self, store: QSettings) -> None:
         """Save the language, provider and model override in ``store``."""
@@ -339,7 +356,8 @@ class EnrichPage(QWidget):
             readable = paper.pdf_url or local_text(paper)
             pdf_item = QStandardItem("✓" if readable else "—")
             status_item = QStandardItem(
-                t("enrich.row_pending", self._ui_language),
+                t("enrich.row_done" if paper.summary and not paper.summary.is_empty()
+                  else "enrich.row_pending", self._ui_language),
             )
             self._table_model.appendRow([title_item, pdf_item, status_item])
 
@@ -350,6 +368,8 @@ class EnrichPage(QWidget):
         item.setText(t(message_key, self._ui_language, **fmt))
 
     def _on_enrich_clicked(self) -> None:
+        if not self.isEnabled():
+            return
         if self._collection is None or not self._collection.papers:
             self._status_label.setText(
                 t(_NO_COLLECTION_KEY, self._ui_language),
@@ -357,7 +377,7 @@ class EnrichPage(QWidget):
             return
         try:
             settings = self._model_settings(model=self._model_input.text().strip())
-            reason = providers.problem(settings)
+            reason = None if settings.provider.is_cli else providers.problem(settings)
         except ConfigError as err:
             reason = str(err)
         if reason:
@@ -376,15 +396,22 @@ class EnrichPage(QWidget):
         self._cancel_button.setEnabled(True)
         self._refresh_edit_button()
         self.busy_changed.emit(True)
-        self._status_label.setText(
-            t(
-                "enrich.status_running",
-                self._ui_language,
-                done=0,
-                total=len(self._collection.papers),
-            ),
-        )
-        self._enrich_next()
+        if settings.provider.is_cli:
+            self._update_running_status()
+            worker = BlockingWorker(lambda: providers.cli_readiness_problem(settings))
+            worker.signals.finished.connect(self._on_cli_checked)
+            worker.signals.failed.connect(self._on_cli_checked)
+            QThreadPool.globalInstance().start(worker)
+        else:
+            self._enrich_next()
+
+    def _on_cli_checked(self, reason: object) -> None:
+        if self._stop_requested:
+            self._finish_stopped()
+        elif reason:
+            self._finish_stopped(t("deck.cli_setup", self._ui_language, reason=str(reason)))
+        else:
+            self._enrich_next()
 
     def _selected_row(self) -> int:
         rows = self._table.selectionModel().selectedRows()
@@ -399,27 +426,25 @@ class EnrichPage(QWidget):
         row = self._selected_row()
         if self.is_running() or collection is None or not 0 <= row < len(collection.papers):
             return
-        self._summary_editor = SummaryEditor(collection.papers[row], self._ui_language, self)
-        self._summary_editor.saved.connect(lambda paper: self._on_summary_edited(row, paper))
+        original = collection.papers[row]
+        self._summary_editor = SummaryEditor(original, self._ui_language, self)
+        self._summary_editor.saved.connect(lambda paper: self._on_summary_edited(original, paper))
         self._summary_editor.open()
 
     def summary_editor(self) -> SummaryEditor:
         return self._summary_editor
 
-    def _on_summary_edited(self, row: int, paper: object) -> None:
+    def _on_summary_edited(self, original: Paper, paper: object) -> None:
         collection = self.collection()
         if not isinstance(paper, Paper) or collection is None:
             return
-        papers = list(collection.papers)
-        row = _row_of(papers, paper, row)
+        row = next((i for i, entry in enumerate(collection.papers) if entry is original), -1)
         if row < 0:
             # A search that ended while the editor was open replaced the list.
             self._status_label.setText(t("summary.paper_gone", self._ui_language))
             return
-        papers[row] = paper
-        self._collection = replace(  # NOSONAR dataclasses.replace returns the same dataclass type
-            collection, papers=tuple(papers)
-        )
+        changes = self._publish_summary_changes((original,), (paper,))
+        self._collection = apply_summary_changes(collection, changes)
         self._enriched_papers = []
         self._set_row_status(
             row, "enrich.row_done" if paper.summary is not None else "enrich.row_pending"
@@ -449,23 +474,21 @@ class EnrichPage(QWidget):
 
     def _enrich_next(self) -> None:
         assert self._collection is not None  # noqa: S101 # nosec B101  # state-machine invariant, not runtime validation
-        idx = self._pending_index
         if self._stop_requested:
             self._finish_stopped()
             return
-        if idx >= len(self._collection.papers):
+        papers = self._collection.papers
+        while self._pending_index < len(papers):
+            paper = papers[self._pending_index]
+            if paper.pdf_url or local_text(paper):
+                break
+            self._enriched_papers.append(paper)
+            self._set_row_status(self._pending_index, "enrich.row_skipped")
+            self._pending_index += 1
+        else:
             self._on_run_finished()
             return
-        paper = self._collection.papers[idx]
-        if not paper.pdf_url and not local_text(paper):
-            # No PDF URL means we can't reach the body text: keep the
-            # original paper, mark the row, move on.
-            self._enriched_papers.append(paper)
-            self._set_row_status(idx, "enrich.row_skipped")
-            self._pending_index += 1
-            self._update_running_status()
-            self._enrich_next()
-            return
+        self._update_running_status()
         language = self._language_combo.currentData() or "en"
         settings = self._run_settings
         assert settings is not None  # noqa: S101 # nosec B101  # only called during a run
@@ -489,12 +512,8 @@ class EnrichPage(QWidget):
         assert self._collection is not None  # noqa: S101 # nosec B101  # state-machine invariant, not runtime validation
         self._finish_stopped()
 
-    def _finish_stopped(self) -> None:
-        """End a cancelled run: papers not reached keep their search record.
-
-        The output still has every paper, so the Deck page renders the
-        unreached ones in the lightweight tier, as it does for a failed one.
-        """
+    def _finish_stopped(self, message: str | None = None) -> None:
+        """Keep the remaining records after cancellation or a CLI setup failure."""
         assert self._collection is not None  # noqa: S101 # nosec B101  # state-machine invariant, not runtime validation
         papers = self._collection.papers
         for idx in range(self._pending_index, len(papers)):
@@ -502,7 +521,9 @@ class EnrichPage(QWidget):
             self._set_row_status(idx, "enrich.row_cancelled")
         done = self._pending_index
         self._pending_index = len(papers)
-        self._on_run_finished(stopped_after=done)
+        self._on_run_finished(message or t(
+            "enrich.status_cancelled", self._ui_language, done=done, total=len(papers),
+        ))
 
     def _on_paper_finished(self, summary: object) -> None:
         assert self._collection is not None  # noqa: S101 # nosec B101  # state-machine invariant, not runtime validation
@@ -518,7 +539,6 @@ class EnrichPage(QWidget):
         self._enriched_papers.append(enriched)
         self._set_row_status(idx, "enrich.row_done")
         self._pending_index += 1
-        self._update_running_status()
         self._enrich_next()
 
     def _on_paper_failed(self, err: object) -> None:
@@ -532,7 +552,9 @@ class EnrichPage(QWidget):
             idx, "enrich.row_failed", error=str(err)[:60],
         )
         self._pending_index += 1
-        self._update_running_status()
+        if isinstance(err, ConfigError) and self._run_settings.provider.is_cli:
+            self._finish_stopped(t("deck.cli_setup", self._ui_language, reason=str(err)))
+            return
         self._enrich_next()
 
     def _update_running_status(self) -> None:
@@ -543,7 +565,18 @@ class EnrichPage(QWidget):
             t("enrich.status_running", self._ui_language, done=done, total=total),
         )
 
-    def _on_run_finished(self, stopped_after: int | None = None) -> None:
+    def _publish_summary_changes(
+        self, originals: tuple[Paper, ...], results: tuple[Paper, ...],
+    ) -> SummaryChanges:
+        changes = tuple(
+            (original, result) for original, result in zip(originals, results, strict=True)
+            if original is not result and original.summary != result.summary
+        )
+        if changes:
+            self.summaries_changed.emit(changes)
+        return changes
+
+    def _on_run_finished(self, message: str | None = None) -> None:
         assert self._collection is not None  # noqa: S101 # nosec B101  # state-machine invariant, not runtime validation
         total = len(self._collection.papers)
         successes = sum(
@@ -557,33 +590,26 @@ class EnrichPage(QWidget):
         self._set_agent_buttons(True)
         self._cancel_button.setVisible(False)
         self.busy_changed.emit(False)
-        if stopped_after is None:
-            message = t("enrich.status_done", self._ui_language, successes=successes, total=total)
-        else:
-            message = t(
-                "enrich.status_cancelled", self._ui_language,
-                done=stopped_after, total=total,
-            )
-        self._status_label.setText(message)
-        result = self.collection()
-        if result is not None:
-            self.collection_ready.emit(result)
+        results = tuple(self._enriched_papers)
+        changes = self._publish_summary_changes(self._collection.papers, results)
         if self._held is not None:
             (held,) = self._held
             self._held = None
-            self.set_collection(held)
-
-
-def _row_of(papers: list[Paper], paper: Paper, row: int) -> int:
-    """Where ``paper`` stands now: at ``row``, elsewhere, or nowhere (-1).
-
-    The boundary this guards: a dialog that outlives the list it was opened
-    from. Writing to the remembered row replaced another paper.
-    """
-    key = paper.dedup_key()
-    if 0 <= row < len(papers) and papers[row].dedup_key() == key:
-        return row
-    return next((i for i, known in enumerate(papers) if known.dedup_key() == key), -1)
+            updated = (
+                apply_summary_changes(held, changes) if isinstance(held, PaperCollection) else held
+            )
+            self.set_collection(updated)
+            if message:
+                self._status_label.setText(message)
+            if updated is not held:
+                self.collection_ready.emit(updated)
+            return
+        self._status_label.setText(message or t(
+            "enrich.status_done", self._ui_language, successes=successes, total=total,
+        ))
+        self._collection = apply_summary_changes(self._collection, changes)
+        self._enriched_papers = []
+        self.collection_ready.emit(self._collection)
 
 
 def _truncate(text: str, limit: int) -> str:

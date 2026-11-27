@@ -1,10 +1,11 @@
-"""Exercise reopening an exported search from the Deck page."""
+"""Reopen an exported search from Enrich or Deck and share its selection."""
 
 from __future__ import annotations
 
 import json
 from dataclasses import replace
 
+import pytest
 from PySide6.QtWidgets import QFileDialog
 
 from thesisagents.core.models import ExportOptions, PaperCollection, Query
@@ -19,19 +20,23 @@ def _save_workbook(tmp_path, papers):
     return XlsxExporter().export(collection, ExportOptions(formats=("xlsx",), out_dir=tmp_path))
 
 
-def test_open_workbook_from_deck_then_change_the_search_selection(
-    qtbot, monkeypatch, tmp_path, sample_papers
+@pytest.mark.parametrize("source_page", ["deck_page", "enrich_page"])
+def test_open_workbook_then_change_the_search_selection(
+    qtbot, monkeypatch, tmp_path, sample_papers, source_page
 ):
     path = _save_workbook(tmp_path, sample_papers)
     window = MainWindow()
     qtbot.addWidget(window)
     deck = window.deck_page()
+    enrich = window.enrich_page()
     old = PaperCollection(Query("earlier selection", ("arxiv",)), (sample_papers[0],))
     window.search_page().show_results(old)
     monkeypatch.setattr(QFileDialog, "getOpenFileName", lambda *_: (str(path), ""))
-    deck._source_button.click()  # noqa: SLF001
+    getattr(window, source_page)()._source_button.click()  # noqa: SLF001
     assert not deck._export_button.isEnabled()  # noqa: SLF001
+    assert not enrich._enrich_button.isEnabled()  # noqa: SLF001
     qtbot.waitUntil(lambda: deck._export_button.isEnabled())  # noqa: SLF001
+    assert enrich._enrich_button.isEnabled()  # noqa: SLF001
     titles = deck._paper_titles  # noqa: SLF001
     shown = [titles.item(i).text() for i in range(titles.count())]
     assert shown == [p.title for p in sample_papers]
@@ -48,8 +53,9 @@ def test_open_workbook_from_deck_then_change_the_search_selection(
     assert window.enrich_page().collection().papers == (second,)
 
 
-def test_bad_workbook_leaves_previous_selection_and_reports_failure_on_deck(
-    qtbot, monkeypatch, tmp_path, sample_papers
+@pytest.mark.parametrize("source_page", ["deck_page", "enrich_page"])
+def test_bad_workbook_preserves_selection_and_reports_failure(
+    qtbot, monkeypatch, tmp_path, sample_papers, source_page
 ):
     path = tmp_path / "broken.xlsx"
     path.write_bytes(b"unreadable")
@@ -58,11 +64,30 @@ def test_bad_workbook_leaves_previous_selection_and_reports_failure_on_deck(
     original = PaperCollection(Query("current", ("arxiv",)), tuple(sample_papers))
     window.search_page().show_results(original)
     deck = window.deck_page()
+    enrich = window.enrich_page()
     monkeypatch.setattr(QFileDialog, "getOpenFileName", lambda *_: (str(path), ""))
-    deck._source_button.click()  # noqa: SLF001
+    getattr(window, source_page)()._source_button.click()  # noqa: SLF001
     qtbot.waitUntil(lambda: "Could not open" in deck.status_text())
     assert deck.collection() == original
+    assert enrich.collection() == original
+    assert "Could not open" in enrich.status_text()
+    assert enrich._source_button.isEnabled() and enrich._enrich_button.isEnabled()  # noqa: SLF001
     assert deck._source_button.isEnabled() and deck._export_button.isEnabled()  # noqa: SLF001
+
+
+def test_cancelling_enrich_file_picker_keeps_current_work(qtbot, monkeypatch, sample_papers):
+    window = MainWindow()
+    qtbot.addWidget(window)
+    original = PaperCollection(Query("current", ("arxiv",)), tuple(sample_papers))
+    window.search_page().show_results(original)
+    enrich = window.enrich_page()
+    status = enrich.status_text()
+    monkeypatch.setattr(QFileDialog, "getOpenFileName", lambda *_: ("", ""))
+    enrich._source_button.click()  # noqa: SLF001
+    assert enrich.status_text() == status
+    assert enrich.collection() == original
+    assert window.deck_page().collection() == original
+    assert enrich._enrich_button.isEnabled() and not window.is_busy()  # noqa: SLF001
 
 
 def test_saved_search_reads_only_the_pdf_owned_by_each_paper(tmp_path, monkeypatch, sample_papers):

@@ -139,12 +139,13 @@ registry. The runner passes the paper text to the selected program on
 standard input and returns its answer to the summariser. The GUI attaches
 the resulting `PaperSummary` to the paper and passes it to Deck.
 
-Deck opens saved search workbooks through the Search worker so the same
+Enrich and Deck open saved search workbooks through the Search worker so the same
 selection drives Search, Enrich and Deck. The workbook reader matches
 downloaded PDFs to paper identities in the adjacent owner manifest.
-When a terminal program is selected in Deck, the export worker checks
-its availability, prepares missing summaries and passes the collection
-to the existing exporters.
+The Search table keeps the full result and its checkbox state. Enrich sends
+completed summaries back to the table so later selections include them.
+Both pages check the selected terminal program before processing the batch.
+Deck prepares missing summaries and passes the collection to the existing exporters.
 
 ```
 ANTHROPIC_API_KEY set → intelligence.pdf extracts text (the run's saved PDF, else a fetch through
