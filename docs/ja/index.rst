@@ -152,6 +152,8 @@ Python **3.12+** が必要です。
    thesisagents --paper "https://arxiv.org/abs/1706.03762" \
                   --enrich --lang ja --out ./exports/
 
+   thesisagents --pdf paper.pdf --enrich --llm-provider agy-cli --lang ja --out ./exports/
+
 CLI フラグの完全な表は :doc:`/cli` を参照してください。
 
 ----

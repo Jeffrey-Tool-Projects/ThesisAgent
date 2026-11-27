@@ -34,6 +34,7 @@ Example::
 from __future__ import annotations
 
 import contextlib
+import json
 import os
 import re
 import shlex
@@ -155,6 +156,28 @@ def run_command(
     if not output.strip():
         raise ParseError("intelligence", f"{name} printed nothing")
     return output
+
+
+def run_agy(command: Sequence[str], prompt: str, *, label: str, hidden: Iterable[str]) -> str:
+    """Send one user event on stdin and return the final response from the event stream."""
+    event = {"event": "user", "message": {"content": prompt}}
+    output = run_command(command, json.dumps(event) + "\n", label=label, hidden=hidden)
+    try:
+        last = json.loads(output.rstrip().rsplit("\n", 1)[-1])
+    except (ValueError, RecursionError) as err:
+        raise ParseError("intelligence", f"{label} returned an invalid result event") from err
+    if not isinstance(last, dict) or last.get("event") != "result":
+        raise ParseError("intelligence", f"{label} returned no final result event")
+    result = last.get("result")
+    if not isinstance(result, dict):
+        raise ParseError("intelligence", f"{label} returned a malformed result")
+    if result.get("status") != "SUCCESS":
+        detail = str(result.get("error") or result.get("status") or "unknown status")
+        raise SourceUnavailableError(_SOURCE, f"{label}: {detail[:_STDERR_SHOWN]}")
+    response = result.get("response")
+    if not isinstance(response, str) or not response.strip():
+        raise ParseError("intelligence", f"{label} returned an empty response")
+    return response
 
 
 def list_ollama_models(command: str) -> list[str]:

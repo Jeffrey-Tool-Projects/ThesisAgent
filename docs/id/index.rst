@@ -199,6 +199,8 @@ Mulai cepat
    thesisagents --paper "https://arxiv.org/abs/1706.03762" \
                   --enrich --lang id --out ./exports/
 
+   thesisagents --pdf paper.pdf --enrich --llm-provider agy-cli --lang id --out ./exports/
+
 Tabel flag CLI lengkap: :doc:`/cli`.
 
 ----

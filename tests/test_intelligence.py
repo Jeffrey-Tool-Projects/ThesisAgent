@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 from unittest.mock import MagicMock
 
 import httpx
@@ -12,6 +13,7 @@ from thesisagents.core.models import Paper, PaperCollection, PaperSummary, Query
 from thesisagents.core.pipeline import enrich_collection
 from thesisagents.fetchers import http as http_module
 from thesisagents.intelligence import pdf as pdf_module
+from thesisagents.intelligence import providers
 from thesisagents.intelligence import summarise as summarise_module
 
 
@@ -282,6 +284,58 @@ def test_summariser_rejects_non_json(monkeypatch):
     paper = _paper()
     with pytest.raises(ParseError):
         summarise_module.summarise_paper(paper, pdf, language="en")
+
+
+def test_terminal_summary_keeps_thesis_fields_and_records_its_input(monkeypatch):
+    def complete(_settings, instructions, prompt):
+        assert "headline_metrics" in instructions
+        assert "Traditional Chinese" in prompt
+        assert "paper text" in prompt
+        return json.dumps({
+            "research_question": "Which method scored higher?",
+            "contributions_detailed": [[str(index), "claim"] for index in range(5)],
+            "method_sections": [["Study", ["Two groups."]]],
+            "headline_metrics": [["Score", "80%", "70%"]],
+            "rq_results": [{"rq_id": "RQ1", "question": "Which scored higher?",
+                            "table": [["Group", "Score"], ["A", "80%"]],
+                            "analysis": ["Group A scored higher."]}],
+            "future_work": ["Repeat the study."],
+            "findings": ["Group A scored higher."],
+            "language": "ru", "model": "wrong", "raw_text_chars": 1,
+            "figures": [["Untrusted path", "private.png", []]],
+        })
+
+    monkeypatch.setattr(providers, "complete", complete)
+    settings = providers.resolve("cli")
+    summary = summarise_module.summarise_with(settings, _paper(), "paper text", "zh-tw", 10)
+    assert summary.has_rich_fields()
+    assert summary.research_question == "Which method scored higher?"
+    assert summary.contributions_detailed == tuple((str(i), "claim") for i in range(4))
+    assert summary.method_sections == (("Study", ("Two groups.",)),)
+    assert summary.headline_metrics == (("Score", "80%", "70%"),)
+    assert summary.rq_results[0].table == (("Group", "Score"), ("A", "80%"))
+    assert summary.future_work == ("Repeat the study.",)
+    assert summary.limitations == ()
+    assert summary.results == ("Group A scored higher.",)
+    assert summary.language == "zh-tw"
+    assert summary.model == settings.provider.label
+    assert summary.raw_text_chars == 10
+    assert summary.figures == ()
+
+
+async def test_malformed_terminal_result_keeps_the_existing_summary(monkeypatch, caplog):
+    async def fetch(url, **_kwargs):
+        return pdf_module.ExtractedPdf(url=url, page_count=1, chars=4, text="body")
+
+    paper = _paper(summary=PaperSummary(language="en", research_question="Original question?"))
+    collection = PaperCollection(query=Query(keywords="x", sources=("arxiv",)), papers=(paper,))
+    monkeypatch.setattr(pdf_module, "fetch_and_extract", fetch)
+    monkeypatch.setattr(
+        providers, "complete", lambda *_: '{"method_sections": [["Heading", [42]]]}',
+    )
+    result = await enrich_collection(collection, language="en", provider="cli")
+    assert result.papers[0].summary == paper.summary
+    assert "invalid summary field method_sections" in caplog.text
 
 
 # ---------------------------------------------------------------------------

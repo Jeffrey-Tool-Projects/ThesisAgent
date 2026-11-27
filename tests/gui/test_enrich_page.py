@@ -9,6 +9,8 @@ path.
 from __future__ import annotations
 
 import os
+import sys
+from dataclasses import replace
 
 import pytest
 
@@ -19,6 +21,8 @@ from thesisagents.core.models import (
     Query,
 )
 from thesisagents.gui.pages.enrich import EnrichPage
+from thesisagents.gui.pages.settings import settings_store
+from thesisagents.intelligence import providers
 
 
 def _paper(idx: int, *, with_pdf: bool = True) -> Paper:
@@ -71,7 +75,7 @@ def test_enrich_without_api_key_surfaces_settings_hint(qtbot, monkeypatch):
 
 
 def test_enrich_happy_path_attaches_summaries(qtbot, monkeypatch):
-    """Mock fetch_and_extract + summarise_paper so the worker thread
+    """Mock fetch_and_extract + summarise_with so the worker thread
     drives the UI without any real network or LLM call."""
     monkeypatch.setenv("ANTHROPIC_API_KEY", "sk-test")
 
@@ -82,11 +86,11 @@ def test_enrich_happy_path_attaches_summaries(qtbot, monkeypatch):
     async def fake_fetch(_url, source="intelligence"):
         return FakeExtracted()
 
-    def fake_summarise(paper, _pdf, *, language, model, api_key=None):
+    def fake_summarise(settings, paper, _text, language, chars):
         return PaperSummary(
             language=language,
-            model=model,
-            raw_text_chars=50_000,
+            model=settings.model,
+            raw_text_chars=chars,
             core_observation=f"fake summary for {paper.source_id}",
         )
 
@@ -94,7 +98,7 @@ def test_enrich_happy_path_attaches_summaries(qtbot, monkeypatch):
         "thesisagents.intelligence.pdf.fetch_and_extract", fake_fetch,
     )
     monkeypatch.setattr(
-        "thesisagents.intelligence.summarise.summarise_paper",
+        "thesisagents.intelligence.summarise.summarise_with",
         fake_summarise,
     )
 
@@ -141,6 +145,56 @@ def test_collection_ready_emitted_after_enrich(qtbot, monkeypatch):
     page._on_enrich_clicked()  # noqa: SLF001
     qtbot.waitUntil(lambda: len(received) >= 1, timeout=3000)
     assert isinstance(received[0], PaperCollection)
+
+
+def test_selecting_a_terminal_program_runs_it_for_each_paper(qtbot, tmp_path, monkeypatch):
+    monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
+    monkeypatch.setenv(providers.PROVIDER_ENV, "anthropic")
+    program = tmp_path / "summary program.py"
+    program.write_text(
+        "import json, sys\n"
+        "prompt = sys.stdin.read()\n"
+        "body = next(line for line in prompt.splitlines() if line.startswith('Trial '))\n"
+        "print(json.dumps({'results': [body + ' / ' + sys.argv[-1]]}))\n",
+        encoding="utf-8",
+    )
+    store = settings_store()
+    store.setValue("llm/base_url/codex-cli", f'"{sys.executable}" "{program}"')
+    store.setValue("llm/model/codex-cli", "first-model")
+    page = EnrichPage(ui_language="en")
+    qtbot.addWidget(page)
+    combo = page._provider_combo  # noqa: SLF001
+    for preset in ("claude-cli", "codex-cli", "agy-cli"):
+        assert combo.findData(preset) >= 0
+    combo.setCurrentIndex(combo.findData("codex-cli"))
+    papers = tuple(
+        replace(_paper(i, with_pdf=False), raw={"extracted_text": f"Trial {i}"})
+        for i in (1, 2)
+    )
+    page.set_collection(_collection(*papers))
+    with qtbot.waitSignal(page.collection_ready, timeout=10000) as finished:
+        page._enrich_button.click()  # noqa: SLF001
+        assert not combo.isEnabled()
+        store.setValue("llm/base_url/codex-cli", "missing-command")
+        monkeypatch.setenv(providers.PROVIDER_ENV, "codex-cli")
+        monkeypatch.setenv(providers.COMMAND_ENV, "another-missing-command")
+    first, second = finished.args[0].papers
+    assert first.summary.results == ("Trial 1 / first-model",)
+    assert second.summary.results == ("Trial 2 / first-model",)
+    assert combo.isEnabled()
+
+
+def test_missing_terminal_program_names_the_command(qtbot, monkeypatch):
+    monkeypatch.setenv(providers.PROVIDER_ENV, "codex-cli")
+    monkeypatch.setenv(providers.COMMAND_ENV, "missing-terminal-program-for-test")
+    page = EnrichPage()
+    qtbot.addWidget(page)
+    combo = page._provider_combo  # noqa: SLF001
+    combo.setCurrentIndex(combo.findData("codex-cli"))
+    page.set_collection(_collection(_paper(1)))
+    page._enrich_button.click()  # noqa: SLF001
+    assert "missing-terminal-program-for-test" in page.status_text()
+    assert not page.is_running()
 
 
 @pytest.fixture(autouse=True)

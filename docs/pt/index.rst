@@ -197,6 +197,8 @@ Início rápido
    thesisagents --paper "https://arxiv.org/abs/1706.03762" \
                   --enrich --lang pt --out ./exports/
 
+   thesisagents --pdf paper.pdf --enrich --llm-provider agy-cli --lang pt --out ./exports/
+
 Tabela completa de flags CLI: :doc:`/cli`.
 
 ----

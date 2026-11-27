@@ -195,6 +195,8 @@ Bắt đầu nhanh
    thesisagents --paper "https://arxiv.org/abs/1706.03762" \
                   --enrich --lang vi --out ./exports/
 
+   thesisagents --pdf paper.pdf --enrich --llm-provider agy-cli --lang vi --out ./exports/
+
 Bảng cờ CLI đầy đủ: :doc:`/cli`.
 
 ----

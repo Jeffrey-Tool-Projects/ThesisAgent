@@ -1,26 +1,7 @@
-"""Enrich tab.
+"""Enrich papers on a worker, using the selected model or command-line program.
 
-Takes the PaperCollection produced by the Search tab and walks every
-paper through ``intelligence.fetch_and_extract`` (download + PDF text
-extraction) + ``intelligence.summarise_paper`` (Anthropic call). The
-result is a NEW PaperCollection whose ``papers[*].summary`` carries
-the rich-tier fields so the Deck tab can render thesis-style decks.
-
-Behaviour rules:
-
-* The Enrich button is disabled until SearchPage emits
-  ``collection_ready`` (or a collection is set programmatically by a
-  test).
-* The Anthropic API key requirement is checked at button-click time,
-  not at page-construction time, so opening the tab without a key
-  doesn't crash. The error directs the user to the Settings tab.
-* Enrichment runs one paper at a time on a worker thread; the UI
-  stays responsive and shows per-paper status (pending → ok / failed).
-  Sequential (not parallel) because each Anthropic call already takes
-  ~10 s and parallelism would just stress the user's rate limit.
-* Failed papers don't kill the whole run — they keep the original
-  un-enriched ``Paper`` in the output collection so downstream Deck
-  rendering still works (falls back to lightweight tier per-paper).
+Each batch uses the settings validated when it starts. The Deck page receives
+the summaries together with the original records of papers that failed.
 """
 
 from __future__ import annotations
@@ -49,6 +30,7 @@ from thesisagents.core.models import Paper, PaperCollection, PaperSummary
 from thesisagents.exporters.i18n import SUPPORTED_LANGUAGES as DECK_LANGUAGES
 from thesisagents.gui.handoff import HandoffError, read_handoff, write_handoff
 from thesisagents.gui.i18n import LANGUAGE_DISPLAY_NAMES, t
+from thesisagents.gui.pages.settings import settings_store
 from thesisagents.gui.widgets.responsive import (
     AdaptiveSplit,
     Breakpoint,
@@ -82,7 +64,7 @@ class EnrichPage(QWidget):
         self._collection: PaperCollection | None = None
         self._enriched_papers: list[Paper] = []
         self._pending_index: int = 0
-        self._running = False
+        self._run_settings: providers.LlmSettings | None = None
         self._stop_requested = False
         self._worker: AsyncWorker | None = None
         # A collection that arrived while a run was going (a new search, or
@@ -118,10 +100,20 @@ class EnrichPage(QWidget):
             self._language_combo.addItem(display, code)
         form.addRow(t("enrich.language_label", language), self._language_combo)
 
+        self._provider_combo = QComboBox(self)
+        self._provider_combo.addItem(t("enrich.use_settings", language), "")
+        for provider in providers.PROVIDERS.values():
+            if provider.command:
+                label = t("model.cli", language, name=provider.label)
+                self._provider_combo.addItem(label, provider.name)
+        form.addRow(t("model.provider", language), self._provider_combo)
+
         self._model_input = QLineEdit(self)
+        self._provider_combo.currentIndexChanged.connect(self._on_provider_changed)
         self.refresh_model()
         form.addRow(t("enrich.model_label", language), self._model_input)
         adapt_form_rows(settings_card, form)
+        self._settings_card = settings_card
         controls_layout.addWidget(settings_card)
         controls_layout.addWidget(self._build_agent_card(controls))
         controls_layout.addStretch(1)
@@ -193,7 +185,7 @@ class EnrichPage(QWidget):
         initial state). While a run is going the collection is held and
         applied when the run ends.
         """
-        if self._running:
+        if self.is_running():
             self._held = (collection,)
             return
         if collection is None or not isinstance(collection, PaperCollection):
@@ -236,12 +228,12 @@ class EnrichPage(QWidget):
         return self._table_model
 
     def is_running(self) -> bool:
-        return self._running
+        return self._run_settings is not None
 
     # --- hand-off to an LLM agent (progress #27) ---------------------------
 
     def _build_agent_card(self, parent: QWidget) -> QWidget:
-        """The no-API-key path: write the papers for an agent, read its summaries."""
+        """Export papers or import summaries for a manual file exchange."""
         language = self._ui_language
         card, layout = make_card(t("enrich.card_agent", language), parent)
         hint = QLabel(t("enrich.agent_hint", language), card)
@@ -322,8 +314,9 @@ class EnrichPage(QWidget):
         self.collection_ready.emit(result.collection)
 
     def save_form(self, store: QSettings) -> None:
-        """Write the summary language and model to ``store``."""
+        """Save the language, provider and model override in ``store``."""
         store.setValue(f"{_FORM_GROUP}/language", self._language_combo.currentData() or "en")
+        store.setValue(f"{_FORM_GROUP}/provider", self._provider_combo.currentData())
         store.setValue(f"{_FORM_GROUP}/model", self._model_input.text())
 
     def restore_form(self, store: QSettings) -> None:
@@ -332,6 +325,8 @@ class EnrichPage(QWidget):
         index = self._language_combo.findData(language)
         if index >= 0:
             self._language_combo.setCurrentIndex(index)
+        provider = store.value(f"{_FORM_GROUP}/provider", "", type=str)
+        self._provider_combo.setCurrentIndex(max(0, self._provider_combo.findData(provider)))
         self._model_input.setText(store.value(f"{_FORM_GROUP}/model", "", type=str))
 
     # --- internals ------------------------------------------------------
@@ -360,7 +355,8 @@ class EnrichPage(QWidget):
             )
             return
         try:
-            reason = providers.problem(self._model_settings())
+            settings = self._model_settings(model=self._model_input.text().strip())
+            reason = providers.problem(settings)
         except ConfigError as err:
             reason = str(err)
         if reason:
@@ -370,7 +366,8 @@ class EnrichPage(QWidget):
             return
         self._enriched_papers = []
         self._pending_index = 0
-        self._running = True
+        self._run_settings = settings
+        self._settings_card.setEnabled(False)
         self._stop_requested = False
         self._enrich_button.setEnabled(False)
         self._set_agent_buttons(False)
@@ -393,13 +390,13 @@ class EnrichPage(QWidget):
         return rows[0].row() if len(rows) == 1 else -1
 
     def _refresh_edit_button(self) -> None:
-        self._edit_button.setEnabled(self._selected_row() >= 0 and not self._running)
+        self._edit_button.setEnabled(self._selected_row() >= 0 and not self.is_running())
 
     def _on_edit_summary(self) -> None:
         """Edit the selected paper's summary by hand, model or no model."""
         collection = self.collection()
         row = self._selected_row()
-        if self._running or collection is None or not 0 <= row < len(collection.papers):
+        if self.is_running() or collection is None or not 0 <= row < len(collection.papers):
             return
         self._summary_editor = SummaryEditor(collection.papers[row], self._ui_language, self)
         self._summary_editor.saved.connect(lambda paper: self._on_summary_edited(row, paper))
@@ -429,9 +426,20 @@ class EnrichPage(QWidget):
         self._status_label.setText(t("library.status_saved", self._ui_language))
         self.collection_ready.emit(self._collection)
 
-    def _model_settings(self) -> providers.LlmSettings:
-        """The model this run would use: the one typed here, else Settings'."""
-        return providers.resolve(model=self._model_input.text().strip() or None)
+    def _on_provider_changed(self) -> None:
+        self._model_input.clear()
+        self.refresh_model()
+
+    def _model_settings(self, model: str = "") -> providers.LlmSettings:
+        """Resolve the selected provider with its own saved model and command."""
+        provider = self._provider_combo.currentData()
+        if not provider or provider == providers.selected_provider():
+            return providers.resolve(provider, model=model)
+        store = settings_store()
+        return providers.resolve(
+            provider, model=model or store.value(f"llm/model/{provider}", "", type=str),
+            command=store.value(f"llm/base_url/{provider}", "", type=str),
+        )
 
     def refresh_model(self) -> None:
         """Show the model now chosen in Settings.
@@ -440,7 +448,7 @@ class EnrichPage(QWidget):
         Here it would stop the whole window from opening.
         """
         try:
-            hint = providers.resolve().describes
+            hint = self._model_settings().describes
         except ConfigError:
             hint = ""
         self._model_input.setPlaceholderText(hint)
@@ -466,21 +474,20 @@ class EnrichPage(QWidget):
             self._enrich_next()
             return
         language = self._language_combo.currentData() or "en"
-        model = self._model_input.text().strip() or None
+        settings = self._run_settings
+        assert settings is not None  # noqa: S101 # nosec B101  # only called during a run
 
         async def coro() -> object:
             # Lazy import — the intelligence extra is optional.
             from thesisagents.intelligence.pdf import ExtractedPdf, fetch_and_extract
-            from thesisagents.intelligence.summarise import summarise_paper
+            from thesisagents.intelligence.summarise import summarise_with
 
             if text:
                 pages = int((paper.raw or {}).get("page_count") or 1)
                 extracted = ExtractedPdf(paper.url, pages, len(text), text)
             else:
                 extracted = await fetch_and_extract(paper.pdf_url)
-            return summarise_paper(
-                paper, extracted, language=language, model=model,
-            )
+            return summarise_with(settings, paper, extracted.text, language, extracted.chars)
 
         worker = AsyncWorker(coro)
         worker.signals.finished.connect(self._on_paper_finished)
@@ -561,7 +568,8 @@ class EnrichPage(QWidget):
         successes = sum(
             1 for p in self._enriched_papers if p.summary is not None
         )
-        self._running = False
+        self._run_settings = None
+        self._settings_card.setEnabled(True)
         self._worker = None
         self._refresh_edit_button()
         self._enrich_button.setEnabled(True)

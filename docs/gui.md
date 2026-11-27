@@ -370,13 +370,13 @@ row per paper with three columns:
 - **Status**, pending, then done, skipped or failed with the first 60
   characters of the error.
 
-Pick the summary language and, optionally, the model, then press
-**Enrich**. The button needs an Anthropic API key in **Settings**,
-and without one the status line points there. Papers are enriched one
-at a time on a worker thread (each call already takes several seconds,
-running them in parallel would only hit the rate limit). A failed paper
-keeps its search record, so the Deck page still renders it in the
-lightweight tier.
+Pick the summary language and choose a provider. Use the provider from
+**Settings**, or select an installed command-line program here. For a
+subscription-based program, sign in through its terminal first. Press
+**Enrich** to pass each paper's text to the selected provider. The program
+can send the text to the service you signed in to. The app attaches each
+returned summary to its paper and sends the collection to **Deck**.
+A failed paper keeps its search record and any existing summary.
 
 **Cancel** stops the run. A paper whose PDF is still downloading is
 stopped at once, one already in the summary call finishes first and its
@@ -386,12 +386,7 @@ If the Search page sends new results (a new search, or changed ticks)
 while a run is going, they are held and shown once the run ends,
 because swapping them in mid-run would point the run at the wrong rows.
 
-When the run finishes the enriched collection is sent to the Deck
-page, so its **Export** picks up the rich-tier layout automatically.
-**No API key? Hand off to an agent.** Without an Anthropic key the
-project's other enrichment path is LLM-as-agent: an MCP-aware LLM reads
-each PDF and writes the summary itself. The card of that name connects
-the GUI to it:
+For an agent on another computer, you can exchange a file manually.
 
 1. **Export for an agent…** writes a JSON hand-off file: the papers with
    their PDF links, the summary language, an empty summary listing every

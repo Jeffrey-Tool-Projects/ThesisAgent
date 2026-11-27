@@ -138,9 +138,8 @@ def build_parser() -> argparse.ArgumentParser:
             "--title / --authors / --year / --venue / --doi / --arxiv-id "
             "flags only override when exactly one PDF is passed — in batch "
             "mode they are ignored so per-file extraction wins. Use "
-            "--enrich to upgrade each to a rich thesis-style deck via "
-            "Anthropic; otherwise lightweight decks are produced and you "
-            "can fill in a PaperSummary via scripts/regen_*.py."
+            "--enrich with --llm-provider to summarise each PDF with a "
+            "selected service or terminal program."
         ),
     )
     parser.add_argument(
@@ -325,7 +324,7 @@ def build_parser() -> argparse.ArgumentParser:
             "together, fireworks, dashscope, moonshot), a program on this "
             "computer (ollama, lmstudio, llamacpp, vllm), custom with "
             "--llm-base-url, or an AI program on the command line "
-            "(claude-cli, gemini-cli, codex-cli, ollama-cli, or cli with "
+            "(claude-cli, gemini-cli, codex-cli, agy-cli, ollama-cli, or cli with "
             "--llm-command). Default: THESISAGENTS_LLM_PROVIDER."
         ),
     )
@@ -1035,14 +1034,11 @@ async def _maybe_enrich(
     if enrich_mode == "skip-no-key" and not args.quiet:
         print(
             f"Lightweight deck — {_missing_model(args)}.\n"
-            "If you (the human) want auto-enrichment, set the key, or choose "
-            "another model with --llm-provider, and rerun.\n"
-            "If you (an LLM agent) are running this, the lightweight "
-            "deck is intermediate, NOT the deliverable: read each PDF "
-            "in exports/<run>/pdfs/, hand-author a rich PaperSummary, "
-            "drop a scripts/regen_<query>.py, run it. See AGENTS.md "
-            "'LLM-as-agent default path' and "
-            "scripts/regen_llm_security_batch.py for the worked example.",
+            "To write full-text summaries with a signed-in terminal program, "
+            "rerun with --enrich --llm-provider and its preset name "
+            "(claude-cli, codex-cli, or agy-cli).\n"
+            "For hand-authored summaries from the saved PDFs, see AGENTS.md "
+            "and scripts/regen_fang2026.py.",
             file=sys.stderr,
         )
     if enrich_mode not in {"explicit", "auto"} or not collection.papers:

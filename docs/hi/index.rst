@@ -199,6 +199,8 @@ Python **3.12+** आवश्यक।
    thesisagents --paper "https://arxiv.org/abs/1706.03762" \
                   --enrich --lang hi --out ./exports/
 
+   thesisagents --pdf paper.pdf --enrich --llm-provider agy-cli --lang hi --out ./exports/
+
 CLI फ़्लैग की पूरी तालिका: :doc:`/cli`।
 
 ----
